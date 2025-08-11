@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const { USER_ROLES, hasPermission, canAccess } = require('../../../shared/constants/roles');
+const { USER_ROLES, hasPermission, canAccess } = require('../../../shared/constants/roles.cjs');
 
 // Basic authentication middleware
 const authenticate = async (req, res, next) => {
@@ -29,11 +29,23 @@ const authenticate = async (req, res, next) => {
       });
     }
 
-    if (!user.isActive()) {
-      console.log('🔍 Auth Debug - User inactive');
+    // Allow suspended users to login (they just can't post)
+    // Only block if truly inactive or banned
+    if (user.user_status === 'inactive' || user.user_status === 'banned' || user.isLocked()) {
+      console.log('🔍 Auth Debug - User blocked:', user.user_status);
       return res.status(401).json({
         success: false,
-        message: 'Account is inactive or locked'
+        message: user.user_status === 'banned' ? 'Account is banned' : 
+                user.isLocked() ? 'Account is temporarily locked' : 'Account is inactive'
+      });
+    }
+    
+    // Still require email verification
+    if (!user.email_verified) {
+      console.log('🔍 Auth Debug - Email not verified');
+      return res.status(401).json({
+        success: false,
+        message: 'Please verify your email address'
       });
     }
 
@@ -41,6 +53,8 @@ const authenticate = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
+    console.error('🚨 Auth middleware error:', error.message, error.stack);
+    
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
         success: false,
@@ -57,7 +71,8 @@ const authenticate = async (req, res, next) => {
 
     return res.status(500).json({
       success: false,
-      message: 'Authentication error'
+      message: 'Authentication error',
+      debug: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -195,6 +210,11 @@ function getTokenFromRequest(req) {
   }
 
   // Check cookie
+  if (req.cookies && req.cookies.naramakna_auth) {
+    return req.cookies.naramakna_auth;
+  }
+  
+  // Fallback to old cookie name for compatibility
   if (req.cookies && req.cookies.token) {
     return req.cookies.token;
   }
@@ -235,12 +255,12 @@ const canManageAds = (req, res, next) => {
   const user = req.user;
 
   // Only superadmin can manage ads
-  if (user.role !== 'superadmin') {
+  if (user.user_role !== 'superadmin') {
     return res.status(403).json({
       success: false,
       message: 'Only superadmin can manage advertisements',
       required_roles: ['superadmin'],
-      user_role: user.role
+      user_role: user.user_role
     });
   }
 
@@ -287,6 +307,21 @@ const authRateLimit = (maxAttempts = 5, windowMs = 15 * 60 * 1000) => {
   };
 };
 
+// Check if user can post content (not suspended)
+const canPost = (req, res, next) => {
+  const user = req.user;
+  
+  if (user.user_status === 'suspended') {
+    return res.status(403).json({
+      success: false,
+      message: 'Your account is suspended. You cannot create or edit content.',
+      user_status: 'suspended'
+    });
+  }
+  
+  next();
+};
+
 module.exports = {
   authenticate,
   optionalAuth,
@@ -299,5 +334,9 @@ module.exports = {
   requireAdmin,
   requireSuperAdmin,
   authRateLimit,
-  getTokenFromRequest
+  getTokenFromRequest,
+  canPost,
+  // Aliases for consistency
+  requireAuth: authenticate,
+  requireRole: authorize
 };

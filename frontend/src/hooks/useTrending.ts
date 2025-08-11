@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { articlesAPI } from '../services/api/articles';
 import type { Article } from '../services/api/articles';
 
@@ -26,12 +26,15 @@ export const useTrending = (params: UseTrendingParams = {}): UseTrendingResult =
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  // Extract individual params to avoid object reference issues
+  const { limit, category, type } = params;
+
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const result = await articlesAPI.getTrending(params);
+      const result = await articlesAPI.getTrending({ limit, category, type });
       
       if (result.success) {
         setData(result.data);
@@ -45,15 +48,15 @@ export const useTrending = (params: UseTrendingParams = {}): UseTrendingResult =
     } finally {
       setLoading(false);
     }
-  };
+  }, [limit, category, type]);
 
   useEffect(() => {
     fetchData();
-  }, [params.limit, params.category, params.type]);
+  }, [fetchData]);
 
-  const refresh = () => {
+  const refresh = useCallback(() => {
     fetchData();
-  };
+  }, [fetchData]);
 
   return {
     data,

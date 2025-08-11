@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Navbar } from '../../components/organisms/Navbar';
+import { authAPI } from '../../services/api/auth';
 
 const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -13,14 +14,16 @@ const ForgotPasswordPage: React.FC = () => {
     setError('');
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await authAPI.requestPasswordReset(email);
       
-      // For demo purposes, always succeed
-      setSuccess(true);
-      setEmail('');
-    } catch (err) {
-      setError('Terjadi kesalahan. Silakan coba lagi.');
+      if (response.success) {
+        setSuccess(true);
+        setEmail('');
+      } else {
+        setError(response.message);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setLoading(false);
     }

@@ -132,8 +132,15 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
     (apiArticles[0]?.categories?.[0]?.name) || 
     category.charAt(0).toUpperCase() + category.slice(1);
 
-  const NewsItemComponent = ({ item }: { item: NewsItem }) => (
-    <div className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors duration-200">
+  const NewsItemComponent = ({ item }: { item: NewsItem }) => {
+    const handleClick = () => {
+      if (item.href) {
+        window.location.href = item.href;
+      }
+    };
+
+    return (
+      <div className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors duration-200" onClick={handleClick}>
       {/* Thumbnail */}
       <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden">
         {item.imageSrc ? (
@@ -166,7 +173,8 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
         </div>
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <div className={`bg-gray-50 py-8 ${className}`}>
@@ -178,7 +186,7 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
             <h2 className="text-xl font-semibold text-gray-900">{displayCategoryName}</h2>
           </div>
           <a 
-            href="#" 
+            href={`/kategori/${category}`} 
             className="text-sm text-blue-600 hover:text-blue-800 flex items-center space-x-1 transition-colors duration-200"
           >
             <span>Lihat lainnya</span>
@@ -251,4 +259,4 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
       </div>
     </div>
   );
-}; 
+};

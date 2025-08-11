@@ -1,6 +1,7 @@
 import React from 'react';
 import { TrendingList } from '../../molecules/TrendingList';
 import { useTrending } from '../../../hooks/useTrending.ts';
+import { useTikTok } from '../../../hooks/useTikTok';
 import type { Article } from '../../../services/api/articles';
 
 interface TrendingArticle {
@@ -17,13 +18,17 @@ interface TrendingSectionProps {
   className?: string;
   limit?: number;
   category?: string;
+  includeTikTok?: boolean;
+  mixedContent?: boolean;
 }
 
 export const TrendingSection: React.FC<TrendingSectionProps> = ({
   articles = [],
   className = '',
   limit = 5,
-  category
+  category,
+  includeTikTok = true,
+  mixedContent = true
 }) => {
   // Fetch trending content dari API berdasarkan views
   const { data: apiResponse, loading, error } = useTrending({ 
@@ -32,11 +37,18 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({
     type: 'post' 
   });
   
-  const apiArticles = apiResponse?.posts || [];
+  // Memoize apiArticles to prevent unnecessary re-renders
+  const apiArticles = React.useMemo(() => apiResponse?.posts || [], [apiResponse?.posts]);
   const criteria = apiResponse?.criteria || 'most_viewed';
 
+  // TikTok content integration
+  const { content: rawTiktokContent } = useTikTok();
+  
+  // Memoize tiktokContent to prevent unnecessary re-renders
+  const tiktokContent = React.useMemo(() => rawTiktokContent || [], [rawTiktokContent]);
+
   // Helper function untuk convert API data ke format TrendingArticle
-  const convertToTrendingArticle = (article: Article): TrendingArticle => {
+  const convertToTrendingArticle = React.useCallback((article: Article): TrendingArticle => {
     const timeAgo = new Date(article.date).toLocaleString('id-ID', {
       hour: '2-digit',
       minute: '2-digit',
@@ -52,7 +64,66 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({
       imageSrc: article.metadata?.thumbnail_url || article.metadata?._thumbnail_url,
       href: `/artikel/${article.slug}`
     };
-  };
+  }, []);
+
+  // Helper function untuk convert TikTok content ke format TrendingArticle
+  const convertTikTokToTrendingArticle = React.useCallback((tiktokItem: any): TrendingArticle => {
+    const timeAgo = new Date(tiktokItem.post_date).toLocaleString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit'
+    });
+
+    return {
+      id: `tiktok_${tiktokItem.metadata?.external_id || tiktokItem.ID}`,
+      title: tiktokItem.post_title || 'Video TikTok',
+      source: `📱 ${tiktokItem.metadata?.tiktok_author_display_name || 'TikTok'}`,
+      timeAgo,
+      imageSrc: tiktokItem.metadata?.tiktok_cover_url,
+      href: tiktokItem.metadata?.source_url || tiktokItem.guid
+    };
+  }, []);
+
+  // Mix TikTok and regular content using useMemo instead of useEffect
+  const combinedMemoContent = React.useMemo(() => {
+    if (!mixedContent || !includeTikTok) {
+      return [];
+    }
+
+    // Ensure tiktokContent is an array
+    const safeTiktokContent = Array.isArray(tiktokContent) ? tiktokContent : [];
+    
+    const regularArticles = apiArticles.map(convertToTrendingArticle);
+    const tiktokArticles = safeTiktokContent
+      .slice(0, Math.ceil(limit / 3)) // Limit TikTok content to 1/3 of total
+      .map(convertTikTokToTrendingArticle);
+
+    // Interleave content: every 3rd item is TikTok if available
+    const mixed: TrendingArticle[] = [];
+    let regularIndex = 0;
+    let tiktokIndex = 0;
+
+    for (let i = 0; i < limit; i++) {
+      if (i % 3 === 2 && tiktokIndex < tiktokArticles.length) {
+        // Every 3rd position, add TikTok content
+        mixed.push(tiktokArticles[tiktokIndex]);
+        tiktokIndex++;
+      } else if (regularIndex < regularArticles.length) {
+        // Add regular content
+        mixed.push(regularArticles[regularIndex]);
+        regularIndex++;
+      } else if (tiktokIndex < tiktokArticles.length) {
+        // Fill remaining with TikTok if no regular content
+        mixed.push(tiktokArticles[tiktokIndex]);
+        tiktokIndex++;
+      }
+    }
+
+    return mixed;
+  }, [apiArticles, tiktokContent, limit, includeTikTok, mixedContent, convertToTrendingArticle, convertTikTokToTrendingArticle]);
+
+  // Use the memoized combined content directly
 
   // Dummy data untuk fallback
   const defaultArticles: TrendingArticle[] = [
@@ -93,11 +164,13 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({
     }
   ];
 
-  // Prioritas: props articles > API data > fallback data
+  // Prioritas: props articles > mixed content > API data > fallback data
   let displayArticles: TrendingArticle[] = [];
   
   if (articles.length > 0) {
     displayArticles = articles.slice(0, 5);
+  } else if (mixedContent && includeTikTok && combinedMemoContent.length > 0) {
+    displayArticles = combinedMemoContent.slice(0, 5);
   } else if (!loading && !error && apiArticles.length > 0) {
     displayArticles = apiArticles.map(convertToTrendingArticle).slice(0, 5);
   } else {
@@ -148,7 +221,7 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({
           </h2>
         </div>
         <a 
-          href="#" 
+          href={category ? `/kategori/${category}` : "#"} 
           className="text-sm text-blue-600 hover:text-blue-800 flex items-center space-x-1 transition-colors duration-200"
         >
           <span>Lihat lainnya</span>

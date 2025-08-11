@@ -1,0 +1,286 @@
+/* Article Detail Page Styles */
+
+/* Line clamp utilities */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+/* Article content typography */
+.article-content {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.7;
+}
+
+.article-content h2 {
+  margin-top: 3rem;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.article-content h3 {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.article-content p {
+  margin-bottom: 1.5rem;
+  color: #374151;
+  font-size: 1.125rem;
+}
+
+.article-content blockquote {
+  border-left: 4px solid #3b82f6;
+  padding-left: 1.5rem;
+  margin: 2rem 0;
+  font-style: italic;
+  color: #6b7280;
+}
+
+.article-content img {
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  margin: 2rem 0;
+  max-width: 100%;
+  height: auto;
+  cursor: zoom-in;
+  transition: transform 0.3s ease;
+}
+
+.article-content img:hover {
+  transform: scale(1.02);
+}
+
+.article-content a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.article-content a:hover {
+  text-decoration: underline;
+}
+
+.article-content ul, .article-content ol {
+  margin: 1.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.article-content li {
+  margin-bottom: 0.5rem;
+  color: #374151;
+}
+
+/* Instagram embed styles */
+.instagram-embed {
+  max-width: 540px;
+  margin: 2rem auto;
+}
+
+.instagram-embed-container {
+  max-width: 540px;
+  margin: 2rem auto;
+}
+
+.instagram-embed iframe {
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Image modal styles */
+.image-modal-overlay {
+  backdrop-filter: blur(4px);
+}
+
+/* Breaking news banner animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .8;
+  }
+}
+
+.breaking-news {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Enhanced Prose Styling for Rich Text Editor Content */
+/* Base typography without overriding alignment and editor-specific formatting */
+.prose {
+  font-family: Georgia, 'Times New Roman', serif;
+  line-height: 1.7;
+  color: #374151;
+}
+
+/* Preserve Quill editor formatting classes */
+.prose .ql-align-left {
+  text-align: left;
+}
+
+.prose .ql-align-center {
+  text-align: center;
+}
+
+.prose .ql-align-right {
+  text-align: right;
+}
+
+.prose .ql-align-justify {
+  text-align: justify;
+}
+
+/* Preserve Quill color classes */
+.prose .ql-color-red {
+  color: #ef4444;
+}
+
+.prose .ql-color-blue {
+  color: #3b82f6;
+}
+
+.prose .ql-color-green {
+  color: #10b981;
+}
+
+.prose .ql-color-yellow {
+  color: #f59e0b;
+}
+
+/* Base element styling - no !important to allow overrides */
+.prose p {
+  margin-bottom: 1.5rem;
+  font-size: 1.125rem;
+  line-height: 1.7;
+  color: #374151;
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  color: #1f2937;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.prose h1 {
+  font-size: 2.25rem;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+.prose h2 {
+  font-size: 1.875rem;
+  margin-top: 3rem;
+}
+
+.prose h3 {
+  font-size: 1.5rem;
+  margin-top: 2.5rem;
+}
+
+.prose h4 {
+  font-size: 1.25rem;
+  margin-top: 2rem;
+}
+
+.prose blockquote {
+  border-left: 4px solid #fbbf24;
+  background-color: #fefbf0;
+  padding: 1.5rem;
+  margin: 2rem 0;
+  font-style: italic;
+  color: #6b7280;
+  border-radius: 0 8px 8px 0;
+  font-size: 1.125rem;
+}
+
+.prose ul, .prose ol {
+  margin: 1.5rem 0;
+  padding-left: 2rem;
+}
+
+.prose li {
+  margin: 0.5rem 0;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: #374151;
+}
+
+.prose strong {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.prose em {
+  font-style: italic;
+}
+
+.prose u {
+  text-decoration: underline;
+}
+
+.prose s {
+  text-decoration: line-through;
+}
+
+.prose a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.prose a:hover {
+  color: #1d4ed8;
+}
+
+.prose img {
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  margin: 2rem auto;
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Fix for plain text converted to paragraphs */
+.prose p:empty {
+  display: none;
+}
+
+.prose br + br {
+  display: none;
+}
+
+/* Ensure inline styles from Quill are respected */
+.prose [style*="text-align"] {
+  /* Allow inline text-align styles to override */
+}
+
+.prose [style*="color"] {
+  /* Allow inline color styles to override */
+}
+
+.prose [style*="background"] {
+  /* Allow inline background styles to override */
+}

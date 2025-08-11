@@ -1,5 +1,6 @@
 import React from 'react';
 import { Carousel } from '../../molecules/Carousel';
+import { TrendingSection } from '../TrendingSection';
 import { useContent } from '../../../hooks/useContent';
 import type { Article } from '../../../services/api/articles';
 
@@ -135,13 +136,21 @@ export const MainContentSection: React.FC<MainContentSectionProps> = ({
         <div className="lg:col-span-3">
           {/* Featured Carousel */}
           <div className="mb-6">
-            <Carousel articles={displayArticles.filter(article => article.isFeatured)} />
+            <Carousel articles={displayArticles.slice(0, 4)} />
           </div>
 
           {/* Secondary Content Grid - Hidden on mobile, shown as slider */}
           <div className="hidden md:grid md:grid-cols-2 gap-6">
             {displayArticles.filter(article => !article.isFeatured).slice(0, 2).map((article) => (
-              <div key={article.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-200">
+              <div 
+                key={article.id} 
+                className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-200 cursor-pointer"
+                onClick={() => {
+                  if (article.href) {
+                    window.location.href = article.href;
+                  }
+                }}
+              >
                 <div className="relative h-80 bg-gray-200">
                   {article.imageSrc ? (
                     <img 
@@ -182,7 +191,15 @@ export const MainContentSection: React.FC<MainContentSectionProps> = ({
           <div className="md:hidden">
             <div className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide">
               {displayArticles.filter(article => !article.isFeatured).slice(0, 3).map((article) => (
-                <div key={article.id} className="flex-shrink-0 w-80 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                <div 
+                  key={article.id} 
+                  className="flex-shrink-0 w-80 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow duration-200"
+                  onClick={() => {
+                    if (article.href) {
+                      window.location.href = article.href;
+                    }
+                  }}
+                >
                   <div className="relative h-80 bg-gray-200">
                     {article.imageSrc ? (
                       <img 
@@ -223,44 +240,7 @@ export const MainContentSection: React.FC<MainContentSectionProps> = ({
 
         {/* Trending Sidebar */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="flex items-center mb-4">
-              <div className="w-1 h-6 bg-yellow-500 mr-3"></div>
-              <h3 className="text-lg font-semibold text-gray-900">Trending</h3>
-              <a href="#" className="ml-auto text-sm text-yellow-500 hover:text-yellow-600">
-                Lihat lainnya &gt;
-              </a>
-            </div>
-            
-            <div className="space-y-4 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-              {[
-                { title: 'Komjen Fadil Imran Jabat Astama Ops Kapolri, Gantikan Komjen Akhmad Wiyagus', source: 'naramaknaNEWS', time: '4 jam' },
-                { title: 'Dahlia Poland Gugat Cerai Fandy Christian', source: 'naramaknaNEWS', time: '6 jam' },
-                { title: 'Profil Irjen Asep Edi Suheri, Wakabareskrim Polri yang Kini Jabat Kapolda Metro', source: 'naramaknaNEWS', time: '8 jam' },
-                { title: 'Pemerintah Akan Terbitkan Aturan Baru untuk E-commerce', source: 'naramaknaNEWS', time: '10 jam' },
-                { title: 'KRL Gangguan Lagi, Kali Ini Terjadi di Stasiun Manggarai', source: 'naramaknaNEWS', time: '12 jam' },
-                { title: '2 ASN Terduga Teroris Ditangkap Densus 88 di Aceh', source: 'naramaknaNEWS', time: '14 jam' },
-                { title: 'Polisi Tangkap Penjual Miras Oplosan yang Tewaskan Penonton Sound Horeg', source: 'naramaknaNEWS', time: '16 jam' },
-                { title: 'Perjalanan eFishery: Dari Startup Sederhana, Jadi Unicorn lalu Kolaps', source: 'naramaknaNEWS', time: '18 jam' },
-                { title: 'Update Terbaru: Situasi Politik Indonesia 2024', source: 'naramaknaNEWS', time: '20 jam' },
-                { title: 'Teknologi AI Terbaru: Perkembangan di Indonesia', source: 'naramaknaNEWS', time: '22 jam' }
-              ].map((item, index) => (
-                <div key={index} className="flex space-x-3">
-                  <div className="w-16 h-12 bg-gray-200 rounded flex items-center justify-center">
-                    <span className="text-xs text-gray-500">No Image</span>
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="text-sm font-medium text-gray-900 line-clamp-2 mb-1 text-left">
-                      {item.title}
-                    </h4>
-                    <p className="text-xs text-gray-500 text-left">
-                      {item.source} • {item.time}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <TrendingSection limit={10} includeTikTok={false} mixedContent={false} />
         </div>
       </div>
     </div>

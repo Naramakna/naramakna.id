@@ -3,22 +3,17 @@ const sequelize = require('../config/database');
 
 const Comment = sequelize.define('Comment', {
   comment_ID: {
-    type: DataTypes.BIGINT,
+    type: DataTypes.BIGINT.UNSIGNED,
     primaryKey: true,
-    autoIncrement: true,
-    allowNull: false
+    autoIncrement: true
   },
   comment_post_ID: {
-    type: DataTypes.BIGINT,
+    type: DataTypes.BIGINT.UNSIGNED,
     allowNull: false,
-    defaultValue: 0,
-    references: {
-      model: 'posts',
-      key: 'ID'
-    }
+    defaultValue: 0
   },
   comment_author: {
-    type: DataTypes.TEXT,
+    type: DataTypes.TEXT('tiny'),
     allowNull: false
   },
   comment_author_email: {
@@ -71,46 +66,18 @@ const Comment = sequelize.define('Comment', {
     defaultValue: 'comment'
   },
   comment_parent: {
-    type: DataTypes.BIGINT,
+    type: DataTypes.BIGINT.UNSIGNED,
     allowNull: false,
     defaultValue: 0
   },
   user_id: {
-    type: DataTypes.BIGINT,
+    type: DataTypes.BIGINT.UNSIGNED,
     allowNull: false,
-    defaultValue: 0,
-    references: {
-      model: 'users',
-      key: 'ID'
-    }
+    defaultValue: 0
   }
 }, {
   tableName: 'comments',
-  timestamps: false,
-  charset: 'utf8mb4',
-  collate: 'utf8mb4_unicode_520_ci',
-  indexes: [
-    {
-      name: 'comment_post_ID',
-      fields: ['comment_post_ID']
-    },
-    {
-      name: 'comment_approved_date_gmt',
-      fields: ['comment_approved', 'comment_date_gmt']
-    },
-    {
-      name: 'comment_date_gmt',
-      fields: ['comment_date_gmt']
-    },
-    {
-      name: 'comment_parent',
-      fields: ['comment_parent']
-    },
-    {
-      name: 'comment_author_email',
-      fields: ['comment_author_email']
-    }
-  ]
+  timestamps: false
 });
 
 module.exports = Comment;

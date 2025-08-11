@@ -20,10 +20,13 @@ class AdsController {
         start_date,
         end_date,
         budget,
-        placement_type = 'sidebar',
-        image_url,
+        placement_type = 'regular',
+        media_type = 'image',
+        media_url,
+        image_url, // legacy support
         target_url,
-        content
+        ad_content,
+        google_ads_code
       } = req.body;
 
       // Validate required fields
@@ -43,6 +46,21 @@ class AdsController {
         });
       }
 
+      // Validate media requirements
+      if (media_type === 'google_ads' && !google_ads_code) {
+        return res.status(400).json({
+          success: false,
+          message: 'Google Ads code is required for google_ads media type'
+        });
+      }
+
+      if ((media_type === 'image' || media_type === 'gif' || media_type === 'video') && !media_url && !image_url) {
+        return res.status(400).json({
+          success: false,
+          message: 'Media URL is required for image, gif, or video ads'
+        });
+      }
+
       // Create advertisement
       const ad = await Advertisement.create({
         advertiser_id,
@@ -51,9 +69,12 @@ class AdsController {
         end_date: new Date(end_date),
         budget: budget || null,
         placement_type,
-        image_url,
+        media_type,
+        media_url: media_url || image_url, // Use media_url first, fallback to image_url
+        image_url: image_url || media_url, // Keep for legacy compatibility, use media_url as fallback
         target_url,
         ad_content,
+        google_ads_code,
         status: 'pending'
       });
 
@@ -125,11 +146,19 @@ class AdsController {
       const formattedAds = ads.map(ad => ({
         id: ad.id,
         campaign_name: ad.campaign_name,
-        image_url: ad.image_url,
+        media_type: ad.media_type,
+        media_url: ad.media_url || ad.image_url, // Prefer media_url, fallback to image_url
+        image_url: ad.image_url, // Legacy support
         target_url: ad.target_url,
         ad_content: ad.ad_content,
+        google_ads_code: ad.google_ads_code,
         placement_type: ad.placement_type,
-        advertiser: ad.advertiser?.display_name
+        advertiser: ad.advertiser?.display_name,
+        start_date: ad.start_date,
+        end_date: ad.end_date,
+        status: ad.status, // Include status for frontend filtering
+        impressions: ad.impressions,
+        clicks: ad.clicks
       }));
 
       res.json({
@@ -224,15 +253,21 @@ class AdsController {
       const formattedAds = result.rows.map(ad => ({
         id: ad.id,
         campaign_name: ad.campaign_name,
-        advertiser: ad.advertiser,
+        media_type: ad.media_type,
+        media_url: ad.media_url || ad.image_url,
+        image_url: ad.image_url,
+        target_url: ad.target_url,
+        ad_content: ad.ad_content,
+        google_ads_code: ad.google_ads_code,
+        placement_type: ad.placement_type,
+        advertiser: ad.advertiser?.display_name,
         start_date: ad.start_date,
         end_date: ad.end_date,
         budget: ad.budget,
-        placement_type: ad.placement_type,
         status: ad.status,
-        clicks: ad.clicks,
-        impressions: ad.impressions,
-        ctr: ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(2) : 0,
+        clicks: ad.clicks || 0,
+        impressions: ad.impressions || 0,
+        ctr: ad.impressions > 0 ? ((ad.clicks / ad.impressions) * 100).toFixed(2) : '0.00',
         created_at: ad.created_at
       }));
 
@@ -427,6 +462,59 @@ class AdsController {
       });
     }
   }
+
+  /**
+   * Update advertisement status (admin only)
+   * PATCH /api/ads/:id/status
+   */
+  static async updateStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      if (!status) {
+        return res.status(400).json({
+          success: false,
+          message: 'Status is required'
+        });
+      }
+
+      const validStatuses = ['pending', 'active', 'paused', 'finished', 'rejected'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid status'
+        });
+      }
+
+      const ad = await Advertisement.findByPk(id);
+      if (!ad) {
+        return res.status(404).json({
+          success: false,
+          message: 'Advertisement not found'
+        });
+      }
+
+      await ad.update({ status });
+
+      res.json({
+        success: true,
+        message: `Advertisement status updated to ${status}`,
+        data: {
+          id: ad.id,
+          status: ad.status
+        }
+      });
+
+    } catch (error) {
+      console.error('Error updating advertisement status:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update advertisement status',
+        error: error.message
+      });
+    }
+  }
 }
 
 module.exports = {
@@ -436,6 +524,7 @@ module.exports = {
   getAll: AdsController.getAll,
   getById: AdsController.getById,
   update: AdsController.update,
+  updateStatus: AdsController.updateStatus,
   delete: AdsController.delete,
   getStats: AdsController.getStats
 };

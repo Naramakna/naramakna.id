@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 const User = require('../models/User');
-const { USER_ROLES, POST_STATUS } = require('../../../shared/constants/roles');
+const { USER_ROLES, POST_STATUS } = require('../../../shared/constants/roles.cjs');
 
 class AuthController {
   // Register new user
@@ -74,8 +74,9 @@ class AuthController {
       res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        domain: process.env.NODE_ENV === 'production' ? undefined : 'localhost'
       });
 
       res.status(201).json({
@@ -154,13 +155,21 @@ class AuthController {
         });
       }
 
-      // Check if account is active
-      if (!user.isActive()) {
+      // Check if account is blocked (but allow suspended users to login)
+      if (user.user_status === 'inactive' || user.user_status === 'banned') {
         return res.status(403).json({
           success: false,
-          message: user.user_status === 0 
-            ? 'Account pending approval' 
-            : 'Account is suspended'
+          message: user.user_status === 'banned' 
+            ? 'Account is permanently banned' 
+            : 'Account is inactive and pending approval'
+        });
+      }
+      
+      // Still require email verification
+      if (!user.email_verified) {
+        return res.status(403).json({
+          success: false,
+          message: 'Please verify your email address before logging in'
         });
       }
 
@@ -188,8 +197,9 @@ class AuthController {
       res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: cookieAge
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        maxAge: cookieAge,
+        domain: process.env.NODE_ENV === 'production' ? undefined : 'localhost'
       });
 
       res.json({
@@ -229,10 +239,22 @@ class AuthController {
   // Get current user profile
   static async profile(req, res) {
     try {
+      const userData = req.user.toSafeJSON();
+      
+      // Get profile image from UserProfile table
+      const UserProfile = require('../models/UserProfile');
+      const userProfile = await UserProfile.findOne({
+        where: { user_id: req.user.ID }
+      });
+      
+      if (userProfile && userProfile.profile_image) {
+        userData.profile_image = `http://localhost:3001${userProfile.profile_image}`;
+      }
+      
       res.json({
         success: true,
         data: {
-          user: req.user.toSafeJSON()
+          user: userData
         }
       });
     } catch (error) {

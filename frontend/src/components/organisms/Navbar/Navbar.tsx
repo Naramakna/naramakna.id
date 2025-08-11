@@ -3,11 +3,14 @@ import { Logo } from '../../atoms/Logo/Logo';
 import SearchBlock from '../../blocks/SearchBlock';
 import { NavKategori } from '../../molecules/NavKategori/NavKategori';
 import { NavService } from '../../molecules/NavService/NavService';
+import { ProfileBadge } from '../../molecules/ProfileBadge';
+import { useAuth } from '../../../contexts/AuthContext';
 
 // Simplified Navbar component for debugging
 export const Navbar: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const { isAuthenticated, isLoading, user } = useAuth();
 
   const handleSearch = (value: string) => {
     console.log('Searching for:', value);
@@ -36,23 +39,40 @@ export const Navbar: React.FC = () => {
 
               {/* Action Buttons - Desktop */}
               <div className="hidden md:flex items-center space-x-4">
-                <button className="p-2 text-gray-700 hover:text-yellow-500 hover:bg-gray-100 rounded-lg transition-colors duration-200">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                  </svg>
-                </button>
-                <a 
-                  href="/login"
-                  className="px-4 py-2 border-2 border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-white font-medium rounded-lg transition-all duration-200"
-                >
-                  Masuk
-                </a>
-                <a 
-                  href="/register"
-                  className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg transition-all duration-200"
-                >
-                  Buat Tulisan
-                </a>
+                
+                {/* Show loading state */}
+                {isLoading ? (
+                  <div className="animate-pulse">
+                    <div className="w-20 h-8 bg-gray-200 rounded-lg"></div>
+                  </div>
+                        ) : isAuthenticated ? (
+          /* Show ProfileBadge and "Buat Tulisan" button when authenticated */
+          <div className="flex items-center space-x-3">
+            <ProfileBadge />
+            <a
+              href="/tulis"
+              className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg transition-all duration-200 text-sm"
+            >
+              Buat Tulisan
+            </a>
+          </div>
+                ) : (
+                  /* Show login/register buttons when not authenticated */
+                  <>
+                    <a 
+                      href="/login"
+                      className="px-4 py-2 border-2 border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-white font-medium rounded-lg transition-all duration-200"
+                    >
+                      Masuk
+                    </a>
+                    <a 
+                      href="/tulis"
+                      className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg transition-all duration-200"
+                    >
+                      Buat Tulisan
+                    </a>
+                  </>
+                )}
               </div>
 
               {/* Mobile Action Buttons */}
@@ -114,12 +134,30 @@ export const Navbar: React.FC = () => {
                   <a href="/" className="block px-3 py-3 text-sm font-medium text-gray-700 hover:text-yellow-500 hover:bg-gray-100 rounded-md transition-colors duration-200">
                     Beranda
                   </a>
-                  <a href="/login" className="block px-3 py-3 text-sm font-medium text-gray-700 hover:text-yellow-500 hover:bg-gray-100 rounded-md transition-colors duration-200">
-                    Masuk
-                  </a>
-                  <a href="/register" className="block px-3 py-3 text-sm font-medium text-gray-700 hover:text-yellow-500 hover:bg-gray-100 rounded-md transition-colors duration-200">
-                    Buat Tulisan
-                  </a>
+                  
+                  {/* Conditional mobile menu items */}
+                  {isAuthenticated ? (
+                    <>
+                      <a href="/tulis" className="block px-3 py-3 text-sm font-medium text-white bg-yellow-500 hover:bg-yellow-600 rounded-md transition-colors duration-200 mb-2">
+                        Buat Tulisan
+                      </a>
+                      <a href={user?.user_login ? `/${user.user_login}` : '/profile'} className="block px-3 py-3 text-sm font-medium text-gray-700 hover:text-yellow-500 hover:bg-gray-100 rounded-md transition-colors duration-200">
+                        Profil Saya
+                      </a>
+                      <a href="/dashboard" className="block px-3 py-3 text-sm font-medium text-gray-700 hover:text-yellow-500 hover:bg-gray-100 rounded-md transition-colors duration-200">
+                        Dashboard
+                      </a>
+                    </>
+                  ) : (
+                    <>
+                      <a href="/login" className="block px-3 py-3 text-sm font-medium text-gray-700 hover:text-yellow-500 hover:bg-gray-100 rounded-md transition-colors duration-200">
+                        Masuk
+                      </a>
+                      <a href="/tulis" className="block px-3 py-3 text-sm font-medium text-white bg-yellow-500 hover:bg-yellow-600 rounded-md transition-colors duration-200">
+                        Buat Tulisan
+                      </a>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

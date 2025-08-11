@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
 const User = require('../models/User');
 const Post = require('../models/Post');
-const { USER_ROLES, hasPermission, canAccess } = require('../../../shared/constants/roles');
+const { USER_ROLES, hasPermission, canAccess } = require('../../../shared/constants/roles.cjs');
 
 class UserController {
   // Get all users (admin only)

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { articlesAPI } from '../services/api/articles';
 import type { Category } from '../services/api/articles';
 
@@ -14,12 +14,16 @@ export const useCategories = (): UseCategoriesReturn => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await articlesAPI.getCategories();
+      // Get ALL categories for infinite scroll
+      const response = await articlesAPI.getCategories({
+        limit: 10000,   // Very high limit to get all categories
+        minCount: 0     // Include categories with at least 0 posts (reduced from 1)
+      });
       
       if (response.success) {
         setCategories(response.data.categories);
@@ -31,15 +35,15 @@ export const useCategories = (): UseCategoriesReturn => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchCategories();
-  }, []);
+  }, [fetchCategories]);
 
-  const refetch = () => {
+  const refetch = useCallback(() => {
     fetchCategories();
-  };
+  }, [fetchCategories]);
 
   return {
     categories,

@@ -52,13 +52,38 @@ const Analytics = sequelize.define('Analytics', {
     comment: 'Source URL'
   },
   country: {
-    type: DataTypes.STRING(2),
+    type: DataTypes.STRING(100),
     allowNull: true,
-    comment: 'ISO country code'
+    defaultValue: 'Unknown',
+    comment: 'Country based on IP geolocation'
+  },
+  region: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    defaultValue: 'Unknown', 
+    comment: 'Region/state based on IP geolocation'
   },
   city: {
     type: DataTypes.STRING(100),
-    allowNull: true
+    allowNull: true,
+    defaultValue: 'Unknown',
+    comment: 'City based on IP geolocation'
+  },
+  latitude: {
+    type: DataTypes.DECIMAL(10, 8),
+    allowNull: true,
+    comment: 'Latitude coordinate'
+  },
+  longitude: {
+    type: DataTypes.DECIMAL(11, 8),
+    allowNull: true,
+    comment: 'Longitude coordinate'
+  },
+  timezone: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    defaultValue: 'Asia/Jakarta',
+    comment: 'User timezone'
   },
   device_type: {
     type: DataTypes.ENUM('desktop', 'mobile', 'tablet'),

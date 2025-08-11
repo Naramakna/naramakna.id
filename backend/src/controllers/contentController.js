@@ -3,7 +3,8 @@
  * Handles all content types: articles, YouTube videos, TikTok videos
  */
 
-const { Post, PostMeta, User, Term, TermTaxonomy, TermRelationship, Analytics, PostViews, sequelize } = require('../models');
+const { Post, PostMeta, User, Analytics, PostViews, Comment, sequelize } = require('../models');
+// const { Term, TermTaxonomy, TermRelationship } = require('../models'); // TODO: Re-enable when taxonomy system is complete
 const ContentHelpers = require('../models/ContentHelpers');
 const { Op } = require('sequelize');
 
@@ -21,11 +22,20 @@ class ContentController {
         type = null, 
         category = null,
         search = null,
-        status = 'publish'
+        status = 'publish',
+        author = null,
+        sortBy = 'date',
+        sortOrder = 'desc'
       } = req.query;
 
       const offset = (page - 1) * limit;
       const whereClause = { post_status: status };
+
+      // Filter by author ID
+      if (author) {
+        whereClause.post_author = parseInt(author);
+        console.log('📍 Filtering by author:', parseInt(author), 'whereClause:', whereClause);
+      }
 
       // Filter by content type
       if (type) {
@@ -35,12 +45,54 @@ class ContentController {
         }
       }
 
-      // Search functionality
+      // Enhanced search functionality
       if (search) {
-        whereClause[Op.or] = [
-          { post_title: { [Op.like]: `%${search}%` } },
-          { post_content: { [Op.like]: `%${search}%` } }
-        ];
+        const searchTerms = search.split(' ').filter(term => term.length > 1);
+        const searchConditions = [];
+        const tagSearches = [];
+        
+        searchTerms.forEach(term => {
+          // Handle hashtag search for tags
+          if (term.startsWith('#')) {
+            const tagName = term.substring(1); // Remove #
+            tagSearches.push(tagName);
+            // Also search in content for the tag name
+            searchConditions.push(
+              { post_title: { [Op.like]: `%${tagName}%` } },
+              { post_content: { [Op.like]: `%${tagName}%` } },
+              { post_excerpt: { [Op.like]: `%${tagName}%` } }
+            );
+          } else {
+            searchConditions.push(
+              { post_title: { [Op.like]: `%${term}%` } },
+              { post_content: { [Op.like]: `%${term}%` } },
+              { post_excerpt: { [Op.like]: `%${term}%` } }
+            );
+          }
+        });
+
+        // Add tag-based search using subquery
+        if (tagSearches.length > 0) {
+          const tagSubqueries = tagSearches.map(tagName => `
+            SELECT tr.object_id 
+            FROM term_relationships tr
+            JOIN term_taxonomy tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+            JOIN terms t ON tt.term_id = t.term_id
+            WHERE t.name LIKE '%${tagName}%'
+            AND tt.taxonomy IN ('post_tag', 'category', 'newstopic')
+          `).join(' UNION ');
+
+          whereClause[Op.or] = [
+            ...searchConditions,
+            {
+              ID: {
+                [Op.in]: sequelize.literal(`(${tagSubqueries})`)
+              }
+            }
+          ];
+        } else if (searchConditions.length > 0) {
+          whereClause[Op.or] = searchConditions;
+        }
       }
 
       const include = [
@@ -52,30 +104,30 @@ class ContentController {
           model: User,
           as: 'author',
           attributes: ['ID', 'display_name', 'user_email']
-        },
-        // Always include categories for display
-        {
-          model: TermRelationship,
-          as: 'termRelationships',
-          attributes: ['object_id', 'term_taxonomy_id'],
-          required: false, // LEFT JOIN
-          include: [{
-            model: TermTaxonomy,
-            as: 'taxonomy',
-            attributes: ['term_taxonomy_id', 'term_id', 'taxonomy', 'description'],
-            where: { taxonomy: { [Op.in]: ['category', 'newstopic'] } },
-            required: false,
-            include: [{
-              model: Term,
-              as: 'term',
-              attributes: ['term_id', 'name', 'slug'],
-              required: false
-            }]
-          }]
         }
+        // TODO: Re-enable categories when taxonomy system is complete
+        // {
+        //   model: TermRelationship,
+        //   as: 'termRelationships',
+        //   attributes: ['object_id', 'term_taxonomy_id'],
+        //   required: false, // LEFT JOIN
+        //   include: [{
+        //     model: TermTaxonomy,
+        //     as: 'taxonomy',
+        //     attributes: ['term_taxonomy_id', 'term_id', 'taxonomy', 'description'],
+        //     where: { taxonomy: { [Op.in]: ['category', 'newstopic'] } },
+        //     required: false,
+        //     include: [{
+        //       model: Term,
+        //       as: 'term',
+        //       attributes: ['term_id', 'name', 'slug'],
+        //       required: false
+        //     }]
+        //   }]
+        // }
       ];
 
-      // Filter by category if specified
+      // Category filtering using raw SQL subquery
       if (category) {
         // Use subquery to find posts that belong to the category
         const categorySubquery = `
@@ -84,20 +136,55 @@ class ContentController {
           JOIN term_taxonomy tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
           JOIN terms t ON tt.term_id = t.term_id
           WHERE t.slug = '${category.replace(/'/g, "\\'")}' 
-          AND tt.taxonomy IN ('category', 'newstopic')
+          AND tt.taxonomy IN ('category', 'newstopic', 'post_tag')
         `;
         
         whereClause.ID = {
           [Op.in]: sequelize.literal(`(${categorySubquery})`)
         };
+        
+        console.log('🏷️ Applied category filter for:', category);
       }
 
+      // Determine sorting options
+      let orderClause;
+      switch (sortBy) {
+        case 'title':
+          orderClause = [['post_title', sortOrder.toUpperCase()]];
+          break;
+        case 'views':
+          orderClause = [['post_views', sortOrder.toUpperCase()]];
+          break;
+        case 'relevance':
+          // For relevance, prioritize title matches over content matches
+          if (search) {
+            orderClause = [
+              [sequelize.literal(`CASE 
+                WHEN post_title LIKE '%${search}%' THEN 1 
+                WHEN post_excerpt LIKE '%${search}%' THEN 2 
+                ELSE 3 
+              END`), 'ASC'],
+              ['post_date', 'DESC']
+            ];
+          } else {
+            orderClause = [['post_date', 'DESC']];
+          }
+          break;
+        case 'date':
+        default:
+          orderClause = [['post_date', sortOrder.toUpperCase()]];
+          break;
+      }
+
+      console.log('📊 Final whereClause:', JSON.stringify(whereClause, null, 2));
+      console.log('🔄 Order clause:', orderClause);
+      
       const result = await Post.findAndCountAll({
         where: whereClause,
         include,
         limit: parseInt(limit),
         offset: parseInt(offset),
-        order: [['post_date', 'DESC']],
+        order: orderClause,
         distinct: true
       });
 
@@ -124,6 +211,91 @@ class ContentController {
       res.status(500).json({
         success: false,
         message: 'Failed to fetch content feed',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Get search suggestions
+   * GET /api/content/search/suggestions
+   */
+  static async getSearchSuggestions(req, res) {
+    try {
+      const { query = '', limit = 50 } = req.query; // Increased default limit for more suggestions
+
+      if (!query || query.length < 2) {
+        return res.json({
+          success: true,
+          data: {
+            suggestions: [],
+            categories: [],
+            tags: []
+          }
+        });
+      }
+
+      // Get title suggestions from recent posts
+      const titleSuggestions = await Post.findAll({
+        where: {
+          post_status: 'publish',
+          post_title: { [Op.like]: `%${query}%` }
+        },
+        attributes: ['post_title'],
+        limit: parseInt(limit),
+        order: [['post_date', 'DESC']]
+      });
+
+      // Get category suggestions using raw SQL ordered by total views
+      const categorySuggestions = await sequelize.query(`
+        SELECT DISTINCT t.name, t.slug, tt.count, 
+               COALESCE(SUM(p.view_count), 0) as total_views
+        FROM terms t
+        JOIN term_taxonomy tt ON t.term_id = tt.term_id
+        LEFT JOIN term_relationships tr ON tt.term_taxonomy_id = tr.term_taxonomy_id
+        LEFT JOIN posts p ON tr.object_id = p.ID AND p.post_status = 'publish'
+        WHERE t.name LIKE '%${query}%' 
+        AND tt.taxonomy IN ('category', 'newstopic')
+        AND tt.count > 0
+        GROUP BY t.term_id, t.name, t.slug, tt.count
+        ORDER BY total_views DESC, tt.count DESC
+        LIMIT ${parseInt(limit)}
+      `, {
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      // Get tag suggestions using raw SQL ordered by total views
+      const tagSuggestions = await sequelize.query(`
+        SELECT DISTINCT t.name, t.slug, tt.count,
+               COALESCE(SUM(p.view_count), 0) as total_views
+        FROM terms t
+        JOIN term_taxonomy tt ON t.term_id = tt.term_id
+        LEFT JOIN term_relationships tr ON tt.term_taxonomy_id = tr.term_taxonomy_id
+        LEFT JOIN posts p ON tr.object_id = p.ID AND p.post_status = 'publish'
+        WHERE t.name LIKE '%${query}%' 
+        AND tt.taxonomy = 'post_tag'
+        AND tt.count > 0
+        GROUP BY t.term_id, t.name, t.slug, tt.count
+        ORDER BY total_views DESC, tt.count DESC
+        LIMIT ${parseInt(limit)}
+      `, {
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      res.json({
+        success: true,
+        data: {
+          suggestions: titleSuggestions.map(post => post.post_title),
+          categories: categorySuggestions,
+          tags: tagSuggestions
+        }
+      });
+
+    } catch (error) {
+      console.error('Error getting search suggestions:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get search suggestions',
         error: error.message
       });
     }
@@ -518,20 +690,21 @@ class ContentController {
         }
       }
 
-      // Build category filter for raw SQL if needed
-      let categoryFilter = '';
-      if (category) {
-        categoryFilter = `
-          AND p.ID IN (
-            SELECT tr.object_id 
-            FROM term_relationships tr
-            JOIN term_taxonomy tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
-            JOIN terms t ON tt.term_id = t.term_id
-            WHERE t.slug = '${category.replace(/'/g, "\\'")}' 
-            AND tt.taxonomy IN ('category', 'newstopic')
-          )
-        `;
-      }
+      // TODO: Re-enable category filter when taxonomy system is complete
+      // let categoryFilter = '';
+      // if (category) {
+      //   categoryFilter = `
+      //     AND p.ID IN (
+      //       SELECT tr.object_id 
+      //       FROM term_relationships tr
+      //       JOIN term_taxonomy tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+      //       JOIN terms t ON tt.term_id = t.term_id
+      //       WHERE t.slug = '${category.replace(/'/g, "\\'")}' 
+      //       AND tt.taxonomy IN ('category', 'newstopic')
+      //     )
+      //   `;
+      // }
+      let categoryFilter = ''; // Temporary: no category filtering
 
       // Use raw SQL for better control over the trending query
       const trendingPostIds = await sequelize.query(`
@@ -547,8 +720,8 @@ class ContentController {
         type: sequelize.QueryTypes.SELECT
       });
 
-      // If no trending posts found for specific category, fallback to recent posts from that category
-      if (trendingPostIds.length === 0 && category) {
+      // TODO: Re-enable category fallback when taxonomy system is complete
+      if (false && trendingPostIds.length === 0 && category) {
         console.log(`No trending posts found for category '${category}', falling back to recent posts`);
         
         const fallbackQuery = {
@@ -638,27 +811,27 @@ class ContentController {
             model: User,
             as: 'author',
             attributes: ['ID', 'display_name', 'user_email']
-          },
-          // Always include categories for display
-          {
-            model: TermRelationship,
-            as: 'termRelationships',
-            attributes: ['object_id', 'term_taxonomy_id'],
-            required: false,
-            include: [{
-              model: TermTaxonomy,
-              as: 'taxonomy',
-              attributes: ['term_taxonomy_id', 'term_id', 'taxonomy', 'description'],
-              where: { taxonomy: { [Op.in]: ['category', 'newstopic'] } },
-              required: false,
-              include: [{
-                model: Term,
-                as: 'term',
-                attributes: ['term_id', 'name', 'slug'],
-                required: false
-              }]
-            }]
           }
+          // TODO: Re-enable categories when taxonomy system is complete
+          // {
+          //   model: TermRelationship,
+          //   as: 'termRelationships',
+          //   attributes: ['object_id', 'term_taxonomy_id'],
+          //   required: false,
+          //   include: [{
+          //     model: TermTaxonomy,
+          //     as: 'taxonomy',
+          //     attributes: ['term_taxonomy_id', 'term_id', 'taxonomy', 'description'],
+          //     where: { taxonomy: { [Op.in]: ['category', 'newstopic'] } },
+          //     required: false,
+          //     include: [{
+          //       model: Term,
+          //       as: 'term',
+          //       attributes: ['term_id', 'name', 'slug'],
+          //       required: false
+          //     }]
+          //   }]
+          // }
         ],
         where: {
           ...whereClause,
@@ -710,35 +883,80 @@ class ContentController {
    */
   static async getCategories(req, res) {
     try {
-      const Term = require('../models/Term');
+      const { 
+        limit = 100, 
+        page = 1,
+        taxonomy = null,
+        minCount = 0
+      } = req.query;
       
-      const categories = await TermTaxonomy.findAll({
-        where: { 
-          taxonomy: { [Op.in]: ['category', 'newstopic'] }
-        },
-        include: [{
-          model: Term,
-          as: 'term',
-          attributes: ['term_id', 'name', 'slug']
-        }],
-        order: [['count', 'DESC']] // Sort by most used categories
-      });
+      // Cap the limit to prevent memory issues
+      const safeLimit = Math.min(parseInt(limit), 50000);
+      
+      const offset = (page - 1) * limit;
+      
+      // Build WHERE clause
+      let whereClause = `tt.taxonomy IN ('category', 'newstopic', 'post_tag') AND tt.count >= ${minCount}`;
+      if (taxonomy) {
+        whereClause = `tt.taxonomy = '${taxonomy}' AND tt.count >= ${minCount}`;
+      }
+      
+      // Use raw SQL to get real categories from database
+      // Group by name to handle duplicates and get the highest count
+      const categoriesQuery = `
+        SELECT 
+          t.name,
+          t.slug,
+          MAX(tt.count) as count,
+          MAX(tt.term_taxonomy_id) as id,
+          GROUP_CONCAT(DISTINCT tt.taxonomy) as taxonomy
+        FROM terms t
+        JOIN term_taxonomy tt ON t.term_id = tt.term_id
+        WHERE ${whereClause}
+        GROUP BY t.name, t.slug
+        ORDER BY MAX(tt.count) DESC, t.name ASC
+        LIMIT ${safeLimit} OFFSET ${offset}
+      `;
+      
+      // Get total count (count unique names, not all taxonomy entries)
+      const countQuery = `
+        SELECT COUNT(DISTINCT t.name) as total
+        FROM terms t
+        JOIN term_taxonomy tt ON t.term_id = tt.term_id
+        WHERE ${whereClause}
+      `;
+
+      const [categories, totalResult] = await Promise.all([
+        sequelize.query(categoriesQuery, {
+          type: sequelize.QueryTypes.SELECT
+        }),
+        sequelize.query(countQuery, {
+          type: sequelize.QueryTypes.SELECT
+        })
+      ]);
+
+      const total = totalResult[0].total;
+      const totalPages = Math.ceil(total / safeLimit);
 
       const formattedCategories = categories.map(category => ({
-        id: category.term_taxonomy_id,
-        termId: category.term_id,
-        name: category.term?.name || 'Unknown',
-        slug: category.term?.slug || '',
-        description: category.description,
+        id: category.id,
+        name: category.name,
+        slug: category.slug,
         count: category.count,
-        parent: category.parent
+        taxonomy: category.taxonomy
       }));
 
       res.json({
         success: true,
         data: {
           categories: formattedCategories,
-          total: formattedCategories.length
+          total: total,
+          pagination: {
+            page: parseInt(page),
+            limit: safeLimit,
+            totalPages: totalPages,
+            hasMore: page < totalPages
+          }
         }
       });
 
@@ -853,6 +1071,199 @@ class ContentController {
   }
 
   /**
+   * Get posts with view counts and filtering support
+   * GET /api/content/posts-with-views
+   * Query params: page, limit, author, status, year, month, minViews, maxViews, sortBy, sortOrder
+   */
+  static async getPostsWithViews(req, res) {
+    try {
+      const { 
+        page = 1, 
+        limit = 50, 
+        author, 
+        status, 
+        year, 
+        month, 
+        minViews, 
+        maxViews, 
+        sortBy = 'date', 
+        sortOrder = 'DESC' 
+      } = req.query;
+      
+      const offset = (page - 1) * limit;
+
+      // Build WHERE conditions
+      let whereConditions = ["p.post_type = 'post'"];
+      let havingConditions = [];
+      let replacements = { limit: parseInt(limit), offset };
+
+      // Author filter
+      if (author) {
+        whereConditions.push("(u.user_login LIKE :author OR u.display_name LIKE :author)");
+        replacements.author = `%${author}%`;
+      }
+
+      // Status filter
+      if (status) {
+        whereConditions.push("p.post_status = :status");
+        replacements.status = status;
+      }
+
+      // Year filter
+      if (year) {
+        whereConditions.push("YEAR(p.post_date) = :year");
+        replacements.year = parseInt(year);
+      }
+
+      // Month filter (requires year)
+      if (month && year) {
+        whereConditions.push("MONTH(p.post_date) = :month");
+        replacements.month = parseInt(month);
+      }
+
+      // Views filter (applied in HAVING clause since it's after GROUP BY)
+      if (minViews) {
+        havingConditions.push("view_count >= :minViews");
+        replacements.minViews = parseInt(minViews);
+      }
+
+      if (maxViews) {
+        havingConditions.push("view_count <= :maxViews");
+        replacements.maxViews = parseInt(maxViews);
+      }
+
+      // Build ORDER BY clause
+      let orderByClause = '';
+      switch (sortBy) {
+        case 'title':
+          orderByClause = `p.post_title ${sortOrder}`;
+          break;
+        case 'author':
+          orderByClause = `u.display_name ${sortOrder}`;
+          break;
+        case 'status':
+          orderByClause = `p.post_status ${sortOrder}`;
+          break;
+        case 'views':
+          orderByClause = `view_count ${sortOrder}`;
+          break;
+        case 'date':
+        default:
+          orderByClause = `p.post_date ${sortOrder}`;
+          break;
+      }
+
+      // Get posts with view counts from analytics table
+      const postsQuery = `
+        SELECT 
+          p.*,
+          u.display_name as author_display_name,
+          u.user_login as author_login,
+          u.user_email as author_email,
+          COALESCE(a.view_count, 0) as view_count
+        FROM posts p
+        LEFT JOIN users u ON p.post_author = u.ID
+        LEFT JOIN (
+          SELECT 
+            content_id, 
+            COUNT(*) as view_count 
+          FROM analytics 
+          WHERE event_type = 'view' 
+          GROUP BY content_id
+        ) a ON p.ID = a.content_id
+        WHERE ${whereConditions.join(' AND ')}
+        ${havingConditions.length > 0 ? `HAVING ${havingConditions.join(' AND ')}` : ''}
+        ORDER BY ${orderByClause}
+        LIMIT :limit OFFSET :offset
+      `;
+
+      // Also get count query for pagination (without LIMIT/OFFSET)
+      const countQuery = `
+        SELECT COUNT(*) as total
+        FROM (
+          SELECT 
+            p.ID,
+            COALESCE(a.view_count, 0) as view_count
+          FROM posts p
+          LEFT JOIN users u ON p.post_author = u.ID
+          LEFT JOIN (
+            SELECT 
+              content_id, 
+              COUNT(*) as view_count 
+            FROM analytics 
+            WHERE event_type = 'view' 
+            GROUP BY content_id
+          ) a ON p.ID = a.content_id
+          WHERE ${whereConditions.join(' AND ')}
+          ${havingConditions.length > 0 ? `HAVING ${havingConditions.join(' AND ')}` : ''}
+        ) filtered_posts
+      `;
+
+      const [posts, countResult] = await Promise.all([
+        sequelize.query(postsQuery, {
+          replacements,
+          type: sequelize.QueryTypes.SELECT
+        }),
+        sequelize.query(countQuery, {
+          replacements: Object.fromEntries(Object.entries(replacements).filter(([key]) => key !== 'limit' && key !== 'offset')),
+          type: sequelize.QueryTypes.SELECT
+        })
+      ]);
+
+      // Format posts data
+      const formattedPosts = posts.map(post => ({
+        id: post.ID,
+        title: post.post_title,
+        content: post.post_content,
+        excerpt: post.post_excerpt,
+        status: post.post_status,
+        date: post.post_date,
+        modified: post.post_modified,
+        author: {
+          ID: post.post_author,
+          display_name: post.author_display_name,
+          user_login: post.author_login,
+          user_email: post.author_email
+        },
+        view_count: parseInt(post.view_count) || 0
+      }));
+
+      const total = countResult[0]?.total || 0;
+
+      res.json({
+        success: true,
+        data: {
+          posts: formattedPosts,
+          pagination: {
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(total / limit),
+            totalItems: total,
+            itemsPerPage: parseInt(limit)
+          },
+          filters: {
+            author,
+            status,
+            year,
+            month,
+            minViews,
+            maxViews,
+            sortBy,
+            sortOrder
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Error fetching posts with views:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch posts with views',
+        error: error.message
+      });
+    }
+  }
+
+  /**
    * Helper: Track analytics
    */
   static async trackAnalytics(req, contentId, contentType, eventType) {
@@ -868,6 +1279,337 @@ class ContentController {
       });
     } catch (error) {
       console.error('Error tracking analytics:', error);
+    }
+  }
+  /**
+   * Get post by ID for article detail page
+   * GET /api/content/posts/:id
+   */
+  static async getPostById(req, res) {
+    try {
+      const { id } = req.params;
+      
+      const post = await Post.findOne({
+        where: { 
+          ID: id,
+          post_type: 'post',
+          post_status: 'publish'
+        },
+        include: [
+          {
+            model: User,
+            as: 'author',
+            attributes: ['ID', 'user_login', 'user_nicename', 'user_email', 'display_name', 'user_role']
+          },
+          {
+            model: PostMeta,
+            as: 'meta'
+          }
+        ]
+      });
+
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        data: post
+      });
+    } catch (error) {
+      console.error('Error fetching post by ID:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  /**
+   * Get post by slug for SEO-friendly URLs
+   * GET /api/content/posts/slug/:slug
+   */
+  static async getPostBySlug(req, res) {
+    try {
+      const { slug } = req.params;
+      
+      const post = await Post.findOne({
+        where: { 
+          post_name: slug,
+          post_type: 'post',
+          post_status: 'publish'
+        },
+        include: [
+          {
+            model: User,
+            as: 'author',
+            attributes: ['ID', 'user_login', 'user_nicename', 'user_email', 'display_name', 'user_role']
+          },
+          {
+            model: PostMeta,
+            as: 'meta'
+          }
+        ]
+      });
+
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+
+      // Process metadata for easier access
+      const metadata = {};
+      if (post.meta) {
+        post.meta.forEach(meta => {
+          metadata[meta.meta_key] = meta.meta_value;
+        });
+      }
+
+      // Get featured image URL if exists
+      let featuredImage = null;
+      if (metadata._thumbnail_id) {
+        const thumbnailPost = await Post.findOne({
+          where: { ID: metadata._thumbnail_id },
+          attributes: ['ID', 'post_title', 'guid']
+        });
+        
+        if (thumbnailPost) {
+          featuredImage = {
+            id: thumbnailPost.ID,
+            url: thumbnailPost.guid,
+            title: thumbnailPost.post_title,
+            caption: thumbnailPost.post_title
+          };
+        }
+      }
+
+      // Prepare response with enhanced data
+      const responseData = {
+        ...post.toJSON(),
+        metadata,
+        featured_image: featuredImage
+      };
+
+      res.status(200).json({
+        success: true,
+        data: responseData
+      });
+    } catch (error) {
+      console.error('Error fetching post by slug:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  /**
+   * Get post comments by slug
+   * GET /api/content/posts/slug/:slug/comments
+   */
+  static async getPostCommentsBySlug(req, res) {
+    try {
+      const { slug } = req.params;
+      
+      // First find the post by slug
+      const post = await Post.findOne({
+        where: { 
+          post_name: slug,
+          post_type: 'post',
+          post_status: 'publish'
+        },
+        attributes: ['ID']
+      });
+
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+
+      // For now, return empty comments array since we don't have comments table
+      // This can be extended when we implement the comments system
+      res.status(200).json({
+        success: true,
+        data: []
+      });
+    } catch (error) {
+      console.error('Error fetching post comments by slug:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+
+  /**
+   * Get posts by author (simplified for profile pages)
+   * GET /api/content/author/:authorId
+   */
+  static async getPostsByAuthor(req, res) {
+    try {
+      const { authorId } = req.params;
+      const { page = 1, limit = 20, status = 'publish' } = req.query;
+      const offset = (page - 1) * limit;
+
+      console.log('📍 Getting posts for author:', authorId);
+
+      // Validate authorId
+      const parsedAuthorId = parseInt(authorId);
+      if (isNaN(parsedAuthorId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid author ID'
+        });
+      }
+
+      const result = await Post.findAndCountAll({
+        where: {
+          post_author: parsedAuthorId,
+          post_status: status,
+          post_type: 'post'
+        },
+        include: [
+          {
+            model: User,
+            as: 'author',
+            attributes: ['ID', 'display_name', 'user_email', 'user_login']
+          }
+        ],
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        order: [['post_date', 'DESC']]
+      });
+
+      // Format posts
+      const formattedPosts = result.rows.map(post => ({
+        id: post.ID,
+        title: post.post_title,
+        content: post.post_content,
+        excerpt: post.post_excerpt,
+        slug: post.post_name,
+        status: post.post_status,
+        type: post.post_type,
+        date: post.post_date,
+        modified: post.post_modified,
+        author: {
+          ID: post.author.ID,
+          display_name: post.author.display_name,
+          user_email: post.author.user_email,
+          user_login: post.author.user_login
+        }
+      }));
+
+      res.json({
+        success: true,
+        data: {
+          posts: formattedPosts,
+          pagination: {
+            currentPage: parseInt(page),
+            totalPages: Math.ceil(result.count / parseInt(limit)),
+            totalItems: result.count,
+            itemsPerPage: parseInt(limit)
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Get posts by author error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch posts by author'
+      });
+    }
+  }
+
+  /**
+   * Admin: Delete any article
+   * DELETE /api/content/admin/articles/:id
+   */
+  static async adminDeleteArticle(req, res) {
+    const transaction = await sequelize.transaction();
+    
+    try {
+      const { id } = req.params;
+
+      // Check if user is admin or superadmin
+      if (!req.user || (req.user.user_role !== 'admin' && req.user.user_role !== 'superadmin')) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. Admin privileges required.'
+        });
+      }
+
+      // Find the article
+      const article = await Post.findOne({
+        where: {
+          ID: id,
+          post_type: 'post'
+        },
+        include: [
+          {
+            model: User,
+            as: 'author',
+            attributes: ['ID', 'display_name', 'user_login']
+          }
+        ]
+      });
+
+      if (!article) {
+        return res.status(404).json({
+          success: false,
+          message: 'Article not found'
+        });
+      }
+
+      // Delete related comments first
+      await Comment.destroy({
+        where: { comment_post_ID: id },
+        transaction
+      });
+
+      // Delete related metadata
+      await PostMeta.destroy({
+        where: { post_id: id },
+        transaction
+      });
+
+      // Delete analytics data
+      await Analytics.destroy({
+        where: { content_id: id },
+        transaction
+      });
+
+      // Delete the article
+      await article.destroy({ transaction });
+
+      await transaction.commit();
+
+      res.json({
+        success: true,
+        message: `Article "${article.post_title}" by ${article.author.display_name} has been deleted.`,
+        data: {
+          deletedArticle: {
+            id: article.ID,
+            title: article.post_title,
+            author: article.author.display_name
+          }
+        }
+      });
+
+    } catch (error) {
+      await transaction.rollback();
+      console.error('Admin delete article error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete article'
+      });
     }
   }
 }

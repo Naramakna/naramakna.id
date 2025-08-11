@@ -19,7 +19,7 @@ export const TrendingItem: React.FC<TrendingItemProps> = ({
 }) => {
   const handleClick = () => {
     if (href) {
-      window.open(href, '_blank');
+      window.location.href = href;
     }
   };
 

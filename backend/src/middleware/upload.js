@@ -51,7 +51,10 @@ const upload = multer({
   storage: storage,
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit
-    files: 10 // Maximum 10 files
+    files: 10, // Maximum 10 files
+    fieldSize: 100 * 1024 * 1024, // 100MB for field data
+    fieldNameSize: 1000, // Field name size
+    fields: 1000 // Number of non-file fields
   },
   fileFilter: imageFilter
 });
@@ -68,7 +71,8 @@ const uploadPostImages = (req, res, next) => {
   
   const uploadHandler = upload.fields([
     { name: 'featured_image', maxCount: 1 },
-    { name: 'gallery_images', maxCount: 10 }
+    { name: 'gallery_images', maxCount: 10 },
+    { name: 'image', maxCount: 1 } // For article editor image uploads
   ]);
   
   uploadHandler(req, res, (err) => {

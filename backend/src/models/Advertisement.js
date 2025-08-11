@@ -29,13 +29,24 @@ const Advertisement = sequelize.define('Advertisement', {
     allowNull: false
   },
   placement_type: {
-    type: DataTypes.ENUM('header', 'sidebar', 'inline', 'footer', 'popup'),
+    type: DataTypes.ENUM('header', 'sidebar', 'inline', 'footer', 'popup', 'regular'),
     allowNull: false,
-    defaultValue: 'sidebar'
+    defaultValue: 'regular'
+  },
+  media_type: {
+    type: DataTypes.ENUM('image', 'gif', 'video', 'html', 'google_ads'),
+    allowNull: false,
+    defaultValue: 'image'
+  },
+  media_url: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+    comment: 'URL for image, gif, video, or other media'
   },
   image_url: {
     type: DataTypes.STRING(500),
-    allowNull: true
+    allowNull: true,
+    comment: 'Legacy field, use media_url instead'
   },
   target_url: {
     type: DataTypes.STRING(500),
@@ -44,7 +55,12 @@ const Advertisement = sequelize.define('Advertisement', {
   ad_content: {
     type: DataTypes.TEXT,
     allowNull: true,
-    comment: 'HTML content for text-based ads'
+    comment: 'HTML content for text-based ads or Google Ads code'
+  },
+  google_ads_code: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: 'Google AdSense or AdWords embed code'
   },
   budget: {
     type: DataTypes.DECIMAL(10, 2),

@@ -1,2 +1,3 @@
 // Export untuk AdsContext
-export { AdsContext } from './AdsContext';
+export { AdsProvider, useAds } from './AdsContext';
+export type { Advertisement } from '../../services/api';

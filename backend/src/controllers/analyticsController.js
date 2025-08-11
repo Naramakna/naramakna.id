@@ -44,10 +44,15 @@ class AnalyticsController {
         content_id,
         content_type,
         event_type,
-        user_ip: req.ip || req.connection.remoteAddress,
+        user_ip: req.location?.ip || req.ip || req.connection.remoteAddress,
         user_agent: req.get('User-Agent'),
         referrer: req.get('Referer'),
-        additional_data,
+        country: req.location?.country || 'Unknown',
+        region: req.location?.region || 'Unknown', 
+        city: req.location?.city || 'Unknown',
+        latitude: req.location?.latitude,
+        longitude: req.location?.longitude,
+        timezone: req.location?.timezone || 'Asia/Jakarta',
         timestamp: new Date()
       };
 
@@ -408,6 +413,227 @@ class AnalyticsController {
     });
 
     return formatted;
+  }
+  /**
+   * Get detailed post analytics with demographics
+   * GET /api/analytics/post/:id/detailed
+   */
+  static async getPostDetailedAnalytics(req, res) {
+    try {
+      const { id } = req.params;
+      const { period = 'month' } = req.query;
+
+      // Calculate date range
+      const endDate = new Date();
+      const startDate = new Date();
+      
+      switch (period) {
+        case 'week':
+          startDate.setDate(endDate.getDate() - 7);
+          break;
+        case 'month':
+          startDate.setMonth(endDate.getMonth() - 1);
+          break;
+        case 'year':
+          startDate.setFullYear(endDate.getFullYear() - 1);
+          break;
+        default:
+          startDate.setMonth(endDate.getMonth() - 1);
+      }
+
+      // Get post basic info
+      const post = await Post.findByPk(id, {
+        include: [{
+          model: User,
+          as: 'author',
+          attributes: ['user_login', 'display_name']
+        }]
+      });
+
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+
+      // Get total views
+      const totalViews = await Analytics.count({
+        where: {
+          content_id: id,
+          event_type: 'view',
+          timestamp: {
+            [Op.between]: [startDate, endDate]
+          }
+        }
+      });
+
+      // Get country distribution
+      const countryStats = await Analytics.findAll({
+        where: {
+          content_id: id,
+          event_type: 'view',
+          timestamp: {
+            [Op.between]: [startDate, endDate]
+          },
+          country: { [Op.ne]: null }
+        },
+        attributes: [
+          'country',
+          [sequelize.fn('COUNT', sequelize.col('id')), 'views']
+        ],
+        group: ['country'],
+        order: [[sequelize.fn('COUNT', sequelize.col('id')), 'DESC']],
+        limit: 10,
+        raw: true
+      });
+
+      // Get city/regional distribution (Indonesia focus)
+      const cityStats = await Analytics.findAll({
+        where: {
+          content_id: id,
+          event_type: 'view',
+          timestamp: {
+            [Op.between]: [startDate, endDate]
+          },
+          city: { [Op.ne]: null },
+          country: 'Indonesia'
+        },
+        attributes: [
+          'city',
+          'region',
+          [sequelize.fn('COUNT', sequelize.col('id')), 'views']
+        ],
+        group: ['city', 'region'],
+        order: [[sequelize.fn('COUNT', sequelize.col('id')), 'DESC']],
+        limit: 15,
+        raw: true
+      });
+
+      // Get device type distribution (extracted from user_agent)
+      const deviceRawData = await Analytics.findAll({
+        where: {
+          content_id: id,
+          event_type: 'view',
+          timestamp: {
+            [Op.between]: [startDate, endDate]
+          },
+          user_agent: { [Op.ne]: null }
+        },
+        attributes: ['user_agent'],
+        raw: true
+      });
+
+      // Simple device detection based on user agent
+      const deviceStats = deviceRawData.reduce((acc, item) => {
+        const ua = item.user_agent.toLowerCase();
+        let deviceType = 'desktop';
+        
+        if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) {
+          deviceType = 'mobile';
+        } else if (ua.includes('tablet') || ua.includes('ipad')) {
+          deviceType = 'tablet';
+        }
+        
+        acc[deviceType] = (acc[deviceType] || 0) + 1;
+        return acc;
+      }, {});
+
+      // Format device stats to match expected structure
+      const formattedDeviceStats = Object.entries(deviceStats).map(([device_type, views]) => ({
+        device_type,
+        views
+      }));
+
+      // Get gender distribution - placeholder since analytics doesn't store user_id
+      // For now, return empty array as the current analytics table doesn't track users
+      const genderStats = [];
+      
+      // Note: To track gender demographics, we would need to:
+      // 1. Add user_id column to analytics table
+      // 2. Track user sessions properly when they view content
+      // For now, this returns empty data
+
+      // Get daily views for timeline
+      const dailyViews = await Analytics.findAll({
+        where: {
+          content_id: id,
+          event_type: 'view',
+          timestamp: {
+            [Op.between]: [startDate, endDate]
+          }
+        },
+        attributes: [
+          [sequelize.fn('DATE', sequelize.col('timestamp')), 'date'],
+          [sequelize.fn('COUNT', sequelize.col('id')), 'views']
+        ],
+        group: [sequelize.fn('DATE', sequelize.col('timestamp'))],
+        order: [[sequelize.fn('DATE', sequelize.col('timestamp')), 'ASC']],
+        raw: true
+      });
+
+      // Calculate reading time (estimated based on content length)
+      const wordCount = post.post_content ? post.post_content.split(' ').length : 0;
+      const estimatedReadingTime = Math.ceil(wordCount / 200); // Average 200 words per minute
+
+      // Get engagement metrics
+      const engagement = await Analytics.findAll({
+        where: {
+          content_id: id,
+          timestamp: {
+            [Op.between]: [startDate, endDate]
+          }
+        },
+        attributes: [
+          'event_type',
+          [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+        ],
+        group: ['event_type'],
+        raw: true
+      });
+
+      res.json({
+        success: true,
+        data: {
+          post: {
+            id: post.ID,
+            title: post.post_title,
+            author: post.author ? post.author.display_name || post.author.user_login : 'Unknown',
+            published_date: post.post_date,
+            word_count: wordCount,
+            estimated_reading_time: estimatedReadingTime
+          },
+          period: {
+            start: startDate.toISOString(),
+            end: endDate.toISOString(),
+            period_name: period
+          },
+          overview: {
+            total_views: totalViews,
+            estimated_reading_time_minutes: estimatedReadingTime
+          },
+          demographics: {
+            countries: countryStats,
+            cities: cityStats,
+            gender: genderStats,
+            devices: formattedDeviceStats
+          },
+          timeline: dailyViews,
+          engagement: engagement.reduce((acc, item) => {
+            acc[item.event_type] = parseInt(item.count);
+            return acc;
+          }, {})
+        }
+      });
+
+    } catch (error) {
+      console.error('Error fetching detailed post analytics:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch detailed post analytics',
+        error: error.message
+      });
+    }
   }
 }
 

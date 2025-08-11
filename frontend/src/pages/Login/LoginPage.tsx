@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import { Navbar } from '../../components/organisms/Navbar';
+import { authAPI } from '../../services/api/auth';
+import { useAuth } from '../../contexts/AuthContext';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -14,15 +19,23 @@ const LoginPage: React.FC = () => {
     setError('');
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For demo purposes, always succeed
-      console.log('Login successful');
-      // Redirect to home or dashboard
-      window.location.href = '/';
-    } catch (err) {
-      setError('Email atau password salah. Silakan coba lagi.');
+      const response = await authAPI.login({
+        identifier: email,
+        user_pass: password,
+        remember_me: rememberMe
+      });
+
+      if (response.success && response.data) {
+        // Use AuthContext to manage login state
+        login(response.data.user, response.data.token);
+        
+        // Redirect to home
+        window.location.href = '/';
+      } else {
+        setError(response.message);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Email atau password salah. Silakan coba lagi.');
     } finally {
       setLoading(false);
     }
@@ -115,6 +128,8 @@ const LoginPage: React.FC = () => {
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
                   className="h-4 w-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-500"
                 />
                 <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">

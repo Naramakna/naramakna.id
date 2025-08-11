@@ -81,8 +81,15 @@ export const CategorySection: React.FC<CategorySectionProps> = ({
   const displayTrendingItems = trendingItems.length > 0 ? trendingItems : defaultTrendingItems;
   const displayLatestItems = latestItems.length > 0 ? latestItems : defaultLatestItems;
 
-  const NewsItemComponent = ({ item }: { item: NewsItem }) => (
-    <div className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors duration-200">
+  const NewsItemComponent = ({ item }: { item: NewsItem }) => {
+    const handleClick = () => {
+      if (item.href) {
+        window.location.href = item.href;
+      }
+    };
+
+    return (
+      <div className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors duration-200" onClick={handleClick}>
       {/* Thumbnail */}
       <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-lg overflow-hidden">
         {item.imageSrc ? (
@@ -115,7 +122,8 @@ export const CategorySection: React.FC<CategorySectionProps> = ({
         </div>
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <div className={`bg-gray-50 py-8 ${className}`}>

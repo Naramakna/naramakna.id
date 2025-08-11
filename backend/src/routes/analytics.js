@@ -14,5 +14,6 @@ router.post('/track', AnalyticsController.track);
 router.get('/dashboard', AnalyticsController.getDashboard);
 router.get('/realtime', AnalyticsController.getRealtime);
 router.get('/content/:id', AnalyticsController.getContentMetrics);
+router.get('/post/:id/detailed', AnalyticsController.getPostDetailedAnalytics);
 
 module.exports = router;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { articlesAPI } from '../services/api/articles';
 import type { Article, FeedResponse } from '../services/api/articles';
 
@@ -25,14 +25,15 @@ export const useContent = (params: UseContentParams = {}): UseContentReturn => {
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<FeedResponse['pagination'] | null>(null);
 
-  const { autoFetch = true, ...apiParams } = params;
+  // Extract individual params to avoid object reference issues
+  const { autoFetch = true, page, limit, type, category, search } = params;
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await articlesAPI.getFeed(apiParams);
+      const response = await articlesAPI.getFeed({ page, limit, type, category, search });
       
       if (response.success) {
         setData(response.data.posts);
@@ -45,17 +46,17 @@ export const useContent = (params: UseContentParams = {}): UseContentReturn => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, limit, type, category, search]);
 
   useEffect(() => {
     if (autoFetch) {
       fetchData();
     }
-  }, [JSON.stringify(apiParams), autoFetch]);
+  }, [fetchData, autoFetch]);
 
-  const refetch = () => {
+  const refetch = useCallback(() => {
     fetchData();
-  };
+  }, [fetchData]);
 
   return {
     data,

@@ -17,6 +17,7 @@ interface PollingCardProps {
   totalVotes: number;
   daysLeft: number;
   date: string;
+  onVote?: (pollId: string, optionId: string) => Promise<boolean>;
   className?: string;
 }
 
@@ -30,15 +31,46 @@ export const PollingCard: React.FC<PollingCardProps> = ({
   totalVotes,
   daysLeft,
   date,
+  onVote,
   className = ''
 }) => {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
+  const [isVoting, setIsVoting] = useState(false);
 
-  const handleOptionClick = (optionId: string) => {
-    if (!hasVoted) {
-      setSelectedOption(optionId);
+  // Check if user has already voted for this poll
+  React.useEffect(() => {
+    const votedPolls = JSON.parse(localStorage.getItem('voted_polls') || '{}');
+    if (votedPolls[id]) {
       setHasVoted(true);
+      setSelectedOption(votedPolls[id]);
+    }
+  }, [id]);
+
+  const handleOptionClick = async (optionId: string) => {
+    if (hasVoted || isVoting) {
+      return; // Prevent multiple votes or spam clicks
+    }
+
+    setIsVoting(true);
+    setSelectedOption(optionId);
+    
+    try {
+      // Call the onVote callback if provided
+      if (onVote) {
+        const success = await onVote(id, optionId);
+        if (success) {
+          setHasVoted(true);
+        } else {
+          // Reset if vote failed
+          setSelectedOption(null);
+        }
+      }
+    } catch (error) {
+      console.error('Error during vote:', error);
+      setSelectedOption(null);
+    } finally {
+      setIsVoting(false);
     }
   };
 

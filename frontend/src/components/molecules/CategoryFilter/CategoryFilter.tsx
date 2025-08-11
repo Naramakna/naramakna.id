@@ -34,11 +34,11 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
     return null; // Silent fallback
   }
 
-  // Smart filtering: hanya kategori dengan content dan minimal 2 post
+  // Smart filtering: hanya kategori dengan content dan minimal 1 post
   const smartCategories = categories
-    .filter(cat => cat.count >= 2) // Minimal 2 post
+    .filter(cat => cat.count >= 1) // Minimal 1 post (reduced from 2)
     .sort((a, b) => b.count - a.count) // Sort by popularity
-    .slice(0, 8); // Maksimal 8 kategori utama
+    .slice(0, 15); // Maksimal 15 kategori utama (increased from 8)
 
   // Kategori utama - yang paling populer dan general
   const mainCategories = smartCategories.slice(0, 6);

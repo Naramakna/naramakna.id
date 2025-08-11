@@ -19,7 +19,9 @@ export const PollingItem: React.FC<PollingItemProps> = ({
   onClick,
   className = ''
 }) => {
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (onClick) {
       onClick(id);
     }
@@ -27,6 +29,7 @@ export const PollingItem: React.FC<PollingItemProps> = ({
 
   return (
     <button
+      type="button"
       className={`w-full text-left p-3 border border-teal-500 rounded-lg transition-colors duration-200
         ${isSelected ? 'bg-teal-50 border-teal-600' : 'hover:bg-teal-50'}
         ${className}`}

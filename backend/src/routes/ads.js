@@ -18,6 +18,7 @@ router.get('/', authenticate, canManageAds, AdsController.getAll);
 router.get('/:id', authenticate, canManageAds, AdsController.getById);
 router.post('/', authenticate, canManageAds, AdsController.create);
 router.put('/:id', authenticate, canManageAds, AdsController.update);
+router.patch('/:id/status', authenticate, canManageAds, AdsController.updateStatus);
 router.delete('/:id', authenticate, canManageAds, AdsController.delete);
 
 module.exports = router;

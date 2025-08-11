@@ -23,7 +23,7 @@ export const CarouselItem: React.FC<CarouselItemProps> = ({
 
   const handleClick = () => {
     if (href) {
-      window.open(href, '_blank');
+      window.location.href = href;
     }
   };
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useCategories } from '../../../hooks/useCategories';
 import { CategoryNewsSection } from '../CategoryNewsSection';
 import { AdSection } from '../AdSection';
@@ -12,12 +12,53 @@ interface DynamicCategorySectionsProps {
 
 export const DynamicCategorySections: React.FC<DynamicCategorySectionsProps> = ({
   className = '',
-  minPostCount = 2, // Show categories with at least 2 posts
-  maxSections = 10, // Show up to 10 categories
+  minPostCount = 1, // Show categories with at least 1 post (reduced from 2)
+  maxSections = Number.MAX_SAFE_INTEGER, // Unlimited sections for infinite scroll
   excludeCategories = []
 }) => {
+  // ALL HOOKS MUST BE CALLED FIRST - React Rules of Hooks
   const { categories, loading, error } = useCategories();
+  const [visibleSections, setVisibleSections] = useState(10); // Start with 10 sections
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  // Filter and sort categories - safe to compute even if categories is empty
+  const eligibleCategories = categories
+    .filter(cat => 
+      cat.count >= minPostCount && 
+      !excludeCategories.includes(cat.slug)
+    )
+    .sort((a, b) => b.count - a.count); // Sort by popularity
+
+  // Categories currently visible
+  const displayedCategories = eligibleCategories.slice(0, visibleSections);
+  const hasMoreCategories = visibleSections < eligibleCategories.length;
+
+  // Infinite scroll handler - ALWAYS define, conditional logic inside
+  const handleScroll = useCallback(() => {
+    if (isLoadingMore || !hasMoreCategories || loading || error) return;
+
+    const scrollPosition = window.innerHeight + window.scrollY;
+    const documentHeight = document.documentElement.offsetHeight;
+    
+    // Load more when user is near bottom (500px from bottom)
+    if (scrollPosition >= documentHeight - 500) {
+      setIsLoadingMore(true);
+      
+      // Simulate loading delay
+      setTimeout(() => {
+        setVisibleSections(prev => Math.min(prev + 5, eligibleCategories.length)); // Load 5 more sections
+        setIsLoadingMore(false);
+      }, 800); // 800ms delay for smooth UX
+    }
+  }, [isLoadingMore, hasMoreCategories, eligibleCategories.length, loading, error]);
+
+  // Add scroll event listener - ALWAYS set up, conditional logic inside callback
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
+
+  // CONDITIONAL RENDERING AFTER ALL HOOKS
   if (loading) {
     return (
       <div className={`space-y-8 ${className}`}>
@@ -40,26 +81,13 @@ export const DynamicCategorySections: React.FC<DynamicCategorySectionsProps> = (
     );
   }
 
-  if (error || !categories.length) {
+  if (error || !categories.length || eligibleCategories.length === 0) {
     return null; // Silent fail, no sections
-  }
-
-  // Filter and sort categories
-  const eligibleCategories = categories
-    .filter(cat => 
-      cat.count >= minPostCount && 
-      !excludeCategories.includes(cat.slug)
-    )
-    .sort((a, b) => b.count - a.count) // Sort by popularity
-    .slice(0, maxSections); // Limit number of sections
-
-  if (eligibleCategories.length === 0) {
-    return null;
   }
 
   return (
     <div className={`space-y-8 ${className}`}>
-      {eligibleCategories.map((category, index) => (
+      {displayedCategories.map((category, index) => (
         <React.Fragment key={category.slug}>
           {/* Category News Section */}
           <CategoryNewsSection 
@@ -73,6 +101,21 @@ export const DynamicCategorySections: React.FC<DynamicCategorySectionsProps> = (
           )}
         </React.Fragment>
       ))}
+      
+      {/* Loading indicator when loading more content */}
+      {isLoadingMore && (
+        <div className="flex justify-center items-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-3 text-gray-600">Memuat kategori lainnya...</span>
+        </div>
+      )}
+      
+      {/* End indicator when all categories are loaded */}
+      {!hasMoreCategories && eligibleCategories.length > 10 && (
+        <div className="text-center py-8">
+          <p className="text-gray-500">Semua kategori telah dimuat ({eligibleCategories.length} kategori)</p>
+        </div>
+      )}
       
       {/* Final ad section at the bottom */}
       <AdSection position="bottom" size="header" />

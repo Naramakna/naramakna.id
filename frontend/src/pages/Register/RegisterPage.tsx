@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Navbar } from '../../components/organisms/Navbar';
+import { authAPI } from '../../services/api/auth';
 
 const RegisterPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -40,15 +41,23 @@ const RegisterPage: React.FC = () => {
     }
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For demo purposes, always succeed
-      console.log('Registration successful');
-      // Redirect to login
-      window.location.href = '/login';
-    } catch (err) {
-      setError('Terjadi kesalahan. Silakan coba lagi.');
+      const response = await authAPI.register({
+        user_login: formData.name.toLowerCase().replace(/\s+/g, ''), // Convert to username
+        user_email: formData.email,
+        user_pass: formData.password,
+        display_name: formData.name,
+        role_request: 'user'
+      });
+
+      if (response.success) {
+        // Show success message and redirect
+        alert(response.message || 'Akun berhasil dibuat!');
+        window.location.href = '/login';
+      } else {
+        setError(response.message);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setLoading(false);
     }

@@ -23,7 +23,7 @@ export const VideoItem: React.FC<VideoItemProps> = ({
 }) => {
   const handleClick = () => {
     if (href) {
-      window.open(href, '_blank');
+      window.location.href = href;
     }
   };
 

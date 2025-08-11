@@ -46,4 +46,27 @@ router.post('/:id/review', authenticate, requireAdmin, ContentApprovalController
  */
 router.post('/bulk-review', authenticate, requireAdmin, ContentApprovalController.bulkReviewPosts);
 
+/**
+ * @route   GET /api/approval/:id/details
+ * @desc    Get post details for review/editing
+ * @access  Admin+
+ */
+router.get('/:id/details', authenticate, requireAdmin, ContentApprovalController.getPostForReview);
+
+/**
+ * @route   PUT /api/approval/:id/edit
+ * @desc    Edit writer post content
+ * @access  Admin+
+ * @body    { title?, content?, description?, summary_social?, channel?, topic?, keyword?, location?, mark_as_18_plus?, edit_reason? }
+ */
+router.put('/:id/edit', authenticate, requireAdmin, ContentApprovalController.editWriterPost);
+
+/**
+ * @route   POST /api/approval/:id/review-with-edit
+ * @desc    Review post with optional editing
+ * @access  Admin+
+ * @body    { action: 'approve' | 'reject' | 'request-changes', feedback?, title?, content?, description?, ... }
+ */
+router.post('/:id/review-with-edit', authenticate, requireAdmin, ContentApprovalController.reviewWithEdit);
+
 module.exports = router;

@@ -6,7 +6,7 @@ interface NavKategoriProps {
 }
 
 export const NavKategori: React.FC<NavKategoriProps> = ({ className = '' }) => {
-  // Kategori utama
+  // Kategori utama (sekarang dynamic dari API)
   const categories = [
     'News',
     'Entertainment', 
@@ -68,7 +68,7 @@ export const NavKategori: React.FC<NavKategoriProps> = ({ className = '' }) => {
           {categories.map((category, index) => (
             <a
               key={index}
-              href="#"
+              href={`/kategori/${category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
               className="text-sm font-medium text-gray-700 hover:text-yellow-500 whitespace-nowrap transition-colors duration-200 flex-shrink-0"
             >
               {category}
