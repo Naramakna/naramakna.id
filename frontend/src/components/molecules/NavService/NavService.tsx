@@ -8,12 +8,10 @@ export const NavService: React.FC<NavServiceProps> = ({ className = '' }) => {
   // Layanan
   const services = [
     'Breaking News',
-    'Halal Living',
-    'Green Initiative',
     'Video Story',
+    'Polling',
     'Trending',
-    'naramakna PLUS',
-    'Opini & Cerita'
+    'Category',
   ];
 
   return (
@@ -27,9 +25,9 @@ export const NavService: React.FC<NavServiceProps> = ({ className = '' }) => {
               className={`text-xs font-medium whitespace-nowrap transition-colors duration-200 flex-shrink-0 px-3 py-1 rounded-full ${
                 service === 'Breaking News' 
                   ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                  : service === 'Halal Living'
+                  : service === 'Video Story'
                   ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                  : service === 'Green Initiative'
+                  : service === 'Polling'
                   ? 'bg-green-100 text-green-700 hover:bg-green-200'
                   : 'text-gray-600 hover:text-yellow-500 hover:bg-white'
               }`}
