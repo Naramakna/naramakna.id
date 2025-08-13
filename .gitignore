@@ -54,9 +54,11 @@ DerivedData/
 *.swp
 *.swo
 
-# Uploads
+# Uploads - JANGAN PUSH KE GITHUB!
 uploads/
 */uploads/
+public/uploads/
+*.zip
 
 # Cache
 .cache/
@@ -68,8 +70,12 @@ tmp/
 temp/
 .tmp/
 
-# Backup files created by this script
+# Backup files - JANGAN PUSH KE GITHUB!
 backup_*/
+
+# Cookies dan file sensitif
+cookies*.txt
+*cookies*.txt
 
 # Homebrew (if Brewfile is used)
 Brewfile.lock.json
