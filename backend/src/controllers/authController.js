@@ -165,8 +165,8 @@ class AuthController {
         });
       }
       
-      // Still require email verification
-      if (!user.email_verified) {
+      // Still require email verification (can be disabled via env var)
+      if (!user.email_verified && process.env.REQUIRE_EMAIL_VERIFICATION !== 'false') {
         return res.status(403).json({
           success: false,
           message: 'Please verify your email address before logging in'
