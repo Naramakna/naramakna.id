@@ -64,7 +64,7 @@ class AuthController {
         display_name: display_name || user_login,
         user_role: userRole,
         user_status: userRole === USER_ROLES.WRITER ? 0 : 1, // Writers need approval
-        email_verified: false
+        email_verified: process.env.REQUIRE_EMAIL_VERIFICATION === 'true' ? false : true
       });
 
       // Generate token
@@ -165,8 +165,8 @@ class AuthController {
         });
       }
       
-      // Still require email verification
-      if (!user.email_verified) {
+      // Email verification is optional (disabled by default)
+      if (!user.email_verified && process.env.REQUIRE_EMAIL_VERIFICATION === 'true') {
         return res.status(403).json({
           success: false,
           message: 'Please verify your email address before logging in'

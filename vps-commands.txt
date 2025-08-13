@@ -1,0 +1,95 @@
+# VPS Commands untuk Setup Git Repository
+# Jalankan command ini satu per satu di VPS
+
+# 1. SSH ke VPS
+ssh root@148.230.96.60
+
+# 2. Masuk ke directory project
+cd /var/www/naramakna
+
+# 3. Backup dulu (just in case)
+cp -r /var/www/naramakna /var/www/naramakna-backup-$(date +%Y%m%d)
+
+# 4. Initialize git
+git init
+
+# 5. Create .gitignore
+cat << 'EOF' > .gitignore
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Database
+*.db
+*.sqlite
+
+# Logs
+*.log
+logs/
+upload-debug.log
+
+# Cache
+.cache/
+.vscode/
+.DS_Store
+
+# PM2
+.pm2/
+
+# Cookies and sensitive files
+*cookies*.txt
+test-*.js
+*test*.txt
+
+# Backup directories
+backup_*/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Development files
+verify-models.js
+test-*.js
+EOF
+
+# 6. Add all files
+git add .
+
+# 7. Check what will be committed
+git status
+
+# 8. Create initial commit
+git commit -m "Initial commit from VPS - working production version
+
+- Backend API with all routes working
+- Frontend React app
+- Database migrations and models
+- Authentication system
+- File upload system
+- Analytics and ads system
+- TikTok and YouTube integration"
+
+# 9. Set git config (if not set)
+git config --global user.email "your-email@example.com"
+git config --global user.name "Your Name"
+
+# 10. Create GitHub repo and add remote
+# (Buat dulu repo di GitHub dengan nama: naramakna-vps)
+git remote add origin https://github.com/YOUR_USERNAME/naramakna-vps.git
+
+# 11. Push to GitHub
+git branch -M main
+git push -u origin main
+
+# 12. Check git status
+git log --oneline -5
