@@ -196,13 +196,6 @@ export const AboutUs: React.FC = () => {
               <p className="text-lg mb-6 opacity-90">
                 Bergabunglah dengan komunitas pembaca cerdas yang peduli akan kualitas informasi dan kedalaman makna
               </p>
-              
-              {/* Contact Info */}
-              <div className="mb-6 p-4 bg-white/10 rounded-xl backdrop-blur-sm">
-                <p className="text-white/90 mb-2">📞 Hubungi Tim Kami:</p>
-                <p className="text-xl font-semibold text-white">+62 851-5620-4625</p>
-              </div>
-              
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <a 
                   href="https://whatsapp.com/channel/0029Vb61Apy0wajqHt7lQz3l"
@@ -216,7 +209,7 @@ export const AboutUs: React.FC = () => {
                   Ikuti Konten Kami
                 </a>
                 <a 
-                  href="https://wa.me/6285156204625"
+                  href="https://wa.me/628979132802"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="border-2 border-white text-white px-6 py-3 rounded-full font-semibold hover:bg-white hover:text-orange-600 transition-all duration-300 flex items-center justify-center gap-2"

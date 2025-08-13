@@ -1,0 +1,1 @@
+export { HelpCategoryIcon } from './HelpCategoryIcon';
