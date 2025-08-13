@@ -92,10 +92,9 @@ export const NavDropdown: React.FC<NavDropdownProps> = ({
   // Data untuk kolom tengah (Company/Information Links)
   const companyLinks = [
     { title: 'Tentang Kami', href: '/tentang-kami' },
-    { title: 'Cara Menulis di naramakna', href: '#' },
-    { title: 'Informasi Kerja Sama', href: '#' },
-    { title: 'Bantuan', href: '#' },
-    { title: 'Iklan', href: '#' }
+    { title: 'Cara Menulis di naramakna', href: '/cara-menulis' },
+    { title: 'Informasi Kerja Sama', href: '/kerja-sama' },
+    { title: 'Bantuan', href: '/bantuan' }
   ];
 
   // Data untuk kolom kanan (Social Media Links)
