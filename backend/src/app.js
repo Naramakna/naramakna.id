@@ -17,7 +17,9 @@ app.set('trust proxy', true);
 // Middleware dasar
 app.use(cors({
   origin: process.env.CORS_ORIGIN || ['http://localhost:5173', 'http://localhost:5174'],
-  credentials: true // Allow cookies for authentication
+  credentials: true, // Allow cookies for authentication
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], // Explicitly allow PATCH method
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
 }));
 
 // Increase payload limits for file uploads
