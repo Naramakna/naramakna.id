@@ -40,8 +40,8 @@ const authenticate = async (req, res, next) => {
       });
     }
     
-    // Still require email verification
-    if (!user.email_verified) {
+    // Email verification is optional (disabled by default)
+    if (!user.email_verified && process.env.REQUIRE_EMAIL_VERIFICATION === 'true') {
       console.log('🔍 Auth Debug - Email not verified');
       return res.status(401).json({
         success: false,
