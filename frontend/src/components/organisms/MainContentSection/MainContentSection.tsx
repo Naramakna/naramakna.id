@@ -1,4 +1,4 @@
-import React from 'react';
+  import React from 'react';
 import { Carousel } from '../../molecules/Carousel';
 import { TrendingSection } from '../TrendingSection';
 import { useContent } from '../../../hooks/useContent';
