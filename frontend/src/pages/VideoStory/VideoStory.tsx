@@ -1,0 +1,32 @@
+import React from 'react';
+import { Navbar } from '../../components/organisms/Navbar';
+import { AdSection } from '../../components/organisms/AdSection/AdSection';
+import { VideoGallery } from '../../components/organisms/VideoGallery/VideoGallery';
+
+export const VideoStory: React.FC = () => {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Navbar */}
+      <Navbar />
+      
+      {/* Header Ad Section */}
+      <AdSection />
+      
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Page Title */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+            Video Story
+          </h1>
+          <p className="text-gray-600 text-lg">
+            Kumpulan video menarik dan informatif
+          </p>
+        </div>
+        
+        {/* Video Gallery */}
+        <VideoGallery />
+      </div>
+    </div>
+  );
+};

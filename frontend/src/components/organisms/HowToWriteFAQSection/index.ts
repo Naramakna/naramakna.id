@@ -1,0 +1,1 @@
+export { HowToWriteFAQSection } from './HowToWriteFAQSection';
