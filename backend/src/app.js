@@ -14,13 +14,46 @@ const app = express();
 // Trust proxy for proper IP detection (important for production)
 app.set('trust proxy', true);
 
-// Middleware dasar
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || ['http://localhost:5173', 'http://localhost:5174'],
+// Middleware dasar - CORS configuration for development and production
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      // Development
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:5174',
+      // Production - add your domains here
+      'https://naramakna.id',
+      'https://www.naramakna.id',
+      // Add your Cloudflare tunnel domain when you get it
+      // 'https://your-tunnel-domain.cloudflareaccess.com'
+    ];
+
+    // If CORS_ORIGIN is set in environment, use it (for production flexibility)
+    if (process.env.CORS_ORIGIN) {
+      const envOrigins = process.env.CORS_ORIGIN.split(',').map(origin => origin.trim());
+      allowedOrigins.push(...envOrigins);
+    }
+
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn(`🚫 CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true, // Allow cookies for authentication
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], // Explicitly allow PATCH method
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+  preflightContinue: false, // Pass control to next handler
+  optionsSuccessStatus: 204 // For legacy browser support
+};
+
+app.use(cors(corsOptions));
 
 // Increase payload limits for file uploads
 app.use(express.json({ limit: '50mb' }));
