@@ -28,7 +28,7 @@ export const Navbar: React.FC = () => {
               {/* Logo - Responsive */}
               <div className="flex-shrink-0">
                 <a href="/" className="flex items-center">
-                  <Logo size="lg" />
+                  <Logo size="md" />
                 </a>
               </div>
 
@@ -46,16 +46,15 @@ export const Navbar: React.FC = () => {
                     <div className="w-20 h-8 bg-gray-200 rounded-lg"></div>
                   </div>
                         ) : isAuthenticated ? (
-          /* Show ProfileBadge and "Buat Tulisan" button when authenticated */
-          <div className="flex items-center space-x-3">
-            <ProfileBadge />
-            <a
-              href="/tulis"
-              className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg transition-all duration-200 text-sm"
-            >
-              Buat Tulisan
-            </a>
-          </div>
+                  <div className="flex items-center space-x-3">
+                    <ProfileBadge />
+                    <a
+                      href="/tulis"
+                      className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg transition-all duration-200 text-sm"
+                    >
+                      Buat Tulisan
+                    </a>
+                  </div>
                 ) : (
                   /* Show login/register buttons when not authenticated */
                   <>
