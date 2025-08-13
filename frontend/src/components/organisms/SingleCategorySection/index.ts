@@ -1,0 +1,1 @@
+export { SingleCategorySection } from './SingleCategorySection';

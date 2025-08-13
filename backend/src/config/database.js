@@ -6,7 +6,7 @@ require('dotenv').config();
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'naramakna_user',
-  password: process.env.DB_PASSWORD || 'password',
+  password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'naramakna_clean',
   dialect: 'mysql',
   pool: {
