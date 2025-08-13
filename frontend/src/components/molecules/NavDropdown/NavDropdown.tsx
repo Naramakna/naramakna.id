@@ -102,7 +102,7 @@ export const NavDropdown: React.FC<NavDropdownProps> = ({
     { name: 'Instagram', href: 'https://www.instagram.com/naramakna.id?igsh=ejNla2VjeDdwaWd5' },
     { name: 'Facebook', href: 'https://m.facebook.com/naramakna.id/' },
     { name: 'X (Twitter)', href: 'https://x.com/apcomsolutions?s=21' },
-    { name: 'WhatsApp', href: 'https://whatsapp.com/channel/0029Vb61Apy0wajqHt7lQz3l' }
+    { name: 'WhatsApp', href: 'https://wa.me/628979132802' }
   ];
 
   return (

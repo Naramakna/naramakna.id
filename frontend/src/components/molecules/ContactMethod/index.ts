@@ -1,0 +1,1 @@
+export { ContactMethod } from './ContactMethod';
