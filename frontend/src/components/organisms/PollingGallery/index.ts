@@ -1,0 +1,1 @@
+export { PollingGallery } from './PollingGallery';
