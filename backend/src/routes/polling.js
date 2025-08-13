@@ -2,6 +2,15 @@ const express = require('express');
 const router = express.Router();
 const PollingController = require('../controllers/pollingController');
 const { authenticate, requireRole } = require('../middleware/auth');
+require('dotenv').config();
+
+// Database configuration
+const getDbConfig = () => ({
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'naramakna_user',
+  password: process.env.DB_PASSWORD || 'password',
+  database: process.env.DB_NAME || 'naramakna_clean'
+});
 
 // Public routes - no authentication required
 router.get('/test', (req, res) => {
@@ -20,12 +29,7 @@ router.get('/active', async (req, res) => {
     const mysql = require('mysql2/promise');
     console.log('🟢 MySQL loaded');
     
-    const connection = await mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: 'password',
-      database: 'naramakna_clean'
-    });
+    const connection = await mysql.createConnection(getDbConfig());
     
     console.log('🟢 Database connected');
     
@@ -140,12 +144,7 @@ router.post('/vote', async (req, res) => {
     }
     
     const mysql = require('mysql2/promise');
-    const connection = await mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: 'password',
-      database: 'naramakna_clean'
-    });
+    const connection = await mysql.createConnection(getDbConfig());
     
     // Check if user already voted for this poll (session/IP based check - NO LOGIN REQUIRED)
     const clientIp = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
@@ -227,12 +226,7 @@ router.get('/trending-candidates', authenticate, requireRole('admin', 'superadmi
     const { limit = 10 } = req.query;
     
     const mysql = require('mysql2/promise');
-    const connection = await mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: 'password',
-      database: 'naramakna_clean'
-    });
+    const connection = await mysql.createConnection(getDbConfig());
     
     // Get trending posts using direct SQL
     const [trendingPosts] = await connection.query(`
@@ -286,12 +280,7 @@ router.post('/create', authenticate, requireRole('admin', 'superadmin'), async (
     }
     
     const mysql = require('mysql2/promise');
-    const connection = await mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: 'password',
-      database: 'naramakna_clean'
-    });
+    const connection = await mysql.createConnection(getDbConfig());
     
     // Get article details if source_article_id is provided
     let imageUrl = null;
@@ -359,12 +348,7 @@ router.post('/generate', authenticate, requireRole('admin', 'superadmin'), async
     }
     
     const mysql = require('mysql2/promise');
-    const connection = await mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: 'password',
-      database: 'naramakna_clean'
-    });
+    const connection = await mysql.createConnection(getDbConfig());
     
     // Generate poll question and options based on article
     const question = `What do you think about: ${title}?`;
@@ -433,12 +417,7 @@ router.get('/admin/all', authenticate, requireRole('admin', 'superadmin'), async
     const { limit = 50, offset = 0 } = req.query;
     
     const mysql = require('mysql2/promise');
-    const connection = await mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: 'password',
-      database: 'naramakna_clean'
-    });
+    const connection = await mysql.createConnection(getDbConfig());
     
     // Get all polls with full details
     const [pollsData] = await connection.query(`
@@ -499,12 +478,7 @@ router.put('/:pollId/close', authenticate, requireRole('admin', 'superadmin'), a
     const { pollId } = req.params;
     
     const mysql = require('mysql2/promise');
-    const connection = await mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
-      password: 'password',
-      database: 'naramakna_clean'
-    });
+    const connection = await mysql.createConnection(getDbConfig());
     
     await connection.query(
       `UPDATE polls SET status = 'closed' WHERE id = ?`,
