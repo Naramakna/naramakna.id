@@ -26,6 +26,11 @@ const corsOptions = {
       'http://localhost:5174',
       'http://127.0.0.1:5173',
       'http://127.0.0.1:5174',
+      // VPS Testing with subdomain
+      'http://dev.naramakna.id:3001',
+      'https://dev.naramakna.id:3001',
+      'http://app.dev.naramakna.id:5173',
+      'https://app.dev.naramakna.id:5173',
       // Production - add your domains here
       'https://naramakna.id',
       'https://www.naramakna.id',
