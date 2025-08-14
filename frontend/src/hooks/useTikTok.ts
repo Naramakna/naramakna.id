@@ -9,7 +9,7 @@ import type {
   UseTikTokReturn
 } from '../types/tiktok';
 
-export const useTikTok = (options: UseTikTokOptions = {}): UseTikTokReturn => {
+export const useTikTok = (options: UseTikTokOptions = {}) => {
   const { autoSync = false, syncInterval = 3600000 } = options; // Default 1 hour
 
   // State
