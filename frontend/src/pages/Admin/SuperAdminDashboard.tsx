@@ -8,6 +8,7 @@ import { UserManagement } from '../../components/organisms/UserManagement';
 import { AdminAnalytics } from './Analytics';
 import { AdminPolling } from './AdminPolling';
 import { AdminAds } from './AdminAds';
+import { TikTokIntegration } from '../../components/organisms/TikTokIntegration';
 
 
 interface User {
@@ -498,6 +499,7 @@ const SuperAdminDashboard: React.FC = () => {
               { id: 'posts', name: 'Posts Management', count: systemStats.totalPosts },
               { id: 'categories', name: 'Categories Management', count: systemStats.totalCategories },
               { id: 'pending-posts', name: 'Pending Posts', count: pendingPosts.length },
+              { id: 'tiktok', name: '🎬 TikTok Integration' },
               { id: 'polling', name: '📊 Polling Management' },
               { id: 'ads', name: '🎯 Ads Management' },
               { id: 'analytics', name: 'Analytics & Boost' },
@@ -668,6 +670,12 @@ const SuperAdminDashboard: React.FC = () => {
                       </table>
                     </div>
                   )}
+                </div>
+              )}
+
+              {activeTab === 'tiktok' && (
+                <div className="p-6">
+                  <TikTokIntegration />
                 </div>
               )}
 

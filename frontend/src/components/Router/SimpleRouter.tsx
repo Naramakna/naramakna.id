@@ -13,6 +13,7 @@ import PostAnalytics from '../../pages/Admin/PostAnalytics';
 import ArticleDetailPage from '../../pages/ArticleDetail/ArticleDetailPage';
 import ArticleWriterPage from '../../pages/Writer/ArticleWriterPage';
 import CategoryPage from '../../pages/Category/CategoryPage';
+import TikTokCallback from '../../pages/TikTokCallback';
 
 
 
@@ -42,6 +43,8 @@ const SimpleRouter: React.FC = () => {
     case '/writer/new':
     case '/tulis':
       return <ArticleWriterPage />;
+    case '/tiktok/callback':
+      return <TikTokCallback />;
     case '/':
       return <Home />;
     default:
