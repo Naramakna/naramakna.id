@@ -1,0 +1,1 @@
+export { PartnershipArea } from './PartnershipArea';

@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from '../../components/organisms/Navbar';
-import { ArticleCard } from '../../components/molecules/ArticleCard/ArticleCard';
+import { AdSection } from '../../components/organisms/AdSection';
+import { SingleCategorySection } from '../../components/organisms/SingleCategorySection';
+import { PollingSection } from '../../components/organisms/PollingSection';
+import { VideoSection } from '../../components/organisms/VideoSection';
+import { ArticleCardList } from '../../components/molecules/ArticleCardList';
 import { LoadingSpinner } from '../../components/atoms/LoadingSpinner/LoadingSpinner';
 
 interface CategoryPost {
@@ -12,6 +16,8 @@ interface CategoryPost {
   modified: string;
   author_name: string;
   author_id: number;
+  featured_image?: string;
+  slug?: string;
 }
 
 interface CategoryPageData {
@@ -90,8 +96,6 @@ const CategoryPage: React.FC = () => {
     }
   };
 
-
-
   if (loading) {
     return (
       <div className="min-h-screen bg-white">
@@ -144,8 +148,12 @@ const CategoryPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white">
       <Navbar />
+      
+      {/* AdSection Header */}
+      <AdSection position="top" size="header" />
+      
+      {/* Page Header */}
       <div className="container mx-auto px-4 py-8">
-        {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             {data.category.name}
@@ -154,32 +162,44 @@ const CategoryPage: React.FC = () => {
             {data.pagination.total} artikel ditemukan
           </p>
         </div>
+      </div>
 
-        {/* Posts Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {data.posts.map((post) => (
-            <ArticleCard
-              key={post.id}
-              article={{
-                id: post.id,
-                title: post.title,
-                excerpt: post.excerpt || post.content.substring(0, 150) + '...',
-                featured_image: '', // Will be populated if available
-                date: post.date,
-                author: {
-                  name: post.author_name,
-                  id: post.author_id
-                },
-                slug: post.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-                category: data.category.name
-              }}
-            />
-          ))}
-        </div>
+      {/* SingleCategorySection */}
+      <SingleCategorySection 
+        categorySlug={data.category.slug}
+        categoryName={data.category.name}
+      />
+
+      {/* Polling Section */}
+      <PollingSection />
+
+      {/* Video Story Section */}
+      <VideoSection />
+
+      {/* AdSection Standar */}
+      <AdSection position="bottom" size="regular" />
+
+      {/* ArticleCardList dengan iklan 300x250 di sebelah kanan */}
+      <div className="bg-gray-50 py-8">
+        <ArticleCardList 
+          articles={data.posts.map((post) => ({
+            id: post.id,
+            title: post.title,
+            excerpt: post.excerpt || post.content.substring(0, 150) + '...',
+            featured_image: post.featured_image || '',
+            date: post.date,
+            author: {
+              name: post.author_name,
+              id: post.author_id
+            },
+            slug: post.slug || post.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            category: data.category.name
+          }))}
+        />
 
         {/* Load More Button */}
         {data.pagination.hasMore && (
-          <div className="text-center">
+          <div className="text-center mt-8">
             <button
               onClick={handleLoadMore}
               disabled={loadingMore}

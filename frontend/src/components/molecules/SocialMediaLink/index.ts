@@ -1,0 +1,1 @@
+export { SocialMediaLink } from './SocialMediaLink';
