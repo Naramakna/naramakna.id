@@ -7,11 +7,10 @@ interface NavServiceProps {
 export const NavService: React.FC<NavServiceProps> = ({ className = '' }) => {
   // Layanan
   const services = [
-    'Breaking News',
-    'Video Story',
-    'Polling',
-    'Trending',
-    'Category',
+    { name: 'Breaking News', href: '#' },
+    { name: 'Video Story', href: '/video-story' },
+    { name: 'Polling', href: '/polling' },
+    { name: 'Trending', href: '#' },
   ];
 
   return (
@@ -21,18 +20,18 @@ export const NavService: React.FC<NavServiceProps> = ({ className = '' }) => {
           {services.map((service, index) => (
             <a
               key={index}
-              href="#"
+              href={service.href}
               className={`text-xs font-medium whitespace-nowrap transition-colors duration-200 flex-shrink-0 px-3 py-1 rounded-full ${
-                service === 'Breaking News' 
+                service.name === 'Breaking News' 
                   ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                  : service === 'Video Story'
+                  : service.name === 'Video Story'
                   ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                  : service === 'Polling'
+                  : service.name === 'Polling'
                   ? 'bg-green-100 text-green-700 hover:bg-green-200'
                   : 'text-gray-600 hover:text-yellow-500 hover:bg-white'
               }`}
             >
-              {service}
+              {service.name}
             </a>
           ))}
         </div>

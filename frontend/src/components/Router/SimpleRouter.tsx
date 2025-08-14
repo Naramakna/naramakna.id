@@ -14,7 +14,12 @@ import ArticleDetailPage from '../../pages/ArticleDetail/ArticleDetailPage';
 import ArticleWriterPage from '../../pages/Writer/ArticleWriterPage';
 import CategoryPage from '../../pages/Category/CategoryPage';
 import TikTokCallback from '../../pages/TikTokCallback';
-
+import { VideoStory } from '../../pages/VideoStory/VideoStory';
+import { Polling } from '../../pages/Polling/Polling';
+import { AboutUs } from '../../pages/AboutUs/AboutUs';
+import { HowToWrite } from '../../pages/HowToWrite/HowToWrite';
+import { Partnership } from '../../pages/Partnership/Partnership';
+import { Help } from '../../pages/Help/Help';
 
 
 const SimpleRouter: React.FC = () => {
@@ -45,6 +50,18 @@ const SimpleRouter: React.FC = () => {
       return <ArticleWriterPage />;
     case '/tiktok/callback':
       return <TikTokCallback />;
+    case '/video-story':
+      return <VideoStory />;
+    case '/polling':
+      return <Polling />;
+    case '/tentang-kami':
+      return <AboutUs />;
+    case '/cara-menulis':
+      return <HowToWrite />;
+    case '/kerja-sama':
+      return <Partnership />;
+    case '/bantuan':
+      return <Help />;
     case '/':
       return <Home />;
     default:
