@@ -4,6 +4,7 @@ import { Navbar } from '../../organisms/Navbar';
 import { AdSection } from '../../organisms/AdSection/AdSection';
 import { PollingSection } from '../../organisms/PollingSection/PollingSection';
 import { VideoSection } from '../../organisms/VideoSection/VideoSection';
+import { TikTokSection } from '../../organisms/TikTokSection/TikTokSection';
 
 import { DynamicCategorySections } from '../../organisms/DynamicCategorySections/DynamicCategorySections';
 import { MainContentSection } from '../../organisms/MainContentSection/MainContentSection';
@@ -35,6 +36,13 @@ export const Home: React.FC = () => {
 
         {/* Video Section */}
         <VideoSection />
+        
+        {/* TikTok Section */}
+        <TikTokSection 
+          limit={6} 
+          layout="grid" 
+          className="mb-8"
+        />
         
         {/* Polling Section */}
         <PollingSection />

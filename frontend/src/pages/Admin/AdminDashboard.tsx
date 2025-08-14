@@ -6,6 +6,7 @@ import { UserManagement } from '../../components/organisms/UserManagement';
 import { DataTable } from '../../components/organisms/DataTable';
 import { AdminPolling } from './AdminPolling';
 import { AdminAds } from './AdminAds';
+import { TikTokIntegration } from '../../components/organisms/TikTokIntegration';
 
 
 
@@ -165,6 +166,7 @@ const AdminDashboard: React.FC = () => {
                 { id: 'users', name: 'Users', count: users.length },
                 { id: 'pending-writers', name: 'Pending Writers', count: pendingWriters.length },
                 { id: 'pending-posts', name: 'Pending Posts', count: pendingPosts.length },
+                { id: 'tiktok', name: '🎬 TikTok Integration' },
                 { id: 'polling', name: '📊 Polling Management' },
                 { id: 'ads', name: '🎯 Ads Management' },
               ]}
@@ -339,6 +341,12 @@ const AdminDashboard: React.FC = () => {
           {activeTab === 'polling' && (
             <div className="p-6">
               <AdminPolling />
+            </div>
+          )}
+
+          {activeTab === 'tiktok' && (
+            <div className="p-6">
+              <TikTokIntegration />
             </div>
           )}
 
