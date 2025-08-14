@@ -1,8 +1,7 @@
 import React from 'react';
 import { useTikTok } from '../../../hooks/useTikTok';
-import { VideoItem } from '../../atoms/VideoItem/VideoItem';
 import { LoadingSpinner } from '../../atoms/LoadingSpinner/LoadingSpinner';
-import { TikTokTrendingItem } from '../../../types/tiktok';
+import type { TikTokContent } from '../../../types/tiktok';
 
 interface TikTokSectionProps {
   className?: string;
@@ -19,12 +18,12 @@ export const TikTokSection: React.FC<TikTokSectionProps> = ({
   title = '🎬 Trending TikTok',
   layout = 'grid'
 }) => {
-  const { content, loading, error } = useTikTok({
+  const { content, isLoading, error } = useTikTok({
     autoSync: false,
     syncInterval: 0
   });
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className={`bg-white rounded-lg shadow-sm ${className}`}>
         {showHeader && (
@@ -91,19 +90,19 @@ export const TikTokSection: React.FC<TikTokSectionProps> = ({
   const renderGridLayout = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {displayContent.map((item) => (
-        <div key={item.id} className="group">
+        <div key={item.ID} className="group">
           <a 
-            href={item.href} 
+            href={item.metadata?.source_url || item.guid} 
             target="_blank" 
             rel="noopener noreferrer"
             className="block bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200"
           >
             {/* Video Thumbnail */}
             <div className="relative aspect-[9/16] bg-gray-100">
-              {item.imageSrc ? (
+              {item.metadata?.tiktok_cover_url ? (
                 <img 
-                  src={item.imageSrc} 
-                  alt={item.title}
+                  src={item.metadata.tiktok_cover_url} 
+                  alt={item.post_title}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -134,21 +133,21 @@ export const TikTokSection: React.FC<TikTokSectionProps> = ({
               {item.metadata && (
                 <div className="absolute bottom-2 left-2 right-2">
                   <div className="flex items-center justify-between text-white text-xs">
-                    {item.metadata.views > 0 && (
+                    {item.metadata.tiktok_play_count && parseInt(item.metadata.tiktok_play_count) > 0 && (
                       <div className="flex items-center space-x-1 bg-black bg-opacity-50 px-2 py-1 rounded">
                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
                           <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"/>
                         </svg>
-                        <span>{item.metadata.views.toLocaleString()}</span>
+                        <span>{parseInt(item.metadata.tiktok_play_count).toLocaleString()}</span>
                       </div>
                     )}
-                    {item.metadata.likes > 0 && (
+                    {item.metadata.tiktok_like_count && parseInt(item.metadata.tiktok_like_count) > 0 && (
                       <div className="flex items-center space-x-1 bg-black bg-opacity-50 px-2 py-1 rounded">
                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd"/>
                         </svg>
-                        <span>{item.metadata.likes.toLocaleString()}</span>
+                        <span>{parseInt(item.metadata.tiktok_like_count).toLocaleString()}</span>
                       </div>
                     )}
                   </div>
@@ -159,13 +158,13 @@ export const TikTokSection: React.FC<TikTokSectionProps> = ({
             {/* Video Info */}
             <div className="p-3">
               <h3 className="text-sm font-medium text-gray-900 line-clamp-2 mb-2">
-                {item.title}
+                {item.post_title || 'TikTok Video'}
               </h3>
               <div className="flex items-center justify-between text-xs text-gray-500">
                 <span className="flex items-center space-x-1">
-                  <span>@{item.source}</span>
+                  <span>@{item.metadata?.tiktok_author_username || 'TikTok'}</span>
                 </span>
-                <span>{item.timeAgo}</span>
+                <span>{new Date(item.post_date).toLocaleDateString()}</span>
               </div>
             </div>
           </a>
@@ -178,18 +177,18 @@ export const TikTokSection: React.FC<TikTokSectionProps> = ({
     <div className="space-y-3">
       {displayContent.map((item) => (
         <a 
-          key={item.id}
-          href={item.href} 
+          key={item.ID}
+          href={item.metadata?.source_url || item.guid} 
           target="_blank" 
           rel="noopener noreferrer"
           className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors duration-200 group"
         >
           {/* Thumbnail */}
           <div className="flex-shrink-0 w-16 h-20 bg-gray-100 rounded-lg overflow-hidden relative">
-            {item.imageSrc ? (
+            {item.metadata?.tiktok_cover_url ? (
               <img 
-                src={item.imageSrc} 
-                alt={item.title}
+                src={item.metadata.tiktok_cover_url} 
+                alt={item.post_title}
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -211,18 +210,18 @@ export const TikTokSection: React.FC<TikTokSectionProps> = ({
           {/* Content */}
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-medium text-gray-900 line-clamp-2 mb-1">
-              {item.title}
+              {item.post_title || 'TikTok Video'}
             </h3>
             <div className="flex items-center space-x-2 text-xs text-gray-500">
               <span className="flex items-center space-x-1">
-                <span>@{item.source}</span>
+                <span>@{item.metadata?.tiktok_author_username || 'TikTok'}</span>
               </span>
               <span>•</span>
-              <span>{item.timeAgo}</span>
-              {item.metadata && item.metadata.views > 0 && (
+              <span>{new Date(item.post_date).toLocaleDateString()}</span>
+              {item.metadata?.tiktok_play_count && parseInt(item.metadata.tiktok_play_count) > 0 && (
                 <>
                   <span>•</span>
-                  <span>{item.metadata.views.toLocaleString()} views</span>
+                  <span>{parseInt(item.metadata.tiktok_play_count).toLocaleString()} views</span>
                 </>
               )}
             </div>
@@ -235,19 +234,19 @@ export const TikTokSection: React.FC<TikTokSectionProps> = ({
   const renderCarouselLayout = () => (
     <div className="flex space-x-4 overflow-x-auto pb-4">
       {displayContent.map((item) => (
-        <div key={item.id} className="flex-shrink-0 w-40">
+        <div key={item.ID} className="flex-shrink-0 w-40">
           <a 
-            href={item.href} 
+            href={item.metadata?.source_url || item.guid} 
             target="_blank" 
             rel="noopener noreferrer"
             className="block group"
           >
             {/* Video Thumbnail */}
             <div className="relative aspect-[9/16] bg-gray-100 rounded-lg overflow-hidden mb-2">
-              {item.imageSrc ? (
+              {item.metadata?.tiktok_cover_url ? (
                 <img 
-                  src={item.imageSrc} 
-                  alt={item.title}
+                  src={item.metadata.tiktok_cover_url} 
+                  alt={item.post_title}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -277,10 +276,10 @@ export const TikTokSection: React.FC<TikTokSectionProps> = ({
 
             {/* Video Info */}
             <h3 className="text-sm font-medium text-gray-900 line-clamp-2 mb-1">
-              {item.title}
+              {item.post_title || 'TikTok Video'}
             </h3>
             <div className="text-xs text-gray-500">
-              <span>@{item.source}</span>
+              <span>@{item.metadata?.tiktok_author_username || 'TikTok'}</span>
             </div>
           </a>
         </div>
