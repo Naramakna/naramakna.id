@@ -67,6 +67,52 @@ class UserController {
     }
   }
 
+  // Check if username exists (public endpoint for routing)
+  static async checkUserExists(req, res) {
+    try {
+      const { username } = req.params;
+      
+      // Basic validation
+      if (!username || username.length < 3 || username.length > 30) {
+        return res.json({
+          success: true,
+          data: { exists: false }
+        });
+      }
+
+      // Check in database
+      const user = await User.findOne({
+        where: {
+          [Op.or]: [
+            { user_login: username },
+            { user_nicename: username },
+            { display_name: username }
+          ]
+        },
+        attributes: ['ID', 'user_login', 'display_name']
+      });
+
+      res.json({
+        success: true,
+        data: {
+          exists: !!user,
+          user: user ? {
+            id: user.ID,
+            username: user.user_login,
+            display_name: user.display_name
+          } : null
+        }
+      });
+
+    } catch (error) {
+      console.error('Error checking user existence:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to check user existence'
+      });
+    }
+  }
+
   // Get user by ID
   static async getUser(req, res) {
     try {

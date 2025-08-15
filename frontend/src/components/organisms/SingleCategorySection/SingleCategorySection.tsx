@@ -199,7 +199,10 @@ export const SingleCategorySection: React.FC<SingleCategorySectionProps> = ({
              <div className="relative h-[calc(2*theme(spacing.60)+theme(spacing.4))]">
                {/* Featured Article - Card Style dengan Teks Menimpa Gambar */}
                {currentPost && (
-                 <div className="relative h-full rounded-lg overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform duration-300">
+                 <div 
+                   className="relative h-full rounded-lg overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform duration-300"
+                   onClick={() => handleClick(currentPost.slug || currentPost.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'))}
+                 >
                    {/* Background Image */}
                    <div className="absolute inset-0">
                      {currentPost.featured_image ? (

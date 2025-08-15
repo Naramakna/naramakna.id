@@ -239,9 +239,7 @@ class WriterController {
    * PUT /api/writer/articles/:id
    */
   static async updateArticle(req, res) {
-    console.log('🚀 Debug: updateArticle method called for ID:', req.params.id);
-    console.log('🚀 Debug: Request method:', req.method);
-    console.log('🚀 Debug: User:', req.user?.ID, req.user?.user_login);
+    // Update article method
     
     const transaction = await sequelize.transaction();
     
@@ -266,7 +264,7 @@ class WriterController {
       } = req.body;
 
       // Debug log untuk featured image
-      console.log('🔧 Debug Update Article - featured_image:', featured_image);
+      // Process featured image if provided
 
       // Find article - Admin and SuperAdmin can edit any post
       const whereClause = { 
@@ -338,10 +336,9 @@ class WriterController {
       }, { transaction });
 
       // Handle featured image for update
-      console.log('🖼️ Debug: Checking featured_image:', featured_image);
       let thumbnailId = null;
       if (featured_image) {
-        console.log('🖼️ Debug: Processing featured_image:', featured_image);
+        // Process featured image
         // Find or create attachment post for the image
         const existingAttachment = await Post.findOne({
           where: { guid: featured_image, post_type: 'attachment' }
@@ -388,9 +385,8 @@ class WriterController {
       ].filter(item => item.value !== undefined);
 
       // Add thumbnail ID if we have featured image
-      console.log('🖼️ Debug: thumbnailId result:', thumbnailId);
+      // Set thumbnail meta if image provided
       if (thumbnailId) {
-        console.log('🖼️ Debug: Adding _thumbnail_id to metaUpdates:', thumbnailId);
         metaUpdates.push({ key: '_thumbnail_id', value: thumbnailId.toString() });
       }
 

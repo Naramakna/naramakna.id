@@ -91,6 +91,9 @@ app.use(express.static('../public'));
 // Serve uploads directory for profile images
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
+// Serve ads directory for advertisement images
+app.use('/ads', express.static(path.join(__dirname, '../public/ads')));
+
 // Import routes
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');

@@ -8,7 +8,8 @@ interface AdsContextType {
   loading: boolean;
   error: string | null;
   getAdsForPlacement: (placement: string) => Advertisement[];
-  refreshAds: (placement?: string) => Promise<void>;
+  refreshAds: (placement?: string, forceRefresh?: boolean) => Promise<void>;
+  forceRefreshAds: (placement?: string) => Promise<void>;
   trackClick: (adId: string) => Promise<void>;
 }
 
@@ -37,24 +38,24 @@ export const AdsProvider: React.FC<AdsProviderProps> = ({ children }) => {
     return Date.now() - lastFetchTime > CACHE_DURATION;
   };
 
-  const refreshAds = async (placement?: string) => {
+  const refreshAds = async (placement?: string, forceRefresh: boolean = false) => {
     const placements = placement ? [placement] : ['header', 'regular', 'sidebar', 'hero-banner', 'mid-content', 'bottom-content', 'article-top', 'article-mid', 'article-bottom', 'article-final', 'content-ad', 'breaking-pre', 'breaking-post'];
-    // console.log('🎯 AdsContext: Refreshing ads for placements:', placements);
+    console.log('🎯 AdsContext: Refreshing ads for placements:', placements, 'forceRefresh:', forceRefresh);
     
     setLoading(true);
     setError(null);
 
     try {
       const fetchPromises = placements.map(async (p) => {
-        if (!shouldRefresh(p) && ads[p]) {
-          // console.log(`🎯 AdsContext: Using cached ads for ${p}:`, ads[p]);
+        if (!forceRefresh && !shouldRefresh(p) && ads[p]) {
+          console.log(`🎯 AdsContext: Using cached ads for ${p}:`, ads[p]);
           return { placement: p, ads: ads[p] };
         }
 
         try {
-          // console.log(`🎯 AdsContext: Fetching fresh ads for ${p}`);
+          console.log(`🎯 AdsContext: Fetching fresh ads for ${p}`);
           const response = await adsAPI.getAds(p, 5);
-          // console.log(`🎯 AdsContext: Response for ${p}:`, response);
+          console.log(`🎯 AdsContext: Response for ${p}:`, response);
           
           if (response.success) {
             setLastFetch(prev => ({ ...prev, [p]: Date.now() }));
@@ -99,9 +100,31 @@ export const AdsProvider: React.FC<AdsProviderProps> = ({ children }) => {
     }
   };
 
+  const forceRefreshAds = async (placement?: string) => {
+    console.log('🎯 AdsContext: Force refreshing ads...');
+    setLastFetch({}); // Clear cache
+    await refreshAds(placement, true);
+  };
+
   // Initial load
   useEffect(() => {
     refreshAds();
+    
+    // Add global debug function
+    if (typeof window !== 'undefined') {
+      (window as any).forceRefreshAds = forceRefreshAds;
+      (window as any).clearAdsCache = () => {
+        console.log('🎯 Clearing ads cache...');
+        setLastFetch({});
+        setAds({});
+        forceRefreshAds();
+      };
+      (window as any).getAdsDebug = () => {
+        console.log('🎯 Current ads state:', ads);
+        console.log('🎯 Last fetch times:', lastFetch);
+        return { ads, lastFetch };
+      };
+    }
   }, []);
 
   // Auto-refresh every 10 minutes
@@ -119,6 +142,7 @@ export const AdsProvider: React.FC<AdsProviderProps> = ({ children }) => {
     error,
     getAdsForPlacement,
     refreshAds,
+    forceRefreshAds,
     trackClick
   };
 
