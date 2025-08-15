@@ -121,22 +121,27 @@ const categoryController = {
 
       console.log(`🏷️ Getting posts for category: ${slug}`);
 
-      // Query to get posts by term slug
+      // Query to get posts by term slug with metadata
       const query = `
         SELECT DISTINCT 
           p.ID as id,
           p.post_title as title,
           p.post_content as content,
           p.post_excerpt as excerpt,
+          p.post_name as slug,
           p.post_date as date,
           p.post_modified as modified,
           u.display_name as author_name,
-          u.ID as author_id
+          u.ID as author_id,
+          thumbnail_meta.meta_value as thumbnail_id,
+          thumbnail_post.guid as featured_image
         FROM posts p
         LEFT JOIN users u ON p.post_author = u.ID
         LEFT JOIN term_relationships tr ON p.ID = tr.object_id
         LEFT JOIN term_taxonomy tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
         LEFT JOIN terms t ON tt.term_id = t.term_id
+        LEFT JOIN postmeta thumbnail_meta ON p.ID = thumbnail_meta.post_id AND thumbnail_meta.meta_key = '_thumbnail_id'
+        LEFT JOIN posts thumbnail_post ON thumbnail_meta.meta_value = thumbnail_post.ID
         WHERE p.post_status = 'publish'
         AND p.post_type = 'post'
         AND t.slug = ?

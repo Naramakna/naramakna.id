@@ -6,10 +6,10 @@ require('dotenv').config();
 
 // Database configuration
 const getDbConfig = () => ({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'naramakna_user',
-  password: process.env.DB_PASSWORD || 'password',
-  database: process.env.DB_NAME || 'naramakna_clean'
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME
 });
 
 // Public routes - no authentication required
@@ -17,21 +17,12 @@ router.get('/test', (req, res) => {
   res.json({ success: true, message: 'Polling routes working', timestamp: new Date().toISOString() });
 });
 router.get('/active', async (req, res) => {
-  console.log('🟢 Async route handler called');
-  console.log('🟢 req exists:', !!req);
-  console.log('🟢 req.query:', req.query);
-  
   try {
     const { limit = 10, offset = 0 } = req.query;
-    console.log('🟢 Parsed params - limit:', limit, 'offset:', offset);
     
     // Use mysql2 directly for now to bypass sequelize issue
     const mysql = require('mysql2/promise');
-    console.log('🟢 MySQL loaded');
-    
     const connection = await mysql.createConnection(getDbConfig());
-    
-    console.log('🟢 Database connected');
     
     // Get polls with options using JOIN
     const [pollsData] = await connection.query(`
@@ -53,19 +44,13 @@ router.get('/active', async (req, res) => {
       ORDER BY p.created_at DESC, po.option_order ASC
     `);
     
-    console.log('🟢 Found joined data rows:', pollsData.length);
-    if (pollsData.length > 0) {
-      console.log('🟢 First row sample:', JSON.stringify(pollsData[0]));
-    }
+    // Process polling data
     
     // Group by poll_id
     const pollsMap = new Map();
     
     pollsData.forEach((row, index) => {
-      console.log(`🟢 Processing row ${index}:`, row.poll_id, row.option_id, row.option_text);
-      
       if (!pollsMap.has(row.poll_id)) {
-        console.log('🟢 Creating new poll:', row.poll_id);
                    pollsMap.set(row.poll_id, {
              id: row.poll_id.toString(),
              title: row.poll_title,
@@ -83,7 +68,6 @@ router.get('/active', async (req, res) => {
       
       // Add option if exists
       if (row.option_id) {
-        console.log('🟢 Adding option to poll', row.poll_id, ':', row.option_text);
         pollsMap.get(row.poll_id).options.push({
           id: row.option_id.toString(),
           text: row.option_text,
@@ -92,29 +76,13 @@ router.get('/active', async (req, res) => {
       }
     });
     
-    console.log('🟢 PollsMap size:', pollsMap.size);
-    console.log('🟢 PollsMap keys:', Array.from(pollsMap.keys()));
-    
-    // Debug first poll
-    const firstPoll = pollsMap.get(1);
-    if (firstPoll) {
-      console.log('🟢 First poll options count:', firstPoll.options.length);
-      console.log('🟢 First poll options:', JSON.stringify(firstPoll.options));
-    }
-    
     // Convert Map to Array and maintain order by created_at DESC
     const pollsWithOptions = Array.from(pollsMap.values())
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .slice(0, parseInt(limit));
-    console.log('🟢 Processed polls with options:', pollsWithOptions.length);
-    console.log('🟢 Final result first poll options:', pollsWithOptions[0]?.options?.length);
     
     await connection.end();
-    console.log('🟢 Query executed, found polls with options:', pollsWithOptions.length);
-    
     const polls = pollsWithOptions;
-
-    console.log('🟢 Query executed, found polls:', polls.length);
     
     res.json({
       success: true,

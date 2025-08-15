@@ -5,14 +5,8 @@ import { usePolling } from '../../../hooks/usePolling';
 export const PollingGallery: React.FC = () => {
   const { polls, loading, error } = usePolling(8); // Load 8 polls
 
-  // Debug logging
-  console.log('PollingGallery - polls:', polls);
-  console.log('PollingGallery - loading:', loading);
-  console.log('PollingGallery - error:', error);
-
   // Transform polls data to match PollingData interface
   const transformedPolls = polls.map(poll => {
-    console.log('Transforming poll:', poll);
     return {
       id: poll.id.toString(),
       question: poll.question || poll.title,
@@ -20,11 +14,10 @@ export const PollingGallery: React.FC = () => {
       totalVotes: poll.totalVotes || 0,
       endDate: new Date(Date.now() + (poll.daysLeft || 7) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       category: poll.source || 'GENERAL',
-      isActive: true
+      isActive: true,
+      image_url: poll.image_url || null
     };
   });
-
-  console.log('PollingGallery - transformedPolls:', transformedPolls);
 
   return (
     <div className="w-full">
@@ -48,6 +41,7 @@ export const PollingGallery: React.FC = () => {
                 endDate={polling.endDate}
                 category={polling.category}
                 isActive={polling.isActive}
+                image_url={polling.image_url}
               />
             </div>
           ))

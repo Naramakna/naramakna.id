@@ -188,7 +188,7 @@ class AuthController {
           role: user.user_role,
           login: user.user_login
         },
-        process.env.JWT_SECRET || 'fallback-secret',
+        process.env.JWT_SECRET,
         { expiresIn: tokenExpiry }
       );
 
@@ -388,7 +388,7 @@ class AuthController {
         // Generate reset token
         const resetToken = jwt.sign(
           { id: user.ID, type: 'password_reset' },
-          process.env.JWT_SECRET || 'fallback-secret',
+          process.env.JWT_SECRET,
           { expiresIn: '1h' }
         );
 
@@ -430,7 +430,7 @@ class AuthController {
       }
 
       // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
       if (decoded.type !== 'password_reset') {
         return res.status(400).json({
@@ -488,7 +488,7 @@ class AuthController {
     try {
       const { token } = req.params;
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
       if (decoded.type !== 'email_verification') {
         return res.status(400).json({

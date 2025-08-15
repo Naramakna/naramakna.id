@@ -234,9 +234,19 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
               </div>
             </div>
             <div className="p-4 max-h-96 overflow-y-auto scrollbar-hide">
-              {displayNewsItems.slice(1, 6).map((item) => (
-                <NewsItemComponent key={item.id} item={item} />
-              ))}
+              {displayNewsItems.length <= 3 
+                ? displayNewsItems.map((item) => (
+                    <NewsItemComponent key={`popular-${item.id}`} item={item} />
+                  ))
+                : displayNewsItems.slice(1, 6).map((item) => (
+                    <NewsItemComponent key={item.id} item={item} />
+                  ))
+              }
+              {displayNewsItems.length <= 3 && displayNewsItems.length > 0 && (
+                <div className="text-sm text-gray-500 text-center py-2 italic">
+                  Menampilkan semua artikel tersedia
+                </div>
+              )}
             </div>
           </div>
 
@@ -249,9 +259,19 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
               </div>
             </div>
             <div className="p-4 max-h-96 overflow-y-auto scrollbar-hide">
-              {displayNewsItems.slice(6, 10).map((item) => (
-                <NewsItemComponent key={item.id} item={item} />
-              ))}
+              {displayNewsItems.length <= 3 
+                ? displayNewsItems.map((item) => (
+                    <NewsItemComponent key={`latest-${item.id}`} item={item} />
+                  ))
+                : displayNewsItems.slice(6, 10).map((item) => (
+                    <NewsItemComponent key={item.id} item={item} />
+                  ))
+              }
+              {displayNewsItems.length <= 3 && displayNewsItems.length > 0 && (
+                <div className="text-sm text-gray-500 text-center py-2 italic">
+                  Menampilkan semua artikel tersedia
+                </div>
+              )}
             </div>
           </div>
 

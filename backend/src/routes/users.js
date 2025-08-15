@@ -12,6 +12,13 @@ const { authenticate, requireAdmin, requireSuperAdmin } = require('../middleware
 router.get('/', authenticate, requireAdmin, UserController.getUsers);
 
 /**
+ * @route   GET /api/users/check/:username
+ * @desc    Check if username exists (public endpoint for routing)
+ * @access  Public
+ */
+router.get('/check/:username', UserController.checkUserExists);
+
+/**
  * @route   GET /api/users/stats
  * @desc    Get user statistics
  * @access  Admin+

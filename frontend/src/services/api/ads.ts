@@ -9,10 +9,11 @@ export interface Advertisement {
   target_url?: string;
   ad_content?: string;
   google_ads_code?: string;
-  placement_type: 'header' | 'regular' | 'sidebar' | 'inline' | 'footer' | 'popup';
+  placement_type: 'header' | 'regular' | 'sidebar' | 'inline' | 'footer' | 'popup' | 'hero-banner' | 'mid-content' | 'bottom-content' | 'article-top' | 'article-mid' | 'article-bottom' | 'article-final' | 'content-ad' | 'breaking-pre' | 'breaking-post';
   advertiser?: string;
   start_date: string;
   end_date: string;
+  budget?: number;
   impressions: number;
   clicks: number;
   status: 'pending' | 'active' | 'paused' | 'finished' | 'rejected';
@@ -133,6 +134,36 @@ export const adsAPI = {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({ status })
+    });
+    return response.json();
+  },
+
+  // Update advertisement (admin only)
+  async updateAd(adId: string, adData: CreateAdRequest): Promise<CreateAdResponse> {
+    const token = localStorage.getItem('token');
+    const response = await fetch(buildApiUrl(`ads/${adId}`), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(adData)
+    });
+    return response.json();
+  },
+
+  // Upload ad image (admin only)
+  async uploadAdImage(file: File): Promise<{success: boolean; data?: {fullUrl: string; imageUrl: string; filename: string}; message?: string}> {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('adImage', file);
+    
+    const response = await fetch(buildApiUrl('ads/upload'), {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
     });
     return response.json();
   }

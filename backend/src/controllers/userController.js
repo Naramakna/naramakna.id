@@ -67,6 +67,63 @@ class UserController {
     }
   }
 
+  // Check if username exists (public endpoint for routing)
+  static async checkUserExists(req, res) {
+    try {
+      const { username } = req.params;
+      
+      // Basic validation
+      if (!username || username.length < 3 || username.length > 30) {
+        return res.json({
+          success: true,
+          data: { exists: false }
+        });
+      }
+
+      // Check in database with case insensitive and format variations
+      const user = await User.findOne({
+        where: {
+          [Op.or]: [
+            // Exact matches
+            { user_login: username },
+            { user_nicename: username },
+            { display_name: username },
+            // Case insensitive matches
+            { user_login: username.toLowerCase() },
+            { user_nicename: username.toLowerCase() },
+            { display_name: { [Op.like]: username } },
+            // Handle dash/underscore variations
+            { user_login: username.replace(/-/g, '').toLowerCase() },
+            { user_nicename: username.replace(/-/g, '').toLowerCase() },
+            { display_name: username.replace(/-/g, '') },
+            // Handle camelCase variations
+            { display_name: username.replace(/-/g, '').replace(/\b\w/g, l => l.toUpperCase()) }
+          ]
+        },
+        attributes: ['ID', 'user_login', 'display_name', 'user_nicename']
+      });
+
+      res.json({
+        success: true,
+        data: {
+          exists: !!user,
+          user: user ? {
+            id: user.ID,
+            username: user.user_login,
+            display_name: user.display_name
+          } : null
+        }
+      });
+
+    } catch (error) {
+      console.error('Error checking user existence:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to check user existence'
+      });
+    }
+  }
+
   // Get user by ID
   static async getUser(req, res) {
     try {

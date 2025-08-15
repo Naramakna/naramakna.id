@@ -86,12 +86,13 @@ export const ArticleCardList: React.FC<ArticleCardListProps> = ({
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
-                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        const fallbackDiv = e.currentTarget.parentElement?.querySelector('.fallback-placeholder');
+                        fallbackDiv?.classList.remove('hidden');
                       }}
                     />
                   ) : null}
                   {/* Fallback placeholder when no image */}
-                  <div className={`w-full h-full flex items-center justify-center ${article.featured_image ? 'hidden' : ''}`}>
+                  <div className={`fallback-placeholder w-full h-full flex items-center justify-center ${article.featured_image ? 'hidden' : ''}`}>
                     <div className="text-center">
                       <div className="w-8 h-8 bg-gray-300 rounded-full mx-auto mb-1 flex items-center justify-center">
                         <span className="text-gray-600 text-xs font-bold">A</span>

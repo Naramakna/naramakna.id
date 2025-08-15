@@ -25,7 +25,8 @@ class ContentController {
         status = 'publish',
         author = null,
         sortBy = 'date',
-        sortOrder = 'desc'
+        sortOrder = 'desc',
+        mainCategoriesOnly = null
       } = req.query;
 
       const offset = (page - 1) * limit;
@@ -127,8 +128,31 @@ class ContentController {
         // }
       ];
 
+      // Main categories filter for homepage
+      if (mainCategoriesOnly === 'true') {
+        const mainCategorySlugs = [
+          'narapandang', 'pelakon', 'laga-gaya', 'wahana', 'olah-bola', 
+          'cerita-rasa', 'akal-budi', 'horison', 'dunia',
+          'pendidikan', 'budaya', 'teknologi' // Include sub-categories
+        ];
+        
+        const mainCategorySubquery = `
+          SELECT tr.object_id 
+          FROM term_relationships tr
+          JOIN term_taxonomy tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+          JOIN terms t ON tt.term_id = t.term_id
+          WHERE t.slug IN ('${mainCategorySlugs.join("', '")}') 
+          AND tt.taxonomy = 'category'
+        `;
+        
+        whereClause.ID = {
+          [Op.in]: sequelize.literal(`(${mainCategorySubquery})`)
+        };
+        
+        console.log('🏠 Applied main categories filter for homepage');
+      }
       // Category filtering using raw SQL subquery
-      if (category) {
+      else if (category) {
         // Use subquery to find posts that belong to the category
         const categorySubquery = `
           SELECT tr.object_id 
@@ -899,6 +923,16 @@ class ContentController {
       let whereClause = `tt.taxonomy IN ('category', 'newstopic', 'post_tag') AND tt.count >= ${minCount}`;
       if (taxonomy) {
         whereClause = `tt.taxonomy = '${taxonomy}' AND tt.count >= ${minCount}`;
+      }
+      
+      // Special filter for main categories only
+      if (req.query.mainCategoriesOnly === 'true') {
+        const mainCategorySlugs = [
+          'narapandang', 'pelakon', 'laga-gaya', 'wahana', 'olah-bola', 
+          'cerita-rasa', 'akal-budi', 'horison', 'dunia',
+          'pendidikan', 'budaya', 'teknologi', 'uncategorized'
+        ];
+        whereClause = `tt.taxonomy = 'category' AND t.slug IN ('${mainCategorySlugs.join("', '")}') AND tt.count >= ${minCount}`;
       }
       
       // Use raw SQL to get real categories from database

@@ -4,10 +4,10 @@ const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
 const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'naramakna_user',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'naramakna_clean',
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
   dialect: 'mysql',
   pool: {
     max: 20,        // Increased from 5 to 20
