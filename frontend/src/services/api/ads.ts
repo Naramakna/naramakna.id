@@ -138,5 +138,4 @@ export const adsAPI = {
   }
 };
 
-// Explicit type exports for better compatibility
-export type { Advertisement, AdsResponse, CreateAdRequest, CreateAdResponse };
+

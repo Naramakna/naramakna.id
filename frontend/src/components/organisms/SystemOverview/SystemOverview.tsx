@@ -135,6 +135,52 @@ export const SystemOverview: React.FC<SystemOverviewProps> = ({ stats }) => {
                     </div>
                   </div>
 
+                  {/* Quick Actions */}
+                  <div className="border-t pt-6">
+                    <h3 className="text-base font-medium text-gray-900 mb-4">Quick Actions</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <a
+                        href="/admin/youtube"
+                        className="bg-red-50 hover:bg-red-100 p-4 rounded-lg border border-red-200 transition-colors group"
+                      >
+                        <div className="flex items-center">
+                          <span className="text-2xl mr-3">📺</span>
+                          <div>
+                            <p className="text-sm font-medium text-red-800 group-hover:text-red-900">YouTube Management</p>
+                            <p className="text-red-600 text-xs">Upload & manage videos</p>
+                          </div>
+                        </div>
+                      </a>
+                      
+                      <a
+                        href="/tulis"
+                        className="bg-blue-50 hover:bg-blue-100 p-4 rounded-lg border border-blue-200 transition-colors group"
+                      >
+                        <div className="flex items-center">
+                          <span className="text-2xl mr-3">✍️</span>
+                          <div>
+                            <p className="text-sm font-medium text-blue-800 group-hover:text-blue-900">Create Article</p>
+                            <p className="text-blue-600 text-xs">Write new content</p>
+                          </div>
+                        </div>
+                      </a>
+
+                      <a
+                        href="#"
+                        onClick={() => window.location.reload()}
+                        className="bg-green-50 hover:bg-green-100 p-4 rounded-lg border border-green-200 transition-colors group"
+                      >
+                        <div className="flex items-center">
+                          <span className="text-2xl mr-3">🔄</span>
+                          <div>
+                            <p className="text-sm font-medium text-green-800 group-hover:text-green-900">Refresh Data</p>
+                            <p className="text-green-600 text-xs">Update dashboard</p>
+                          </div>
+                        </div>
+                      </a>
+                    </div>
+                  </div>
+
                   {/* System Health */}
                   <div className="border-t pt-6">
                     <h3 className="text-base font-medium text-gray-900 mb-4">System Health</h3>
