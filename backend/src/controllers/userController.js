@@ -80,16 +80,27 @@ class UserController {
         });
       }
 
-      // Check in database
+      // Check in database with case insensitive and format variations
       const user = await User.findOne({
         where: {
           [Op.or]: [
+            // Exact matches
             { user_login: username },
             { user_nicename: username },
-            { display_name: username }
+            { display_name: username },
+            // Case insensitive matches
+            { user_login: username.toLowerCase() },
+            { user_nicename: username.toLowerCase() },
+            { display_name: { [Op.like]: username } },
+            // Handle dash/underscore variations
+            { user_login: username.replace(/-/g, '').toLowerCase() },
+            { user_nicename: username.replace(/-/g, '').toLowerCase() },
+            { display_name: username.replace(/-/g, '') },
+            // Handle camelCase variations
+            { display_name: username.replace(/-/g, '').replace(/\b\w/g, l => l.toUpperCase()) }
           ]
         },
-        attributes: ['ID', 'user_login', 'display_name']
+        attributes: ['ID', 'user_login', 'display_name', 'user_nicename']
       });
 
       res.json({

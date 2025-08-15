@@ -177,9 +177,9 @@ User.prototype.generateToken = function() {
       email: this.user_email,
       role: this.user_role
     },
-    process.env.JWT_SECRET || 'fallback-secret',
+    process.env.JWT_SECRET,
     { 
-      expiresIn: process.env.JWT_EXPIRES_IN || '7d' 
+      expiresIn: process.env.JWT_EXPIRES_IN 
     }
   );
 };

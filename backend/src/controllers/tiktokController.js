@@ -9,17 +9,17 @@ require('dotenv').config();
 // TikTok API Configuration
 const TIKTOK_CONFIG = {
   BASE_URL: 'https://open.tiktokapis.com',
-  CLIENT_KEY: process.env.TIKTOK_CLIENT_KEY || 'your_client_key',
-  CLIENT_SECRET: process.env.TIKTOK_CLIENT_SECRET || 'your_client_secret',
-  REDIRECT_URI: process.env.TIKTOK_REDIRECT_URI || 'http://localhost:3001/api/tiktok/callback'
+  CLIENT_KEY: process.env.TIKTOK_CLIENT_KEY,
+  CLIENT_SECRET: process.env.TIKTOK_CLIENT_SECRET,
+  REDIRECT_URI: process.env.TIKTOK_REDIRECT_URI
 };
 
 // Database configuration
 const getDbConfig = () => ({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'naramakna_user',
-  password: process.env.DB_PASSWORD || 'password',
-  database: process.env.DB_NAME || 'naramakna_clean'
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME
 });
 
 class TikTokController {

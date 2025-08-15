@@ -44,20 +44,46 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
   useEffect(() => {
     if (username && !isOwnProfile) {
       setIsLoadingProfile(true);
-      // TODO: Implement API call to fetch user profile by username
-      // For now, we'll use mock data
-      setTimeout(() => {
-        setProfileUser({
-          display_name: 'nara makna',
-          user_login: username,
-          user_email: 'nara@example.com',
-          user_role: 'writer',
-          profile_image: null,
-          bio: null,
-          profile: null
-        });
-        setIsLoadingProfile(false);
-      }, 500);
+      
+      const fetchUserProfile = async () => {
+        try {
+          console.log('🔍 Fetching profile for username:', username);
+          
+          // First check if user exists
+          const checkResponse = await fetch(`/api/users/check/${encodeURIComponent(username)}`);
+          const checkData = await checkResponse.json();
+          
+          if (!checkData.success || !checkData.data.exists) {
+            console.log('❌ User not found:', username);
+            setProfileUser(null);
+            setIsLoadingProfile(false);
+            return;
+          }
+          
+          // User exists, fetch full profile
+          const userInfo = checkData.data.user;
+          setProfileUser({
+            ID: userInfo.id,
+            id: userInfo.id, 
+            display_name: userInfo.display_name,
+            user_login: userInfo.username,
+            user_email: null, // Privacy: don't expose email
+            user_role: 'user', // Default role for privacy
+            profile_image: null,
+            bio: null,
+            profile: null
+          });
+          
+          console.log('✅ Profile fetched successfully:', userInfo);
+        } catch (error) {
+          console.error('❌ Error fetching user profile:', error);
+          setProfileUser(null);
+        } finally {
+          setIsLoadingProfile(false);
+        }
+      };
+      
+      fetchUserProfile();
     }
   }, [username, isOwnProfile]);
 

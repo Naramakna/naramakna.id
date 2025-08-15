@@ -31,24 +31,32 @@ const AsyncUsernameRoute: React.FC<{ username: string }> = ({ username }) => {
   useEffect(() => {
     const validateUsername = async () => {
       try {
+        console.log('🔍 AsyncUsernameRoute: Validating username:', username);
+        
         // Basic validation first
         if (!username || username.length < 3 || username.length > 30) {
+          console.log('❌ Basic validation failed for username:', username);
           setUserExists(false);
           setIsValidating(false);
           return;
         }
 
         // Check with backend
-        const response = await fetch(`/api/users/check/${encodeURIComponent(username)}`);
+        const url = `/api/users/check/${encodeURIComponent(username)}`;
+        console.log('🌐 Fetching:', url);
+        const response = await fetch(url);
         const data = await response.json();
+        console.log('📡 Response:', data);
         
         if (data.success) {
           setUserExists(data.data.exists);
+          console.log(`✅ User exists: ${data.data.exists}`);
         } else {
           setUserExists(false);
+          console.log('❌ API returned error');
         }
       } catch (error) {
-        console.error('Error validating username:', error);
+        console.error('❌ Error validating username:', error);
         setUserExists(false);
       } finally {
         setIsValidating(false);
@@ -169,9 +177,11 @@ const SimpleRouter: React.FC = () => {
       
       // Check if it's a username route (/@username or /username)
       // Now uses database validation instead of blacklists
+      // Allow dashes anywhere in username, more flexible pattern
       const usernameMatch = path.match(/^\/(@)?([a-zA-Z0-9][a-zA-Z0-9_.@-]{2,29})$/);
       if (usernameMatch) {
         const username = usernameMatch[2];
+        // console.log('🔍 Username match found:', username);
         return <AsyncUsernameRoute username={username} />;
       }
       
