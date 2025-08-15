@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { VideoItem } from '../../atoms/VideoItem';
+import { useYouTubeVideos } from '../../../hooks/useYouTube';
+import type { YouTubeVideo } from '../../../services/api/youtube';
 
 interface VideoData {
   id: string;
@@ -23,7 +25,33 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Dummy data untuk video stories
+  // Fetch YouTube videos
+  const { videos: youtubeVideos, loading, error } = useYouTubeVideos(false);
+
+  // Helper function to convert YouTube data to VideoData format
+  const convertYouTubeToVideoData = (ytVideo: YouTubeVideo): VideoData => {
+    // Format duration from seconds to MM:SS
+    const formatDuration = (seconds: number): string => {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    return {
+      id: ytVideo.id.toString(),
+      title: ytVideo.title || 'Untitled Video',
+      source: ytVideo.youtube_channel_name || 'naramaknaTV',
+      duration: ytVideo.duration ? formatDuration(ytVideo.duration) : '00:00',
+      tag: 'YOUTUBE VIDEO',
+      imageSrc: ytVideo.thumbnail_url,
+      href: `/video/${ytVideo.id}`
+    };
+  };
+
+  // Convert YouTube videos to VideoData format
+  const youtubeVideoData: VideoData[] = youtubeVideos.slice(0, 8).map(convertYouTubeToVideoData);
+
+  // Dummy data untuk fallback when no YouTube videos or error
   const defaultVideos: VideoData[] = [
     {
       id: '1',
@@ -62,7 +90,15 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
     }
   ];
 
-  const displayVideos = videos.length > 0 ? videos : defaultVideos;
+  // Priority: props videos > YouTube API data > fallback dummy data
+  let displayVideos: VideoData[];
+  if (videos.length > 0) {
+    displayVideos = videos;
+  } else if (youtubeVideoData.length > 0) {
+    displayVideos = youtubeVideoData;
+  } else {
+    displayVideos = defaultVideos;
+  }
 
   const handleNext = () => {
     if (scrollContainerRef.current) {
@@ -102,7 +138,9 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
                           <div className="flex items-center mb-6">
                     <div className="flex items-center space-x-2">
                       <div className="w-1 h-6 bg-naramakna-gold rounded-full"></div>
-                      <h2 className="text-xl font-semibold text-gray-900">Video Story</h2>
+                      <h2 className="text-xl font-semibold text-gray-900">
+                        {youtubeVideoData.length > 0 ? 'YouTube Videos' : 'Video Story'}
+                      </h2>
                     </div>
                   </div>
 

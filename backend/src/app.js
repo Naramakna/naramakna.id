@@ -31,6 +31,7 @@ const corsOptions = {
       'https://dev.naramakna.id:3001',
       'http://app.dev.naramakna.id:5173',
       'https://app.dev.naramakna.id:5173',
+      'https://app.dev.naramakna.id',
       // Production - add your domains here
       'https://naramakna.id',
       'https://www.naramakna.id',
@@ -99,12 +100,21 @@ const approvalRoutes = require('./routes/approval');
 const analyticsRoutes = require('./routes/analytics');
 const adsRoutes = require('./routes/ads');
 const tiktokRoutes = require('./routes/tiktok');
+const youtubeRoutes = require('./routes/youtube');
+const seoRoutes = require('./routes/seo');
+const seoController = require('./controllers/seoController');
 const writerRoutes = require('./routes/writer');
 const commentRoutes = require('./routes/comments');
 const adminRoutes = require('./routes/admin');
 const categoryRoutes = require('./routes/category');
 const pollingRoutes = require('./routes/polling');
+const schedulerRoutes = require('./routes/scheduler');
 // const taxonomyRoutes = require('./routes/taxonomy'); // TODO: Implement
+
+// Initialize scheduler for auto-publishing posts
+if (process.env.NODE_ENV !== 'test') {
+  require('../cron/scheduler');
+}
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -115,11 +125,18 @@ app.use('/api/approval', approvalRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/ads', adsRoutes);
 app.use('/api/tiktok', tiktokRoutes);
+app.use('/api/youtube', youtubeRoutes);
+app.use('/api/seo', seoRoutes);
+
+// SEO routes at root level
+app.get('/sitemap.xml', seoController.generateSitemap);
+app.get('/robots.txt', seoController.generateRobotsTxt);
 app.use('/api/writer', writerRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/category', categoryRoutes);
 app.use('/api/polling', pollingRoutes);
+app.use('/api/scheduler', schedulerRoutes);
 // app.use('/api/taxonomy', taxonomyRoutes); // TODO: Implement
 
 // Halaman utama API
@@ -130,16 +147,27 @@ app.get('/api', (req, res) => {
         endpoints: {
             content: '/api/content',
             analytics: '/api/analytics', 
-            ads: '/api/ads'
+            ads: '/api/ads',
+            tiktok: '/api/tiktok'
         },
         features: [
             'Universal Content System (Articles, YouTube, TikTok)',
             'Advanced Analytics Tracking',
             'Advertisement Management',
             'Real-time Metrics',
-            'Hybrid Database Architecture'
+            'Hybrid Database Architecture',
+            'TikTok Integration'
         ]
     });
+});
+
+// Static pages for TikTok app requirements
+app.get('/terms', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/terms.html'));
+});
+
+app.get('/privacy', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/privacy.html'));
 });
 
 // Global error handler (must be last)

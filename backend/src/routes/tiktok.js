@@ -1,305 +1,360 @@
-// Routes untuk integrasi TikTok API
 const express = require('express');
-const tiktokService = require('../services/tiktokService');
-const ContentHelpers = require('../models/ContentHelpers');
-const { requireAuth, requireRole } = require('../middleware/auth');
-const logger = require('../utils/logger');
-
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const TikTokController = require('../controllers/tiktokController');
+const { authenticate, requireRole } = require('../middleware/auth');
 
-/**
- * @route   GET /api/tiktok/auth
- * @desc    Get TikTok OAuth authorization URL
- * @access  Private (Admin/Writer)
- */
-router.get('/auth', requireAuth, requireRole(['admin', 'writer']), (req, res) => {
-  try {
-    const state = `tiktok_auth_${req.user.ID}_${Date.now()}`;
-    const authURL = tiktokService.getAuthURL(state);
-    
-    // Store state in session or cache for verification
-    req.session.tiktokAuthState = state;
-    
-    res.json({
-      success: true,
-      authURL,
-      message: 'TikTok authorization URL generated'
-    });
-  } catch (error) {
-    logger.error('TikTok auth URL generation failed:', error.message);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to generate TikTok authorization URL',
-      error: error.message
-    });
+// Configure multer for video file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, '../../uploads/tiktok/'));
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'video-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
-/**
- * @route   POST /api/tiktok/callback
- * @desc    Handle TikTok OAuth callback
- * @access  Private (Admin/Writer)
- */
-router.post('/callback', requireAuth, requireRole(['admin', 'writer']), async (req, res) => {
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 500 * 1024 * 1024, // 500MB limit for TikTok videos
+    fieldSize: 10 * 1024 * 1024  // 10MB for other fields
+  },
+  fileFilter: function (req, file, cb) {
+    // Check if file is a video
+    if (file.mimetype.startsWith('video/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only video files are allowed'), false);
+    }
+  }
+});
+
+// Public routes
+router.get('/test', (req, res) => {
+  res.json({ 
+    success: true, 
+    message: 'TikTok routes working', 
+    timestamp: new Date().toISOString() 
+  });
+});
+
+// Get TikTok videos for public display
+router.get('/videos', TikTokController.getVideos);
+
+// Track video view (public - no auth required)
+router.post('/track-view', TikTokController.trackView);
+
+// Authentication required routes
+router.use(authenticate);
+
+// OAuth routes - Admin/Superadmin only
+router.get('/auth-url', requireRole(['admin', 'superadmin']), TikTokController.getAuthUrl);
+router.get('/callback', requireRole(['admin', 'superadmin']), TikTokController.handleCallback);
+
+// Video upload - Admin/Superadmin only
+router.post('/upload', 
+  requireRole(['admin', 'superadmin']), 
+  upload.single('video'), 
+  TikTokController.uploadVideo
+);
+
+// Check upload status - Admin/Superadmin only
+router.get('/upload-status/:publish_id', 
+  requireRole(['admin', 'superadmin']), 
+  TikTokController.getUploadStatus
+);
+
+// Sync videos from TikTok account - Superadmin only
+router.post('/sync-videos', 
+  requireRole(['superadmin']), 
+  TikTokController.syncVideos
+);
+
+// Admin video management routes
+router.get('/admin/videos', requireRole(['admin', 'superadmin']), async (req, res) => {
   try {
-    const { code, state } = req.body;
+    const { limit = 50, offset = 0, status, search } = req.query;
     
-    // Verify state parameter
-    if (!state || state !== req.session.tiktokAuthState) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid state parameter'
-      });
+    const mysql = require('mysql2/promise');
+    const getDbConfig = () => ({
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER || 'naramakna_user',
+      password: process.env.DB_PASSWORD || 'password',
+      database: process.env.DB_NAME || 'naramakna_clean'
+    });
+    
+    const connection = await mysql.createConnection(getDbConfig());
+    
+    let whereClause = "WHERE 1=1";
+    let params = [];
+    
+    if (status) {
+      whereClause += " AND tv.publish_status = ?";
+      params.push(status);
     }
     
-    // Exchange code for access token
-    const tokenData = await tiktokService.getAccessToken(code);
+    if (search) {
+      whereClause += " AND (tv.title LIKE ? OR tv.description LIKE ? OR tv.tiktok_username LIKE ?)";
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
     
-    // Get user profile to verify connection
-    tiktokService.setAccessToken(tokenData.access_token);
-    const profile = await tiktokService.getUserProfile();
+    params.push(parseInt(limit), parseInt(offset));
     
-    // Store token securely (implement your own token storage logic)
-    // For now, just set it in service for current session
+    const [videos] = await connection.query(`
+      SELECT 
+        tv.*,
+        u.username as uploaded_by_username,
+        (tv.tiktok_like_count + tv.tiktok_share_count + tv.tiktok_comment_count) as total_engagement,
+        CASE 
+          WHEN tv.tiktok_view_count > 0 THEN 
+            ((tv.tiktok_like_count + tv.tiktok_share_count + tv.tiktok_comment_count) / tv.tiktok_view_count * 100)
+          ELSE 0 
+        END as engagement_rate,
+        (SELECT COUNT(*) FROM tiktok_video_views tvv 
+         WHERE tvv.video_id = tv.id AND tvv.viewed_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as views_last_24h
+      FROM tiktok_videos tv
+      LEFT JOIN users u ON tv.uploaded_by = u.ID
+      ${whereClause}
+      ORDER BY tv.created_at DESC
+      LIMIT ? OFFSET ?
+    `, params);
     
-    // Clear auth state
-    delete req.session.tiktokAuthState;
+    // Get total count
+    const [countResult] = await connection.query(`
+      SELECT COUNT(*) as total
+      FROM tiktok_videos tv
+      LEFT JOIN users u ON tv.uploaded_by = u.ID
+      ${whereClause.replace('LIMIT ? OFFSET ?', '')}
+    `, params.slice(0, -2));
+    
+    await connection.end();
     
     res.json({
       success: true,
-      message: 'TikTok account connected successfully',
-      profile: {
-        display_name: profile.display_name,
-        avatar_url: profile.avatar_url,
-        follower_count: profile.follower_count,
-        video_count: profile.video_count
+      data: {
+        videos: videos,
+        pagination: {
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          total: countResult[0].total
+        }
       }
     });
     
-    logger.info(`TikTok account connected for user ${req.user.user_login}: ${profile.display_name}`);
   } catch (error) {
-    logger.error('TikTok callback failed:', error.message);
+    console.error('Error fetching admin videos:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to connect TikTok account',
+      message: 'Failed to fetch videos',
       error: error.message
     });
   }
 });
 
-/**
- * @route   GET /api/tiktok/profile
- * @desc    Get connected TikTok profile information
- * @access  Private (Admin/Writer)
- */
-router.get('/profile', requireAuth, requireRole(['admin', 'writer']), async (req, res) => {
+// Get TikTok connection status
+router.get('/connection-status', requireRole(['admin', 'superadmin']), async (req, res) => {
   try {
-    if (!tiktokService.isTokenValid()) {
-      return res.status(401).json({
-        success: false,
-        message: 'TikTok not connected or token expired'
+    const userId = req.user.id;
+    
+    const mysql = require('mysql2/promise');
+    const getDbConfig = () => ({
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER || 'naramakna_user',
+      password: process.env.DB_PASSWORD || 'password',
+      database: process.env.DB_NAME || 'naramakna_clean'
+    });
+    
+    const connection = await mysql.createConnection(getDbConfig());
+    
+    const [tokens] = await connection.query(`
+      SELECT 
+        tiktok_username, tiktok_display_name, tiktok_avatar_url,
+        can_upload, can_read_profile, expires_at, last_used_at,
+        CASE 
+          WHEN expires_at IS NULL OR expires_at > NOW() THEN TRUE 
+          ELSE FALSE 
+        END as is_valid
+      FROM tiktok_tokens 
+      WHERE user_id = ? AND is_active = TRUE
+      ORDER BY created_at DESC LIMIT 1
+    `, [userId]);
+    
+    await connection.end();
+    
+    if (tokens.length > 0) {
+      res.json({
+        success: true,
+        data: {
+          connected: true,
+          account: tokens[0]
+        }
+      });
+    } else {
+      res.json({
+        success: true,
+        data: {
+          connected: false
+        }
       });
     }
     
-    const profile = await tiktokService.getUserProfile();
-    
-    res.json({
-      success: true,
-      profile
-    });
   } catch (error) {
-    logger.error('Failed to get TikTok profile:', error.message);
+    console.error('Error checking TikTok connection:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get TikTok profile',
+      message: 'Failed to check connection status',
       error: error.message
     });
   }
 });
 
-/**
- * @route   GET /api/tiktok/videos
- * @desc    Get TikTok user videos
- * @access  Private (Admin/Writer)
- */
-router.get('/videos', requireAuth, requireRole(['admin', 'writer']), async (req, res) => {
+// Disconnect TikTok account
+router.delete('/disconnect', requireRole(['admin', 'superadmin']), async (req, res) => {
   try {
-    if (!tiktokService.isTokenValid()) {
-      return res.status(401).json({
-        success: false,
-        message: 'TikTok not connected or token expired'
-      });
-    }
+    const userId = req.user.id;
     
-    const { cursor, maxId } = req.query;
-    const result = await tiktokService.getUserVideos(cursor, maxId);
-    
-    res.json({
-      success: true,
-      ...result
-    });
-  } catch (error) {
-    logger.error('Failed to get TikTok videos:', error.message);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to get TikTok videos',
-      error: error.message
-    });
-  }
-});
-
-/**
- * @route   POST /api/tiktok/sync
- * @desc    Manually trigger TikTok content sync
- * @access  Private (Admin/Writer)
- */
-router.post('/sync', requireAuth, requireRole(['admin', 'writer']), async (req, res) => {
-  try {
-    if (!tiktokService.isTokenValid()) {
-      return res.status(401).json({
-        success: false,
-        message: 'TikTok not connected or token expired'
-      });
-    }
-    
-    const syncResult = await tiktokService.syncUserContent();
-    
-    // Process and save videos to database
-    let savedCount = 0;
-    const errors = [];
-    
-    for (const video of syncResult.videos) {
-      try {
-        // Convert TikTok video to our post format
-        const videoData = {
-          videoId: video.id,
-          description: video.video_description || video.title || '',
-          username: syncResult.profile.display_name,
-          displayName: syncResult.profile.display_name,
-          createdTime: new Date(video.create_time * 1000),
-          playCount: video.view_count || 0,
-          likeCount: video.like_count || 0,
-          shareCount: video.share_count || 0,
-          commentCount: video.comment_count || 0,
-          coverUrl: video.cover_image_url,
-          shareUrl: video.share_url,
-          embedHtml: video.embed_html,
-          embedLink: video.embed_link,
-          duration: video.duration,
-          width: video.width,
-          height: video.height
-        };
-        
-        await ContentHelpers.createTikTokVideo(videoData, req.user.ID);
-        savedCount++;
-      } catch (error) {
-        errors.push({
-          videoId: video.id,
-          error: error.message
-        });
-      }
-    }
-    
-    res.json({
-      success: true,
-      message: `TikTok sync completed successfully`,
-      stats: {
-        totalFetched: syncResult.totalFetched,
-        totalFiltered: syncResult.totalFiltered,
-        savedCount,
-        errorCount: errors.length
-      },
-      errors: errors.length > 0 ? errors : undefined
+    const mysql = require('mysql2/promise');
+    const getDbConfig = () => ({
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER || 'naramakna_user',
+      password: process.env.DB_PASSWORD || 'password',
+      database: process.env.DB_NAME || 'naramakna_clean'
     });
     
-    logger.info(`TikTok sync completed for user ${req.user.user_login}: ${savedCount} videos saved`);
-  } catch (error) {
-    logger.error('TikTok sync failed:', error.message);
-    res.status(500).json({
-      success: false,
-      message: 'TikTok sync failed',
-      error: error.message
-    });
-  }
-});
-
-/**
- * @route   GET /api/tiktok/status
- * @desc    Get TikTok integration status
- * @access  Private (Admin/Writer)
- */
-router.get('/status', requireAuth, requireRole(['admin', 'writer']), (req, res) => {
-  try {
-    const isConnected = tiktokService.isTokenValid();
+    const connection = await mysql.createConnection(getDbConfig());
     
-    res.json({
-      success: true,
-      connected: isConnected,
-      rateLimitRemaining: tiktokService.rateLimitRemaining,
-      message: isConnected ? 'TikTok is connected' : 'TikTok not connected'
-    });
-  } catch (error) {
-    logger.error('Failed to get TikTok status:', error.message);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to get TikTok status',
-      error: error.message
-    });
-  }
-});
-
-/**
- * @route   DELETE /api/tiktok/disconnect
- * @desc    Disconnect TikTok account
- * @access  Private (Admin/Writer)
- */
-router.delete('/disconnect', requireAuth, requireRole(['admin', 'writer']), (req, res) => {
-  try {
-    // Clear stored tokens
-    tiktokService.setAccessToken(null, null);
+    await connection.query(`
+      UPDATE tiktok_tokens 
+      SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP
+      WHERE user_id = ?
+    `, [userId]);
+    
+    await connection.end();
     
     res.json({
       success: true,
       message: 'TikTok account disconnected successfully'
     });
     
-    logger.info(`TikTok account disconnected for user ${req.user.user_login}`);
   } catch (error) {
-    logger.error('Failed to disconnect TikTok:', error.message);
+    console.error('Error disconnecting TikTok account:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to disconnect TikTok account',
+      message: 'Failed to disconnect account',
       error: error.message
     });
   }
 });
 
-/**
- * @route   GET /api/tiktok/content
- * @desc    Get TikTok content from database
- * @access  Public
- */
-router.get('/content', async (req, res) => {
+// TikTok analytics routes
+router.get('/analytics', requireRole(['admin', 'superadmin']), async (req, res) => {
   try {
-    const { limit = 10, offset = 0 } = req.query;
+    const { 
+      start_date = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      end_date = new Date().toISOString().split('T')[0] 
+    } = req.query;
     
-    const tiktokContent = await ContentHelpers.getContentByType(
-      ContentHelpers.CONTENT_TYPES.TIKTOK_VIDEO,
-      { limit: parseInt(limit), offset: parseInt(offset) }
-    );
+    const mysql = require('mysql2/promise');
+    const getDbConfig = () => ({
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER || 'naramakna_user',
+      password: process.env.DB_PASSWORD || 'password',
+      database: process.env.DB_NAME || 'naramakna_clean'
+    });
+    
+    const connection = await mysql.createConnection(getDbConfig());
+    
+    // Overall stats
+    const [overallStats] = await connection.query(`
+      SELECT 
+        COUNT(*) as total_videos,
+        SUM(tiktok_view_count) as total_tiktok_views,
+        SUM(local_view_count) as total_local_views,
+        SUM(tiktok_like_count) as total_likes,
+        SUM(tiktok_share_count) as total_shares,
+        SUM(tiktok_comment_count) as total_comments,
+        AVG(CASE 
+          WHEN tiktok_view_count > 0 THEN 
+            ((tiktok_like_count + tiktok_share_count + tiktok_comment_count) / tiktok_view_count * 100)
+          ELSE 0 
+        END) as avg_engagement_rate
+      FROM tiktok_videos 
+      WHERE publish_status = 'published'
+        AND created_at BETWEEN ? AND ?
+    `, [start_date, end_date]);
+    
+    // Daily view trends
+    const [dailyViews] = await connection.query(`
+      SELECT 
+        DATE(viewed_at) as date,
+        COUNT(*) as views,
+        COUNT(DISTINCT ip_address) as unique_viewers
+      FROM tiktok_video_views
+      WHERE viewed_at BETWEEN ? AND ?
+      GROUP BY DATE(viewed_at)
+      ORDER BY date
+    `, [start_date, end_date]);
+    
+    // Top performing videos
+    const [topVideos] = await connection.query(`
+      SELECT 
+        id, title, tiktok_video_id, tiktok_view_count, local_view_count,
+        tiktok_like_count, tiktok_share_count, tiktok_comment_count,
+        (tiktok_like_count + tiktok_share_count + tiktok_comment_count) as total_engagement
+      FROM tiktok_videos 
+      WHERE publish_status = 'published'
+        AND created_at BETWEEN ? AND ?
+      ORDER BY total_engagement DESC
+      LIMIT 10
+    `, [start_date, end_date]);
+    
+    await connection.end();
     
     res.json({
       success: true,
-      content: tiktokContent
+      data: {
+        overview: overallStats[0],
+        daily_trends: dailyViews,
+        top_videos: topVideos,
+        date_range: {
+          start_date,
+          end_date
+        }
+      }
     });
+    
   } catch (error) {
-    logger.error('Failed to get TikTok content:', error.message);
+    console.error('Error fetching TikTok analytics:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get TikTok content',
+      message: 'Failed to fetch analytics',
       error: error.message
     });
   }
+});
+
+// Error handling middleware for multer
+router.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        success: false,
+        message: 'File too large. Maximum size is 500MB.'
+      });
+    }
+  }
+  
+  if (error.message === 'Only video files are allowed') {
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+  
+  next(error);
 });
 
 module.exports = router;

@@ -8,7 +8,6 @@ import { UserManagement } from '../../components/organisms/UserManagement';
 import { AdminAnalytics } from './Analytics';
 import { AdminPolling } from './AdminPolling';
 import { AdminAds } from './AdminAds';
-import { TikTokIntegration } from '../../components/organisms/TikTokIntegration';
 
 
 interface User {
@@ -499,9 +498,9 @@ const SuperAdminDashboard: React.FC = () => {
               { id: 'posts', name: 'Posts Management', count: systemStats.totalPosts },
               { id: 'categories', name: 'Categories Management', count: systemStats.totalCategories },
               { id: 'pending-posts', name: 'Pending Posts', count: pendingPosts.length },
-              { id: 'tiktok', name: '🎬 TikTok Integration' },
               { id: 'polling', name: '📊 Polling Management' },
               { id: 'ads', name: '🎯 Ads Management' },
+              { id: 'youtube', name: '📺 YouTube Management' },
               { id: 'analytics', name: 'Analytics & Boost' },
             ]}
             activeTab={activeTab}
@@ -673,12 +672,6 @@ const SuperAdminDashboard: React.FC = () => {
                 </div>
               )}
 
-              {activeTab === 'tiktok' && (
-                <div className="p-6">
-                  <TikTokIntegration />
-                </div>
-              )}
-
                         {activeTab === 'polling' && (
             <div className="p-6">
               <AdminPolling />
@@ -688,6 +681,22 @@ const SuperAdminDashboard: React.FC = () => {
           {activeTab === 'ads' && (
             <div className="p-6">
               <AdminAds />
+            </div>
+          )}
+
+          {activeTab === 'youtube' && (
+            <div className="p-6">
+              <div className="text-center">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">YouTube Management</h2>
+                <p className="text-gray-600 mb-6">Manage YouTube integration, upload videos, and sync content</p>
+                <a
+                  href="/admin/youtube"
+                  className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <span className="mr-2">📺</span>
+                  Open YouTube Dashboard
+                </a>
+              </div>
             </div>
           )}
 

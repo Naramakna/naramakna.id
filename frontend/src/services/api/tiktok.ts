@@ -1,320 +1,380 @@
-// API service untuk TikTok integration endpoints
 import { buildApiUrl } from '../../config/api';
-import type {
-  TikTokAuthResponse,
-  TikTokProfile,
-  TikTokVideoListResponse,
-  TikTokSyncResponse,
-  TikTokStatusResponse,
-  TikTokContentResponse,
-  TikTokAPIService
-} from '../../types/tiktok';
 
-class TikTokAPI implements TikTokAPIService {
+// TikTok API interfaces
+export interface TikTokVideo {
+  id: number;
+  tiktok_video_id?: string;
+  tiktok_username?: string;
+  title?: string;
+  description?: string;
+  duration?: number;
+  video_url?: string;
+  cover_image_url?: string;
+  web_video_url?: string;
+  share_url?: string;
+  tiktok_view_count: number;
+  tiktok_like_count: number;
+  tiktok_share_count: number;
+  tiktok_comment_count: number;
+  local_view_count: number;
+  hashtags?: string[];
+  source: 'uploaded' | 'synced' | 'manual';
+  publish_status: 'pending' | 'processing' | 'published' | 'failed';
+  privacy_level: 'PUBLIC_TO_EVERYONE' | 'MUTUAL_FOLLOW_FRIENDS' | 'SELF_ONLY';
+  tiktok_created_at?: string;
+  created_at: string;
+  total_engagement?: number;
+  engagement_rate?: number;
+  categories?: string;
+}
+
+export interface TikTokUploadRequest {
+  title: string;
+  description?: string;
+  privacy_level?: 'PUBLIC_TO_EVERYONE' | 'MUTUAL_FOLLOW_FRIENDS' | 'SELF_ONLY';
+  disable_comment?: boolean;
+  disable_duet?: boolean;
+  disable_stitch?: boolean;
+}
+
+export interface TikTokConnectionStatus {
+  connected: boolean;
+  account?: {
+    tiktok_username?: string;
+    tiktok_display_name?: string;
+    tiktok_avatar_url?: string;
+    can_upload: boolean;
+    can_read_profile: boolean;
+    is_valid: boolean;
+    expires_at?: string;
+    last_used_at?: string;
+  };
+}
+
+export interface TikTokAnalytics {
+  overview: {
+    total_videos: number;
+    total_tiktok_views: number;
+    total_local_views: number;
+    total_likes: number;
+    total_shares: number;
+    total_comments: number;
+    avg_engagement_rate: number;
+  };
+  daily_trends: Array<{
+    date: string;
+    views: number;
+    unique_viewers: number;
+  }>;
+  top_videos: Array<TikTokVideo>;
+  date_range: {
+    start_date: string;
+    end_date: string;
+  };
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
+  pagination?: {
+    limit: number;
+    offset: number;
+    total: number;
+  };
+}
+
+export const tiktokAPI = {
+  /**
+   * Get TikTok authorization URL
+   */
+  async getAuthUrl(): Promise<ApiResponse<{ auth_url: string; state: string; csrf_token: string }>> {
+    const token = localStorage.getItem('naramakna_token');
+    
+    const response = await fetch(buildApiUrl('tiktok/auth-url'), {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    return response.json();
+  },
 
   /**
-   * Get TikTok OAuth authorization URL
+   * Get TikTok connection status
    */
-  async getAuthURL(): Promise<TikTokAuthResponse> {
-    try {
-      const response = await fetch(buildApiUrl('tiktok/auth'), {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to get TikTok auth URL');
+  async getConnectionStatus(): Promise<ApiResponse<TikTokConnectionStatus>> {
+    const token = localStorage.getItem('naramakna_token');
+    
+    const response = await fetch(buildApiUrl('tiktok/connection-status'), {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
       }
-      
-      return await response.json();
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to get TikTok auth URL');
-    }
-  }
-
-  /**
-   * Handle OAuth callback
-   */
-  async handleCallback(code: string, state: string): Promise<TikTokAuthResponse> {
-    try {
-      const response = await fetch(buildApiUrl('tiktok/callback'), {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ code, state })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'TikTok authentication failed');
-      }
-      
-      return await response.json();
-    } catch (error: any) {
-      throw new Error(error.message || 'TikTok authentication failed');
-    }
-  }
-
-  /**
-   * Get connected TikTok profile
-   */
-  async getProfile(): Promise<{ success: boolean; profile: TikTokProfile }> {
-    try {
-      const response = await fetch(buildApiUrl('tiktok/profile'), {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to get TikTok profile');
-      }
-      
-      return await response.json();
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to get TikTok profile');
-    }
-  }
-
-  /**
-   * Get TikTok videos
-   */
-  async getVideos(cursor?: string, maxId?: string): Promise<{ success: boolean } & TikTokVideoListResponse> {
-    try {
-      const params = new URLSearchParams();
-      if (cursor) params.append('cursor', cursor);
-      if (maxId) params.append('maxId', maxId);
-
-      const response = await fetch(buildApiUrl(`tiktok/videos?${params.toString()}`), {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to get TikTok videos');
-      }
-      
-      return await response.json();
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to get TikTok videos');
-    }
-  }
-
-  /**
-   * Trigger manual sync
-   */
-  async syncContent(): Promise<TikTokSyncResponse> {
-    try {
-      const response = await fetch(buildApiUrl('tiktok/sync'), {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'TikTok sync failed');
-      }
-      
-      return await response.json();
-    } catch (error: any) {
-      throw new Error(error.message || 'TikTok sync failed');
-    }
-  }
-
-  /**
-   * Get TikTok integration status
-   */
-  async getStatus(): Promise<TikTokStatusResponse> {
-    try {
-      const response = await fetch(buildApiUrl('tiktok/status'), {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to get TikTok status');
-      }
-      
-      return await response.json();
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to get TikTok status');
-    }
-  }
+    });
+    
+    return response.json();
+  },
 
   /**
    * Disconnect TikTok account
    */
-  async disconnect(): Promise<{ success: boolean; message: string }> {
-    try {
-      const response = await fetch(buildApiUrl('tiktok/disconnect'), {
-        method: 'DELETE',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to disconnect TikTok');
-      }
-      
-      return await response.json();
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to disconnect TikTok');
-    }
-  }
-
-  /**
-   * Get TikTok content from database
-   */
-  async getContent(limit = 10, offset = 0): Promise<TikTokContentResponse> {
-    try {
-      const response = await fetch(buildApiUrl(`tiktok/content?limit=${limit}&offset=${offset}`), {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to get TikTok content');
-      }
-      
-      return await response.json();
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to get TikTok content');
-    }
-  }
-
-  /**
-   * Generate TikTok video embed URL
-   */
-  generateEmbedURL(videoId: string, options?: { 
-    width?: number; 
-    height?: number; 
-    autoplay?: boolean 
-  }): string {
-    const params = new URLSearchParams();
+  async disconnect(): Promise<ApiResponse<null>> {
+    const token = localStorage.getItem('naramakna_token');
     
-    if (options?.width) params.append('width', options.width.toString());
-    if (options?.height) params.append('height', options.height.toString());
-    if (options?.autoplay) params.append('autoplay', '1');
-
-    const query = params.toString();
-    return `https://www.tiktok.com/embed/v2/${videoId}${query ? `?${query}` : ''}`;
-  }
-
-  /**
-   * Get TikTok video URL from video ID
-   */
-  getVideoURL(videoId: string, username?: string): string {
-    if (username) {
-      return `https://www.tiktok.com/@${username}/video/${videoId}`;
-    }
-    return `https://www.tiktok.com/video/${videoId}`;
-  }
-
-  /**
-   * Format TikTok content for trending section
-   */
-  formatForTrending(content: any[]): any[] {
-    return content.map(item => ({
-      id: item.metadata?.external_id || item.ID.toString(),
-      title: item.post_title || 'TikTok Video',
-      source: item.metadata?.tiktok_author_display_name || 'TikTok',
-      timeAgo: this.formatTimeAgo(item.post_date),
-      imageSrc: item.metadata?.tiktok_cover_url,
-      href: item.metadata?.source_url || item.guid,
-      type: 'tiktok',
-      metadata: {
-        likes: parseInt(item.metadata?.tiktok_like_count || '0'),
-        views: parseInt(item.metadata?.tiktok_play_count || '0'),
-        author: item.metadata?.tiktok_author_username || '',
-        duration: 0 // Duration not stored in current structure
+    const response = await fetch(buildApiUrl('tiktok/disconnect'), {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
       }
-    }));
-  }
+    });
+    
+    return response.json();
+  },
 
   /**
-   * Format date for display
+   * Upload video to TikTok
    */
-  private formatTimeAgo(dateString: string): string {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    if (diffInSeconds < 60) {
-      return 'Baru saja';
-    } else if (diffInSeconds < 3600) {
-      const minutes = Math.floor(diffInSeconds / 60);
-      return `${minutes} menit`;
-    } else if (diffInSeconds < 86400) {
-      const hours = Math.floor(diffInSeconds / 3600);
-      return `${hours} jam`;
-    } else if (diffInSeconds < 2592000) {
-      const days = Math.floor(diffInSeconds / 86400);
-      return `${days} hari`;
-    } else {
-      return date.toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
+  async uploadVideo(videoFile: File, uploadData: TikTokUploadRequest): Promise<ApiResponse<{ publish_id: string; status: string }>> {
+    const token = localStorage.getItem('naramakna_token');
+    
+    const formData = new FormData();
+    formData.append('video', videoFile);
+    formData.append('title', uploadData.title);
+    
+    if (uploadData.description) {
+      formData.append('description', uploadData.description);
     }
-  }
+    
+    if (uploadData.privacy_level) {
+      formData.append('privacy_level', uploadData.privacy_level);
+    }
+    
+    if (uploadData.disable_comment !== undefined) {
+      formData.append('disable_comment', uploadData.disable_comment.toString());
+    }
+    
+    if (uploadData.disable_duet !== undefined) {
+      formData.append('disable_duet', uploadData.disable_duet.toString());
+    }
+    
+    if (uploadData.disable_stitch !== undefined) {
+      formData.append('disable_stitch', uploadData.disable_stitch.toString());
+    }
+    
+    const response = await fetch(buildApiUrl('tiktok/upload'), {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+        // Don't set Content-Type for FormData, let browser set it with boundary
+      },
+      body: formData
+    });
+    
+    return response.json();
+  },
 
   /**
-   * Check if video ID is valid TikTok format
+   * Get upload status
    */
-  isValidVideoId(videoId: string): boolean {
-    // TikTok video IDs are typically 19-digit numbers
-    return /^\d{19}$/.test(videoId);
-  }
-
-  /**
-   * Extract video ID from TikTok URL
-   */
-  extractVideoId(url: string): string | null {
-    const patterns = [
-      /tiktok\.com\/@[^\/]+\/video\/(\d+)/,
-      /tiktok\.com\/video\/(\d+)/,
-      /vm\.tiktok\.com\/(\w+)/,
-      /vt\.tiktok\.com\/(\w+)/
-    ];
-
-    for (const pattern of patterns) {
-      const match = url.match(pattern);
-      if (match) {
-        return match[1];
+  async getUploadStatus(publishId: string): Promise<ApiResponse<any>> {
+    const token = localStorage.getItem('naramakna_token');
+    
+    const response = await fetch(buildApiUrl(`tiktok/upload-status/${publishId}`), {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
       }
-    }
+    });
+    
+    return response.json();
+  },
 
-    return null;
+  /**
+   * Sync videos from TikTok account (Superadmin only)
+   */
+  async syncVideos(limit: number = 20): Promise<ApiResponse<{ total_fetched: number; new_videos: number; updated_videos: number }>> {
+    const token = localStorage.getItem('naramakna_token');
+    
+    const response = await fetch(buildApiUrl('tiktok/sync-videos'), {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ limit })
+    });
+    
+    return response.json();
+  },
+
+  /**
+   * Get TikTok videos for public display
+   */
+  async getVideos(params?: {
+    limit?: number;
+    offset?: number;
+    category?: string;
+    search?: string;
+  }): Promise<ApiResponse<{ videos: TikTokVideo[] }>> {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.offset) queryParams.append('offset', params.offset.toString());
+    if (params?.category) queryParams.append('category', params.category);
+    if (params?.search) queryParams.append('search', params.search);
+    
+    const response = await fetch(buildApiUrl(`tiktok/videos?${queryParams}`));
+    return response.json();
+  },
+
+  /**
+   * Get admin videos (Admin/Superadmin only)
+   */
+  async getAdminVideos(params?: {
+    limit?: number;
+    offset?: number;
+    status?: string;
+    search?: string;
+  }): Promise<ApiResponse<{ videos: TikTokVideo[] }>> {
+    const token = localStorage.getItem('naramakna_token');
+    const queryParams = new URLSearchParams();
+    
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.offset) queryParams.append('offset', params.offset.toString());
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.search) queryParams.append('search', params.search);
+    
+    const response = await fetch(buildApiUrl(`tiktok/admin/videos?${queryParams}`), {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    return response.json();
+  },
+
+  /**
+   * Track video view
+   */
+  async trackView(videoId: number, viewData: {
+    view_duration?: number;
+    view_percentage?: number;
+    device_type?: 'desktop' | 'mobile' | 'tablet';
+  }): Promise<ApiResponse<null>> {
+    const response = await fetch(buildApiUrl('tiktok/track-view'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        video_id: videoId,
+        ...viewData
+      })
+    });
+    
+    return response.json();
+  },
+
+  /**
+   * Get TikTok analytics (Admin/Superadmin only)
+   */
+  async getAnalytics(params?: {
+    start_date?: string;
+    end_date?: string;
+  }): Promise<ApiResponse<TikTokAnalytics>> {
+    const token = localStorage.getItem('naramakna_token');
+    const queryParams = new URLSearchParams();
+    
+    if (params?.start_date) queryParams.append('start_date', params.start_date);
+    if (params?.end_date) queryParams.append('end_date', params.end_date);
+    
+    const response = await fetch(buildApiUrl(`tiktok/analytics?${queryParams}`), {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    return response.json();
   }
-}
+};
 
-// Create singleton instance
-export const tiktokAPI = new TikTokAPI();
+// TikTok utility functions
+export const tiktokUtils = {
+  /**
+   * Format view count for display
+   */
+  formatViewCount(count: number): string {
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M`;
+    } else if (count >= 1000) {
+      return `${(count / 1000).toFixed(1)}K`;
+    }
+    return count.toString();
+  },
+
+  /**
+   * Format duration for display (seconds to mm:ss)
+   */
+  formatDuration(seconds: number): string {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  },
+
+  /**
+   * Calculate engagement rate
+   */
+  calculateEngagementRate(video: TikTokVideo): number {
+    if (video.tiktok_view_count === 0) return 0;
+    
+    const totalEngagement = video.tiktok_like_count + video.tiktok_share_count + video.tiktok_comment_count;
+    return (totalEngagement / video.tiktok_view_count) * 100;
+  },
+
+  /**
+   * Extract hashtags from text
+   */
+  extractHashtags(text: string): string[] {
+    const hashtagRegex = /#[\w\u0590-\u05ff]+/g;
+    return text.match(hashtagRegex) || [];
+  },
+
+  /**
+   * Generate TikTok embed URL
+   */
+  generateEmbedUrl(videoId: string): string {
+    return `https://www.tiktok.com/embed/${videoId}`;
+  },
+
+  /**
+   * Validate video file for TikTok upload
+   */
+  validateVideoFile(file: File): { valid: boolean; error?: string } {
+    // TikTok supported formats
+    const supportedFormats = ['video/mp4', 'video/mov', 'video/avi'];
+    
+    if (!supportedFormats.includes(file.type)) {
+      return {
+        valid: false,
+        error: 'File format not supported. Please use MP4, MOV, or AVI format.'
+      };
+    }
+    
+    // TikTok file size limit (500MB)
+    const maxSize = 500 * 1024 * 1024;
+    if (file.size > maxSize) {
+      return {
+        valid: false,
+        error: 'File too large. Maximum size is 500MB.'
+      };
+    }
+    
+    return { valid: true };
+  }
+};

@@ -8,7 +8,7 @@ require('dotenv').config();
 const getDbConfig = () => ({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'naramakna_user',
-  password: process.env.DB_PASSWORD || ' ',
+  password: process.env.DB_PASSWORD || 'password',
   database: process.env.DB_NAME || 'naramakna_clean'
 });
 
@@ -38,6 +38,7 @@ router.get('/active', async (req, res) => {
       SELECT 
         p.id as poll_id,
         p.title as poll_title,
+        p.question as poll_question,
         p.category,
         p.total_votes,
         p.image_url,
@@ -68,6 +69,7 @@ router.get('/active', async (req, res) => {
                    pollsMap.set(row.poll_id, {
              id: row.poll_id.toString(),
              title: row.poll_title,
+             question: row.poll_question,
              source: row.category || 'Umum',
              timeAgo: 'Baru saja',
              totalVotes: row.total_votes || 0,
