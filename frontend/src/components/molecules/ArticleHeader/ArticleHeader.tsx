@@ -14,6 +14,8 @@ interface ArticleHeaderProps {
   likes: number;
   comments: number;
   categoryName?: string;
+  articleId?: string;
+  onAnalyticsClick?: () => void;
 }
 
 export const ArticleHeader: React.FC<ArticleHeaderProps> = ({
@@ -23,7 +25,9 @@ export const ArticleHeader: React.FC<ArticleHeaderProps> = ({
   readTime,
   likes,
   comments,
-  categoryName
+  categoryName,
+  articleId,
+  onAnalyticsClick
 }) => {
   return (
     <div className="mb-8">
@@ -105,6 +109,20 @@ export const ArticleHeader: React.FC<ArticleHeaderProps> = ({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
           </svg>
         </button>
+
+        {/* Analytics Button */}
+        {onAnalyticsClick && (
+          <button 
+            onClick={onAnalyticsClick}
+            className="flex items-center space-x-2 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+            title="View Analytics"
+          >
+            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <span className="text-gray-700 text-sm">Analytics</span>
+          </button>
+        )}
 
         {/* More Options */}
         <button className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">

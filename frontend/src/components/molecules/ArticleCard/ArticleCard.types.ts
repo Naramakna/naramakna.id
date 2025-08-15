@@ -12,6 +12,7 @@ export interface Article {
   author: Author;
   slug: string;
   category: string;
+  views?: number;
 }
 
 export interface ArticleCardProps {

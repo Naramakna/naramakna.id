@@ -18,6 +18,7 @@ export interface Article {
   };
   categories: any[];
   metadata: Record<string, any>;
+  view_count?: number;
   youtube?: {
     videoId: string;
     channelTitle: string;

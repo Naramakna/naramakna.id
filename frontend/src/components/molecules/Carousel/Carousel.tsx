@@ -9,6 +9,7 @@ interface CarouselArticle {
   imageSrc?: string;
   href?: string;
   isFeatured?: boolean;
+  views?: number;
 }
 
 interface CarouselProps {
@@ -77,6 +78,7 @@ export const Carousel: React.FC<CarouselProps> = ({
                 imageSrc={article.imageSrc}
                 href={article.href}
                 isFeatured={true}
+                views={article.views}
               />
             </div>
           ))}

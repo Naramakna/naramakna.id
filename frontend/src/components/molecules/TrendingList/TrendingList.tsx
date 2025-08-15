@@ -8,6 +8,7 @@ interface TrendingArticle {
   timeAgo: string;
   imageSrc?: string;
   href?: string;
+  views?: number;
 }
 
 interface TrendingListProps {
@@ -29,6 +30,7 @@ export const TrendingList: React.FC<TrendingListProps> = ({
           timeAgo={article.timeAgo}
           imageSrc={article.imageSrc}
           href={article.href}
+          views={article.views}
         />
       ))}
     </div>
