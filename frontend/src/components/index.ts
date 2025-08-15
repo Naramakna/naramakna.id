@@ -6,6 +6,7 @@ export { FormField, PasswordField, OAuthSection, TermsSection, NavHeader, Rememb
 
 // Organisms
 export { RegisterForm, LoginForm, ForgotPasswordForm, PollingMain } from './organisms';
+export { VideoModal } from './organisms/VideoModal';
 
 // Templates
 export { AuthLayout } from './templates'; 

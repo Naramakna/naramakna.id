@@ -9,6 +9,7 @@ interface VideoItemProps {
   imageSrc?: string;
   href?: string;
   className?: string;
+  onClick?: () => void; // Add onClick handler
 }
 
 export const VideoItem: React.FC<VideoItemProps> = ({
@@ -19,10 +20,13 @@ export const VideoItem: React.FC<VideoItemProps> = ({
   tag,
   imageSrc,
   href,
-  className = ''
+  className = '',
+  onClick
 }) => {
   const handleClick = () => {
-    if (href) {
+    if (onClick) {
+      onClick(); // Call the onClick handler if provided
+    } else if (href) {
       window.location.href = href;
     }
   };
@@ -59,7 +63,7 @@ export const VideoItem: React.FC<VideoItemProps> = ({
           </div>
         )}
         <div className="flex items-center space-x-1">
-                          <span className="text-white text-xs font-medium">naramakna</span>
+          <span className="text-white text-xs font-medium">naramakna</span>
         </div>
       </div>
 

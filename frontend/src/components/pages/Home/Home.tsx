@@ -2,7 +2,6 @@
 import React from 'react';
 import { Navbar } from '../../organisms/Navbar';
 import { AdSection } from '../../organisms/AdSection/AdSection';
-
 import { VideoSection } from '../../organisms/VideoSection/VideoSection';
 import { PollingMain } from '../../organisms/PollingMain';
 import { useSEO } from '../../../hooks/useSEO';
