@@ -4,11 +4,28 @@ import { Navbar } from '../../organisms/Navbar';
 import { AdSection } from '../../organisms/AdSection/AdSection';
 import { PollingSection } from '../../organisms/PollingSection/PollingSection';
 import { VideoSection } from '../../organisms/VideoSection/VideoSection';
+import { TikTokSection } from '../../organisms/TikTokSection/TikTokSection';
+import { useSEO } from '../../../hooks/useSEO';
 
 import { DynamicCategorySections } from '../../organisms/DynamicCategorySections/DynamicCategorySections';
 import { MainContentSection } from '../../organisms/MainContentSection/MainContentSection';
 
 export const Home: React.FC = () => {
+  // SEO for homepage
+  useSEO({
+    title: 'Naramakna - Berita Terkini Indonesia & Dunia',
+    description: 'Portal berita terpercaya dengan informasi terkini dari Indonesia dan dunia. Dapatkan berita politik, ekonomi, olahraga, hiburan, teknologi, dan lifestyle terupdate setiap hari.',
+    keywords: [
+      'berita indonesia', 'berita terkini', 'portal berita', 'naramakna',
+      'berita politik', 'berita ekonomi', 'berita olahraga', 'berita hiburan',
+      'berita teknologi', 'berita dunia', 'breaking news', 'news indonesia'
+    ],
+    image: `${typeof window !== 'undefined' ? window.location.origin : ''}/LogoNaramakna.png`,
+    url: typeof window !== 'undefined' ? window.location.href : undefined,
+    type: 'website',
+    locale: 'id_ID'
+  });
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navbar Component */}
@@ -38,6 +55,9 @@ export const Home: React.FC = () => {
         
         {/* Polling Section */}
         <PollingSection />
+
+        {/* YouTube Section */}
+        {/* <TikTokSection limit={8} /> */}
 
         {/* Bottom Banner - Slow rotation (10 seconds) */}
         <AdSection 

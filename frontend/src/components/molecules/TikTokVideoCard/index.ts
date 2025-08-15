@@ -1,0 +1,2 @@
+export { TikTokVideoCard } from './TikTokVideoCard';
+

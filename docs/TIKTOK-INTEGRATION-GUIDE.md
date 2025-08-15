@@ -1,254 +1,394 @@
-# TikTok Integration Guide - Naramakna.id
+# TikTok Integration Guide
 
-## Overview
+Panduan lengkap untuk mengintegrasikan TikTok Content Posting API dengan aplikasi Naramakna.
 
-Panduan ini menjelaskan cara mengintegrasikan akun TikTok Anda dengan platform Naramakna.id untuk otomatis mengambil dan menampilkan konten video TikTok di website.
+## 📋 Overview
 
-## Prerequisites
+Integrasi TikTok memungkinkan:
+- **Admin Upload**: Admin dapat upload video langsung ke akun TikTok dari web admin
+- **Video Sync**: Superadmin dapat sync video dari akun TikTok ke platform
+- **View Tracking**: Video TikTok yang ditampilkan di web otomatis mentrack views
+- **Analytics**: Dashboard analytics untuk performance TikTok videos
 
-1. Akun TikTok aktif dengan konten video
-2. Akses ke TikTok for Developers
-3. Akses admin/writer ke dashboard Naramakna.id
+## 🚀 Setup TikTok Developer Account
 
-## Langkah 1: Setup TikTok Developer App
+### 1. Daftar TikTok for Developers
 
-### 1.1 Buat Developer Account
 1. Kunjungi [TikTok for Developers](https://developers.tiktok.com/)
-2. Login dengan akun TikTok Anda
-3. Complete profile verification jika diperlukan
+2. Login dengan akun TikTok yang akan digunakan untuk business
+3. Verifikasi akun dengan nomor telepon dan email
 
-### 1.2 Create New App
-1. Go to [Developer Dashboard](https://developers.tiktok.com/apps)
-2. Click "Create an App"
-3. Fill out app information:
-   - **App Name**: Naramakna.id Integration
-   - **App Description**: Aplikasi untuk mengintegrasikan konten TikTok dengan website berita Naramakna.id
-   - **Category**: Content & Publishers
+### 2. Buat TikTok App
+
+1. Masuk ke **Dashboard** → **Manage Apps**
+2. Klik **Create an App**
+3. Isi informasi aplikasi:
+   - **App Name**: `Naramakna TikTok Integration`
+   - **Description**: `TikTok integration for Naramakna news platform`
+   - **Category**: `News & Media`
+   - **Website**: `https://naramakna.id`
+
+### 3. Konfigurasi App Settings
+
+#### Basic Settings
+- **App Name**: Naramakna TikTok Integration
+- **App Description**: TikTok content integration for news platform
    - **Platform**: Web
-   - **Website URL**: https://naramakna.id (atau domain Anda)
+- **Redirect URI**: `http://localhost:3001/api/tiktok/callback` (development)
+- **Production Redirect URI**: `https://naramakna.id/api/tiktok/callback`
 
-### 1.3 Configure App Products
-1. Add these products to your app:
-   - **Login Kit**: Untuk autentikasi
-   - **Content Posting API**: Untuk akses video (hanya read access yang digunakan)
+#### Required Products
+Tambahkan products berikut ke app:
+- ✅ **Content Posting API** (untuk upload video)
+- ✅ **Display API** (untuk display video info)
+- ✅ **Login Kit** (untuk OAuth authentication)
 
-### 1.4 Set Redirect URI
-```
-https://yourdomain.com/api/tiktok/callback
-```
-(Ganti dengan domain website Anda)
+#### Scopes yang Dibutuhkan
+Request scopes berikut:
+- `user.info.basic` - untuk info user TikTok
+- `video.publish` - untuk upload video ke TikTok
+- `video.list` - untuk sync video dari TikTok
 
-### 1.5 Configure Scopes
-Enable scopes berikut:
-- `user.info.basic`
-- `user.info.profile`
-- `user.info.stats`
-- `video.list`
+### 4. Domain Verification
 
-## Langkah 2: Environment Configuration
+Untuk posting video dari URL, verifikasi domain:
+1. Masuk ke **App Settings** → **Domain Verification**
+2. Tambahkan domain: `naramakna.id`
+3. Download file verifikasi dan letakkan di root domain
+4. Klik **Verify Domain**
 
-### 2.1 Update Environment Variables
-Tambahkan ke file `.env`:
+## ⚙️ Environment Configuration
 
-```env
-# TikTok API Configuration
-TIKTOK_CLIENT_KEY=your_client_key_from_tiktok_app
-TIKTOK_CLIENT_SECRET=your_client_secret_from_tiktok_app
-TIKTOK_REDIRECT_URI=https://yourdomain.com/api/tiktok/callback
-TIKTOK_AUTO_SYNC=true
-```
+### Backend Environment Variables
 
-### 2.2 Restart Server
-Restart backend server agar environment variables ter-load:
+Tambahkan ke file `.env` di backend:
+
 ```bash
+# TikTok API Configuration
+TIKTOK_CLIENT_KEY=your_tiktok_client_key_here
+TIKTOK_CLIENT_SECRET=your_tiktok_client_secret_here
+TIKTOK_APP_ID=your_tiktok_app_id_here
+TIKTOK_REDIRECT_URI=http://localhost:3001/api/tiktok/callback
+
+# Production settings (uncomment for production)
+# TIKTOK_REDIRECT_URI=https://naramakna.id/api/tiktok/callback
+```
+
+### Cara Mendapatkan Credentials
+
+1. **Client Key & Client Secret**:
+   - Masuk ke TikTok Developer Dashboard
+   - Pilih app yang sudah dibuat
+   - Masuk ke **Basic Information**
+   - Copy **Client Key** dan **Client Secret**
+
+2. **App ID**:
+   - Sama dengan Client Key (dalam beberapa kasus)
+   - Atau bisa ditemukan di **App Settings**
+
+## 🗄️ Database Setup
+
+Jalankan migration untuk membuat tabel TikTok:
+
+```bash
+# Masuk ke direktori backend
 cd backend
-npm restart
+
+# Jalankan migration
+mysql -u your_username -p your_database < database/migrations/015_create_tiktok_integration.sql
 ```
 
-## Langkah 3: Connect TikTok Account
+### Tabel yang Dibuat
 
-### 3.1 Access Admin Dashboard
-1. Login sebagai admin/writer
-2. Navigate ke integration settings
+1. **tiktok_config** - Konfigurasi TikTok app
+2. **tiktok_tokens** - OAuth tokens untuk multiple users
+3. **tiktok_videos** - Data video TikTok
+4. **tiktok_video_views** - Tracking views di platform
+5. **tiktok_video_categories** - Kategorisasi video
+6. **tiktok_upload_queue** - Queue untuk batch upload
 
-### 3.2 Connect TikTok
-1. Click "Connect TikTok Account"
-2. Anda akan diarahkan ke halaman login TikTok
-3. Authorize aplikasi untuk mengakses akun Anda
-4. Setelah berhasil, Anda akan dikembalikan ke dashboard
+## 🔗 OAuth Flow Setup
 
-### 3.3 Verify Connection
-- Check status connection di dashboard
-- Profile TikTok Anda akan ditampilkan jika berhasil
+### 1. Connect TikTok Account (Admin)
 
-## Langkah 4: Content Sync
+1. Login sebagai admin/superadmin
+2. Masuk ke `/admin/tiktok`
+3. Klik **Connect TikTok Account**
+4. Authorize aplikasi di TikTok
+5. Redirect kembali ke admin panel
 
-### 4.1 Manual Sync
-1. Di dashboard, click "Sync TikTok Content"
-2. Sistem akan mengambil video terbaru dari akun Anda
-3. Video akan difilter berdasarkan kriteria (minimal views, likes, etc.)
+### 2. Test Connection
 
-### 4.2 Automatic Sync
-Jika `TIKTOK_AUTO_SYNC=true`, sistem akan otomatis sync setiap 6 jam.
+Setelah terkoneksi, admin dapat:
+- ✅ Upload video ke TikTok
+- ✅ Lihat status upload
+- ✅ Superadmin: Sync video dari TikTok
 
-### 4.3 Sync Configuration
-Edit file `backend/src/config/tiktok.js` untuk mengatur filter:
+## 📤 Upload Video Workflow
 
-```javascript
-contentFilter: {
-  minViews: 1000,        // Minimal views
-  minLikes: 100,         // Minimal likes
-  excludePrivate: true,  // Exclude private videos
-  maxVideosPerSync: 50   // Max videos per sync
-}
+### 1. File Requirements
+
+Video yang dapat diupload ke TikTok:
+- **Format**: MP4, MOV, AVI
+- **Max Size**: 500MB
+- **Duration**: 15 detik - 10 menit
+- **Resolution**: Minimum 720p, maksimum 1080p
+- **Aspect Ratio**: 9:16 (portrait) direkomendasikan
+
+### 2. Upload Process
+
+1. Admin pilih file video
+2. Isi title, description, privacy settings
+3. Klik **Upload to TikTok**
+4. System akan:
+   - Validate file
+   - Query creator info dari TikTok
+   - Initiate upload ke TikTok servers
+   - Track upload status
+   - Update database dengan video info
+
+### 3. Upload Status Tracking
+
+Status upload yang bisa di-track:
+- `pending` - Upload dimulai
+- `processing` - TikTok sedang process video
+- `published` - Video berhasil dipublish
+- `failed` - Upload gagal
+
+## 🔄 Video Sync (Superadmin Only)
+
+### Automatic Sync
+
+Superadmin dapat sync video dari akun TikTok:
+
+1. Masuk ke `/admin/tiktok`
+2. Tab **Manage Videos**
+3. Klik **Sync from TikTok**
+4. System akan fetch video terbaru dan update database
+
+### Manual Sync via API
+
+```bash
+curl -X POST http://localhost:3001/api/tiktok/sync-videos \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"limit": 20}'
 ```
 
-## Langkah 5: Display Configuration
+## 📊 View Tracking
 
-### 5.1 Trending Section
-TikTok content akan otomatis muncul di trending section dengan:
-- Icon 📱 untuk membedakan dari artikel
-- Author TikTok sebagai source
-- Thumbnail video jika tersedia
+### How It Works
 
-### 5.2 Custom Display
-Untuk mengatur tampilan TikTok content:
+Ketika video TikTok ditampilkan di web:
 
-```typescript
-// Disable TikTok di trending
-<TrendingSection includeTikTok={false} />
+1. **Auto Track**: View otomatis di-track saat video di-play
+2. **IP-based**: User tanpa login di-track berdasarkan IP
+3. **User-based**: User yang login di-track dengan user ID
+4. **Milestones**: Track view progress (25%, 50%, 75%, 100%)
 
-// Disable mixed content
-<TrendingSection mixedContent={false} />
+### View Data
 
-// Custom limit
-<TrendingSection limit={10} includeTikTok={true} />
+Data yang di-track:
+- View duration (berapa lama ditonton)
+- View percentage (persentase video yang ditonton)
+- Device type (desktop/mobile/tablet)
+- Geographic info (opsional)
+- Referrer URL
+
+## 🎯 Display TikTok Videos
+
+### Homepage Integration
+
+TikTok videos otomatis tampil di homepage:
+
+```tsx
+// Di Home.tsx sudah ditambahkan
+<TikTokSection limit={8} />
 ```
 
-## Troubleshooting
+### Custom Display
 
-### Connection Issues
-1. **Invalid Client Key/Secret**
-   - Verify credentials di TikTok Developer Dashboard
-   - Pastikan app sudah approved jika perlu
+```tsx
+import { TikTokSection } from './components/organisms/TikTokSection';
 
-2. **Redirect URI Mismatch**
-   - Pastikan redirect URI exact match dengan yang di dashboard
-   - Include protocol (https://) dan port jika perlu
-
-3. **Scope Issues**
-   - Verify semua required scopes sudah enabled
-   - Re-authorize jika ada perubahan scope
-
-### Sync Issues
-1. **No Content Synced**
-   - Check apakah ada video yang memenuhi kriteria filter
-   - Verify akun TikTok tidak private
-   - Check rate limits
-
-2. **Sync Errors**
-   - Check logs di `backend/logs/`
-   - Verify token masih valid
-   - Check TikTok API status
-
-### Performance Issues
-1. **Slow Loading**
-   - Implement caching di Redis
-   - Reduce sync frequency
-   - Optimize content filter
-
-## API Endpoints
-
-### TikTok Integration Endpoints
-```
-GET    /api/tiktok/auth          # Get auth URL
-POST   /api/tiktok/callback      # Handle OAuth callback
-GET    /api/tiktok/profile       # Get profile info
-GET    /api/tiktok/videos        # Get videos
-POST   /api/tiktok/sync          # Manual sync
-GET    /api/tiktok/status        # Get connection status
-DELETE /api/tiktok/disconnect    # Disconnect account
-GET    /api/tiktok/content       # Get synced content
+// Display dengan kategori tertentu
+<TikTokSection 
+  category="entertainment"
+  limit={6}
+  showTitle={true}
+/>
 ```
 
-## Monitoring
+### Video Card Features
 
-### Sync Statistics
-Monitor sync performance:
-```javascript
-// Get sync stats
-const stats = tiktokSync.getStats();
-console.log({
-  totalSyncs: stats.totalSyncs,
-  successfulSyncs: stats.successfulSyncs,
-  failedSyncs: stats.failedSyncs,
-  lastSync: stats.lastSync
-});
+Setiap video card menampilkan:
+- Video player dengan controls
+- View count dari TikTok
+- Like, comment, share counts
+- Local view tracking
+- Link ke video TikTok asli
+- Hashtags dan mentions
+
+## 📈 Analytics Dashboard
+
+### Admin Analytics
+
+Masuk ke `/admin/tiktok` → Tab **Analytics**:
+
+- **Overview Stats**: Total videos, views, engagement
+- **Daily Trends**: View trends per hari
+- **Top Videos**: Video dengan performance terbaik
+- **Engagement Rate**: Rata-rata engagement per video
+
+### API Analytics
+
+```bash
+# Get analytics data
+curl -X GET "http://localhost:3001/api/tiktok/analytics?start_date=2024-01-01&end_date=2024-01-31" \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN"
 ```
 
-### Rate Limiting
+## 🔧 Troubleshooting
+
+### Common Issues
+
+1. **OAuth Failed**
+   - Pastikan `TIKTOK_REDIRECT_URI` sesuai dengan setting di TikTok Developer
+   - Check network connectivity
+   - Verify credentials di `.env`
+
+2. **Upload Failed**
+   - Check file format dan size
+   - Pastikan akun TikTok terverifikasi
+   - Check rate limits (TikTok ada limit upload per hari)
+
+3. **Sync Failed**
+   - Pastikan token masih valid (tidak expired)
+   - Check permissions `video.list` scope
+   - Verify API rate limits
+
+4. **Videos Not Displaying**
+   - Check database connection
+   - Verify API endpoint `/api/tiktok/videos`
+   - Check console errors di browser
+
+### Rate Limits
+
 TikTok API memiliki rate limits:
-- 60 requests per minute
-- 10,000 requests per day
+- **Upload**: 50 video per hari per app
+- **Sync**: 100 requests per 10 menit
+- **Analytics**: 1000 requests per jam
 
-Monitor usage di dashboard untuk avoid rate limit exceeded.
+### Debug Mode
 
-## Security Considerations
+Enable debug logging:
 
-1. **Token Storage**
-   - Access tokens disimpan di memory (tidak persistent)
-   - Implement secure token storage untuk production
-   - Regular token refresh
+```bash
+# Backend - tambah ke .env
+DEBUG_TIKTOK=true
 
-2. **API Keys**
-   - Never commit API keys ke repository
-   - Use environment variables
-   - Rotate keys secara berkala
-
-3. **User Privacy**
-   - Hanya sync public videos
-   - Respect user privacy settings
-   - Implement data retention policies
-
-## Production Deployment
-
-### Environment Setup
-```env
-NODE_ENV=production
-TIKTOK_AUTO_SYNC=true
-TIKTOK_REDIRECT_URI=https://yourdomain.com/api/tiktok/callback
+# Check logs di console
+tail -f backend/logs/tiktok.log
 ```
 
-### TikTok App Review
-Untuk production use, TikTok app mungkin perlu review:
+## 🚀 Production Deployment
+
+### 1. Update Environment
+
+```bash
+# Production .env
+TIKTOK_REDIRECT_URI=https://naramakna.id/api/tiktok/callback
+NODE_ENV=production
+```
+
+### 2. Domain Verification
+
+Pastikan domain `naramakna.id` sudah diverifikasi di TikTok Developer Dashboard.
+
+### 3. App Review
+
+Untuk production, app perlu review TikTok:
 1. Submit app untuk review
-2. Provide detailed use case
-3. Include demo video
-4. Wait for approval (1-2 weeks)
+2. Sertakan demo video
+3. Explain use case untuk news platform
+4. Tunggu approval (biasanya 2-7 hari)
 
-### Monitoring Setup
-1. Setup logging
-2. Error tracking (Sentry)
-3. Performance monitoring
-4. Sync success rate tracking
+### 4. SSL Certificate
 
-## Support
+Pastikan HTTPS diaktifkan untuk redirect URI.
 
-Untuk bantuan teknis:
-1. Check troubleshooting section di atas
-2. Review logs di `backend/logs/`
-3. Contact TikTok Developer Support untuk API issues
-4. Submit issue di repository untuk integration bugs
+## 📚 API Reference
 
-## Updates & Maintenance
+### Authentication Endpoints
 
-### Regular Tasks
-1. Monitor sync success rate
-2. Update filter criteria based on content performance
-3. Rotate API credentials
-4. Update TikTok app information if needed
+- `GET /api/tiktok/auth-url` - Get OAuth URL
+- `GET /api/tiktok/callback` - OAuth callback
+- `GET /api/tiktok/connection-status` - Check connection
+- `DELETE /api/tiktok/disconnect` - Disconnect account
 
-### Backup & Recovery
-1. Export synced content data
-2. Backup configuration settings
-3. Document custom modifications
+### Video Management
+
+- `POST /api/tiktok/upload` - Upload video
+- `GET /api/tiktok/upload-status/:id` - Check upload status
+- `POST /api/tiktok/sync-videos` - Sync from TikTok
+- `GET /api/tiktok/videos` - Get public videos
+- `GET /api/tiktok/admin/videos` - Get admin videos
+
+### Analytics
+
+- `POST /api/tiktok/track-view` - Track video view
+- `GET /api/tiktok/analytics` - Get analytics data
+
+## 🔐 Security Considerations
+
+1. **Token Storage**: Tokens disimpan encrypted di database
+2. **Rate Limiting**: Implement rate limiting untuk API calls
+3. **File Validation**: Strict validation untuk video uploads
+4. **CORS**: Proper CORS setup untuk frontend
+5. **Auth Middleware**: Semua admin endpoints protected
+
+## 🎉 Testing
+
+### Unit Tests
+
+```bash
+# Test TikTok controllers
+npm test -- --grep "TikTok"
+
+# Test frontend hooks
+npm test -- --grep "useTikTok"
+```
+
+### Integration Tests
+
+```bash
+# Test OAuth flow
+npm run test:integration tiktok-auth
+
+# Test upload functionality  
+npm run test:integration tiktok-upload
+```
+
+### Manual Testing Checklist
+
+- [ ] OAuth connection berhasil
+- [ ] Video upload ke TikTok
+- [ ] Video sync dari TikTok
+- [ ] View tracking berfungsi
+- [ ] Analytics data akurat
+- [ ] Error handling proper
+- [ ] Mobile responsive
+- [ ] Performance optimization
+
+---
+
+## 📞 Support
+
+Jika ada masalah dengan integrasi TikTok:
+
+1. Check dokumentasi TikTok: https://developers.tiktok.com/doc/
+2. Review error logs di backend
+3. Test dengan TikTok API directly via Postman
+4. Contact TikTok Developer Support jika diperlukan
+
+**Happy TikToking! 🎵**

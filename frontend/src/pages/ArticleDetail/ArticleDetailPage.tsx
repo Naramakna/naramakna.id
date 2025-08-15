@@ -6,6 +6,7 @@ import { ArticleTags } from '../../components/molecules/ArticleTags';
 import { CommentsSection } from '../../components/organisms/CommentsSection';
 import { RelatedArticles } from '../../components/organisms/RelatedArticles';
 import { AdSection } from '../../components/organisms/AdSection';
+import { useSEO, generateDescription, extractKeywords, formatStructuredDataDate } from '../../hooks/useSEO';
 import 'quill/dist/quill.snow.css'; // Import Quill CSS for alignment classes
 
 interface ArticleDetailPageProps {
@@ -43,7 +44,6 @@ interface Article {
 export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId, articleSlug }) => {
   const [article, setArticle] = useState<Article | null>(null);
   const [relatedArticles, setRelatedArticles] = useState([]);
-  const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -210,7 +210,8 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.data) {
-          setComments(result.data);
+          // Comments are handled by CommentsSection component
+          console.log('Comments loaded:', result.data.length);
         }
       }
     } catch (err) {
@@ -227,7 +228,8 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.data) {
-          setComments(result.data);
+          // Comments are handled by CommentsSection component
+          console.log('Comments loaded:', result.data.length);
         }
       }
     } catch (err) {
@@ -254,31 +256,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
     }
   };
 
-  const handleAddComment = async (content: string) => {
-    if (!article) return;
-    
-    try {
-      const response = await fetch(`http://localhost:3001/api/content/posts/${article.id}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({ content })
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          // Refresh comments
-          fetchComments(article.id);
-        }
-      }
-    } catch (err) {
-      console.error('Error adding comment:', err);
-      throw err;
-    }
-  };
+
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -297,6 +275,21 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
     const minutes = Math.ceil(words / wordsPerMinute);
     return `${minutes} menit`;
   };
+
+  // SEO optimization
+  useSEO({
+    title: article ? `${article.title} | Naramakna` : 'Loading... | Naramakna',
+    description: article ? generateDescription(article.content) : 'Berita terkini dan artikel menarik dari Naramakna',
+    keywords: article ? extractKeywords(article.title, article.content, article.tags.map(tag => typeof tag === 'string' ? tag : tag.name)) : ['berita', 'artikel', 'naramakna'],
+    image: article?.featuredImage?.url,
+    url: typeof window !== 'undefined' ? window.location.href : undefined,
+    type: 'article',
+    author: article?.author.name,
+    publishedTime: article?.publishedDate ? formatStructuredDataDate(article.publishedDate) : undefined,
+    section: article?.category,
+    tags: article?.tags.map(tag => typeof tag === 'string' ? tag : tag.name),
+    locale: 'id_ID'
+  });
 
   if (loading) {
     return (

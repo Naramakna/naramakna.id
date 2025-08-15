@@ -4,6 +4,9 @@ import { useAuth } from '../../contexts/AuthContext/AuthContext';
 import ReactQuill from 'react-quill';
 import 'quill/dist/quill.snow.css';
 import '../../styles/editor.css';
+import ScheduleModal from '../../components/molecules/ScheduleModal';
+import { schedulerAPI } from '../../services/api/scheduler';
+import type { ScheduledPost, ScheduleRequest } from '../../services/api/scheduler';
 
 interface ArticleData {
   title: string;
@@ -51,6 +54,10 @@ const ArticleWriterPage: React.FC = () => {
   });
 
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
+  
+  // Scheduling state
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [currentPostForScheduling, setCurrentPostForScheduling] = useState<ScheduledPost | null>(null);
   const [isLoadingArticle, setIsLoadingArticle] = useState(true); // Always start as loading in edit mode
   const isSavingRef = useRef(false); // Prevent multiple simultaneous saves
   const [charCount, setCharCount] = useState({
@@ -251,13 +258,13 @@ const ArticleWriterPage: React.FC = () => {
     } finally {
       isSavingRef.current = false; // Reset saving flag
     }
-  }, [article, saveStatus]);
+  }, [article, isEditMode, editId]);
 
   // Save Draft function
-  const handleSaveDraft = async () => {
+  const handleSaveDraft = async (): Promise<string | null> => {
     if (isSavingRef.current) {
       console.log('🔧 Debug: Save draft skipped - save in progress');
-      return;
+      return null;
     }
     
     try {
@@ -291,12 +298,15 @@ const ArticleWriterPage: React.FC = () => {
         if (isEditMode) {
           alert('Draft berhasil disimpan!');
           setArticle(prev => ({ ...prev, status: 'draft' }));
+          return editId;
         } else {
-          alert(`Draft berhasil disimpan! ID: ${result.data.id}`);
+          const newId = result.data?.id || result.data?.ID || result.id || result.ID;
+          alert(`Draft berhasil disimpan! ID: ${newId}`);
           // Update to edit mode with the new ID
           setIsEditMode(true);
-          setEditId(result.data.id);
+          setEditId(newId);
           setArticle(prev => ({ ...prev, status: 'draft' }));
+          return newId;
         }
         setSaveStatus('saved');
       } else {
@@ -304,13 +314,72 @@ const ArticleWriterPage: React.FC = () => {
         console.error('🔧 Debug Frontend handleSaveDraft - error response:', response.status, errorData);
         alert('Gagal menyimpan draft. Silakan coba lagi.');
         setSaveStatus('error');
+        return null;
       }
     } catch (error) {
       console.error('🔧 Debug Frontend handleSaveDraft - error:', error);
       alert('Terjadi kesalahan saat menyimpan draft.');
       setSaveStatus('error');
+      return null;
     } finally {
       isSavingRef.current = false;
+    }
+  };
+
+  // Schedule function
+  const handleSchedule = async () => {
+    try {
+      let postId = editId;
+      
+      // If no editId (new article), save as draft first to get an ID
+      if (!postId) {
+        console.log('🔧 Debug: No editId, saving draft first to get post ID');
+        const savedId = await handleSaveDraft();
+        
+        // Use the returned ID from handleSaveDraft
+        postId = savedId || editId;
+        
+        if (!postId) {
+          alert('Gagal menyimpan artikel. Silakan coba lagi.');
+          return;
+        }
+      }
+      
+      console.log('🔧 Debug: Using postId for scheduling:', postId);
+      
+      // Create a ScheduledPost object for the modal
+      const postForScheduling: ScheduledPost = {
+        ID: parseInt(postId),
+        post_title: article.title,
+        post_content: article.content,
+        post_status: 'draft',
+        post_date: new Date().toISOString(),
+        scheduled_publish_date: null,
+        scheduled_by: null,
+        scheduling_notes: null,
+        original_status: 'draft',
+        author: {
+          ID: user?.ID || 0,
+          display_name: user?.display_name || '',
+          user_login: user?.user_login || ''
+        }
+      };
+      
+      setCurrentPostForScheduling(postForScheduling);
+      setIsScheduleModalOpen(true);
+    } catch (error) {
+      console.error('Error preparing schedule:', error);
+      alert('Error saat menyiapkan schedule. Silakan coba lagi.');
+    }
+  };
+
+  const handleScheduleSubmit = async (postId: number, scheduleData: ScheduleRequest) => {
+    try {
+      await schedulerAPI.schedulePost(postId, scheduleData);
+      alert('Artikel berhasil dijadwalkan!');
+    } catch (error) {
+      console.error('Error scheduling post:', error);
+      alert('Error saat menjadwalkan artikel. Silakan coba lagi.');
     }
   };
 
@@ -416,13 +485,19 @@ const ArticleWriterPage: React.FC = () => {
   }, [article]);
 
   // Auto-save trigger
+  // Auto-save effect - debounced to prevent excessive calls
   useEffect(() => {
     const timer = setTimeout(() => {
+      if (isSavingRef.current ||
+          saveStatus === 'saving' ||
+          !article.title.trim()) {
+        return;
+      }
       autoSave();
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [article, autoSave]);
+  }, [autoSave]);
 
   // Auth check
   useEffect(() => {
@@ -577,6 +652,21 @@ const ArticleWriterPage: React.FC = () => {
               >
                 Simpan Draft
               </button>
+              
+              {/* Schedule button - only for admin/superadmin */}
+              {user && ['admin', 'superadmin'].includes(user.user_role) && (
+                <button
+                  onClick={handleSchedule}
+                  disabled={!article.title.trim()}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-500 border border-transparent rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span>Jadwalkan</span>
+                </button>
+              )}
+              
               <button
                 onClick={handlePublish}
                 className="px-4 py-2 text-sm font-medium text-white bg-yellow-500 border border-transparent rounded-md hover:bg-yellow-600"
@@ -867,6 +957,16 @@ const ArticleWriterPage: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Schedule Modal */}
+      <ScheduleModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+        post={currentPostForScheduling}
+        onSchedule={handleScheduleSubmit}
+        mode="schedule"
+        isLoading={false}
+      />
     </div>
   );
 };
