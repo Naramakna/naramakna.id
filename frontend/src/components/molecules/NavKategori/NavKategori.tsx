@@ -8,16 +8,15 @@ interface NavKategoriProps {
 export const NavKategori: React.FC<NavKategoriProps> = ({ className = '' }) => {
   // Kategori utama (sekarang dynamic dari API)
   const categories = [
-    'News',
-    'Entertainment', 
-    'Tekno & Sains',
-    'Bisnis',
-    'Bola & Sports',
-    'Otomotif',
-    'Woman',
-    'Food & Travel',
-    'Mom',
-    'Bolanita'
+    'Narapadang',
+    'Pelakon', 
+    'Laga & Gaya',
+    'Wahana',
+    'Olah Bola',
+    'Cerita Rasa',
+    'Akal Budi',
+    'Horison',
+    'Dunia',
   ];
 
   // Data untuk dropdown "Lainnya"

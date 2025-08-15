@@ -10,7 +10,9 @@ export const NavService: React.FC<NavServiceProps> = ({ className = '' }) => {
     { name: 'Breaking News', href: '#' },
     { name: 'Video Story', href: '/video-story' },
     { name: 'Polling', href: '/polling' },
-    { name: 'Trending', href: '#' },
+    { name: 'Budaya', href: '#' },
+    { name: 'Pendidikan', href: '#' },
+    { name: 'Teknologi', href: '#' },
   ];
 
   return (
