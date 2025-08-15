@@ -6,17 +6,17 @@ interface NavKategoriProps {
 }
 
 export const NavKategori: React.FC<NavKategoriProps> = ({ className = '' }) => {
-  // Kategori utama (sekarang dynamic dari API)
+  // Kategori utama dengan mapping name-to-slug yang benar
   const categories = [
-    'Narapadang',
-    'Pelakon', 
-    'Laga & Gaya',
-    'Wahana',
-    'Olah Bola',
-    'Cerita Rasa',
-    'Akal Budi',
-    'Horison',
-    'Dunia',
+    { name: 'Narapandang', slug: 'narapandang' },
+    { name: 'Pelakon', slug: 'pelakon' }, 
+    { name: 'Laga & Gaya', slug: 'laga-gaya' },
+    { name: 'Wahana', slug: 'wahana' },
+    { name: 'Olah Bola', slug: 'olah-bola' },
+    { name: 'Cerita Rasa', slug: 'cerita-rasa' },
+    { name: 'Akal Budi', slug: 'akal-budi' },
+    { name: 'Horison', slug: 'horison' },
+    { name: 'Dunia', slug: 'dunia' },
   ];
 
   // Data untuk dropdown "Lainnya"
@@ -67,10 +67,10 @@ export const NavKategori: React.FC<NavKategoriProps> = ({ className = '' }) => {
           {categories.map((category, index) => (
             <a
               key={index}
-              href={`/kategori/${category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+              href={`/kategori/${category.slug}`}
               className="text-sm font-medium text-gray-700 hover:text-yellow-500 whitespace-nowrap transition-colors duration-200 flex-shrink-0"
             >
-              {category}
+              {category.name}
             </a>
           ))}
           

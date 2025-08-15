@@ -515,6 +515,168 @@ class AdsController {
       });
     }
   }
+
+  /**
+   * Upload advertisement image
+   * POST /api/ads/upload
+   */
+  static async uploadImage(req, res) {
+    try {
+      const multer = require('multer');
+      const path = require('path');
+      const fs = require('fs');
+
+      // Configure multer for ad images
+      const storage = multer.diskStorage({
+        destination: function (req, file, cb) {
+          const uploadPath = path.join(__dirname, '../../../public/ads');
+          // Ensure directory exists
+          if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
+          }
+          cb(null, uploadPath);
+        },
+        filename: function (req, file, cb) {
+          // Generate unique filename with timestamp
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+          const ext = path.extname(file.originalname);
+          cb(null, 'ad-' + uniqueSuffix + ext);
+        }
+      });
+
+      const fileFilter = (req, file, cb) => {
+        // Allow only image files
+        if (file.mimetype.startsWith('image/')) {
+          cb(null, true);
+        } else {
+          cb(new Error('Only image files are allowed'), false);
+        }
+      };
+
+      const upload = multer({
+        storage: storage,
+        fileFilter: fileFilter,
+        limits: {
+          fileSize: 10 * 1024 * 1024 // 10MB limit
+        }
+      }).single('adImage');
+
+      upload(req, res, function (err) {
+        if (err) {
+          console.error('📸 Upload error:', err);
+          return res.status(400).json({
+            success: false,
+            message: err.message || 'Upload failed'
+          });
+        }
+
+        if (!req.file) {
+          return res.status(400).json({
+            success: false,
+            message: 'No file provided'
+          });
+        }
+
+        // Generate the URL path for the uploaded image
+        const imageUrl = `/ads/${req.file.filename}`;
+        const fullUrl = `${req.protocol}://${req.get('host')}${imageUrl}`;
+
+        console.log('📸 Ad image uploaded:', {
+          filename: req.file.filename,
+          path: req.file.path,
+          url: fullUrl
+        });
+
+        res.json({
+          success: true,
+          message: 'Image uploaded successfully',
+          data: {
+            filename: req.file.filename,
+            imageUrl: imageUrl,
+            fullUrl: fullUrl,
+            size: req.file.size
+          }
+        });
+      });
+
+    } catch (error) {
+      console.error('📸 Upload controller error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Get active popup advertisement for homepage
+   * GET /api/ads/popup-active
+   */
+  static async getActivePopupAd(req, res) {
+    try {
+      console.log('🎯 Getting active popup ad for homepage');
+
+      const now = new Date();
+      
+      // Find active popup ads that are within date range
+      const popupAd = await Advertisement.findOne({
+        where: {
+          status: 'active',
+          placement_type: 'popup',
+          start_date: { [Op.lte]: now },
+          end_date: { [Op.gte]: now }
+        },
+        include: [{
+          model: User,
+          as: 'advertiser',
+          attributes: ['ID', 'display_name', 'user_login']
+        }],
+        order: [['created_at', 'DESC']], // Get most recent if multiple
+        attributes: [
+          'id', 'campaign_name', 'media_url', 'image_url', 'target_url',
+          'start_date', 'end_date', 'status', 'placement_type'
+        ]
+      });
+
+      if (!popupAd) {
+        return res.json({
+          success: true,
+          message: 'No active popup ad found',
+          data: null
+        });
+      }
+
+      // Use media_url if available, fallback to image_url for legacy support
+      const imageUrl = popupAd.media_url || popupAd.image_url;
+
+      const responseData = {
+        id: popupAd.id,
+        title: popupAd.campaign_name,
+        image_url: imageUrl,
+        target_url: popupAd.target_url || '#',
+        status: popupAd.status,
+        start_date: popupAd.start_date,
+        end_date: popupAd.end_date
+      };
+
+      console.log('🎯 Found popup ad:', responseData.title);
+
+      res.json({
+        success: true,
+        message: 'Active popup ad retrieved',
+        data: responseData
+      });
+
+    } catch (error) {
+      console.error('❌ Error getting popup ad:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get popup ad',
+        error: error.message
+      });
+    }
+  }
 }
 
 module.exports = {
@@ -526,5 +688,7 @@ module.exports = {
   update: AdsController.update,
   updateStatus: AdsController.updateStatus,
   delete: AdsController.delete,
-  getStats: AdsController.getStats
+  getStats: AdsController.getStats,
+  uploadImage: AdsController.uploadImage,
+  getActivePopupAd: AdsController.getActivePopupAd
 };

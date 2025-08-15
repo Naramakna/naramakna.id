@@ -26,7 +26,8 @@ export const MainContentSection: React.FC<MainContentSectionProps> = ({
   // Fetch data dari API
   const { data: apiArticles, loading, error } = useContent({
     limit: 6,
-    type: 'post' // Hanya ambil artikel, bukan video
+    type: 'post', // Hanya ambil artikel, bukan video
+    mainCategoriesOnly: true // Filter untuk main categories
   });
 
   // Helper function untuk convert API data ke format CarouselArticle
@@ -38,17 +39,21 @@ export const MainContentSection: React.FC<MainContentSectionProps> = ({
       month: '2-digit'
     });
 
+    // Generate slug if not available
+    const articleSlug = article.slug || article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
     const result = {
       id: article.id,
       title: article.title,
       source: article.author?.display_name || 'naramaknaNEWS',
       timeAgo,
       imageSrc: article.metadata?.thumbnail_url || article.metadata?._thumbnail_url,
-      href: `/artikel/${article.slug}`,
+      href: `/artikel/${articleSlug}`,
       isFeatured: index === 0 // First article is featured
     };
     
-    // Image debug removed - production ready
+    // Debug the href to ensure it's properly set
+    console.log('🔗 Carousel article href:', result.href, 'for article:', article.title);
     
     return result;
   };
@@ -60,31 +65,36 @@ export const MainContentSection: React.FC<MainContentSectionProps> = ({
       title: 'Perjalanan eFishery: Dari Startup Sederhana, Jadi Unicorn lalu Kolaps',
       source: 'naramaknaNEWS',
       timeAgo: '31 menit',
+      href: '/artikel/perjalanan-efishery-dari-startup-sederhana-jadi-unicorn-lalu-kolaps',
       isFeatured: true
     },
     {
       id: '2',
       title: '2 ASN Terduga Teroris Ditangkap Densus 88 di Aceh',
       source: 'naramaknaNEWS',
-      timeAgo: '2 jam'
+      timeAgo: '2 jam',
+      href: '/artikel/2-asn-terduga-teroris-ditangkap-densus-88-di-aceh'
     },
     {
       id: '3',
       title: 'Polisi Tangkap Penjual Miras Oplosan yang Tewaskan Penonton Sound Horeg',
       source: 'naramaknaNEWS',
-      timeAgo: '2 jam'
+      timeAgo: '2 jam',
+      href: '/artikel/polisi-tangkap-penjual-miras-oplosan-yang-tewaskan-penonton-sound-horeg'
     },
     {
       id: '4',
       title: 'Pemerintah Akan Terbitkan Aturan Baru untuk E-commerce',
       source: 'naramaknaNEWS',
-      timeAgo: '4 jam'
+      timeAgo: '4 jam',
+      href: '/artikel/pemerintah-akan-terbitkan-aturan-baru-untuk-e-commerce'
     },
     {
       id: '5',
       title: 'KRL Gangguan Lagi, Kali Ini Terjadi di Stasiun Manggarai',
       source: 'naramaknaNEWS',
-      timeAgo: '6 jam'
+      timeAgo: '6 jam',
+      href: '/artikel/krl-gangguan-lagi-kali-ini-terjadi-di-stasiun-manggarai'
     }
   ];
 

@@ -19,10 +19,11 @@ export const useCategories = (): UseCategoriesReturn => {
       setLoading(true);
       setError(null);
       
-      // Get ALL categories for infinite scroll
+      // Get ONLY main categories for homepage sections
       const response = await articlesAPI.getCategories({
-        limit: 10000,   // Very high limit to get all categories
-        minCount: 0     // Include categories with at least 0 posts (reduced from 1)
+        limit: 50,      // Reasonable limit for main categories
+        minCount: 0,    // Include categories with at least 0 posts
+        mainCategoriesOnly: true  // Filter to main categories only
       });
       
       if (response.success) {

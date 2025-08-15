@@ -80,10 +80,10 @@ router.get('/admin/videos', requireRole(['admin', 'superadmin']), async (req, re
     
     const mysql = require('mysql2/promise');
     const getDbConfig = () => ({
-      host: process.env.DB_HOST || 'localhost',
-      user: process.env.DB_USER || 'naramakna_user',
-      password: process.env.DB_PASSWORD || 'password',
-      database: process.env.DB_NAME || 'naramakna_clean'
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME
     });
     
     const connection = await mysql.createConnection(getDbConfig());
@@ -161,10 +161,10 @@ router.get('/connection-status', requireRole(['admin', 'superadmin']), async (re
     
     const mysql = require('mysql2/promise');
     const getDbConfig = () => ({
-      host: process.env.DB_HOST || 'localhost',
-      user: process.env.DB_USER || 'naramakna_user',
-      password: process.env.DB_PASSWORD || 'password',
-      database: process.env.DB_NAME || 'naramakna_clean'
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME
     });
     
     const connection = await mysql.createConnection(getDbConfig());
@@ -218,10 +218,10 @@ router.delete('/disconnect', requireRole(['admin', 'superadmin']), async (req, r
     
     const mysql = require('mysql2/promise');
     const getDbConfig = () => ({
-      host: process.env.DB_HOST || 'localhost',
-      user: process.env.DB_USER || 'naramakna_user',
-      password: process.env.DB_PASSWORD || 'password',
-      database: process.env.DB_NAME || 'naramakna_clean'
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME
     });
     
     const connection = await mysql.createConnection(getDbConfig());
@@ -259,10 +259,10 @@ router.get('/analytics', requireRole(['admin', 'superadmin']), async (req, res) 
     
     const mysql = require('mysql2/promise');
     const getDbConfig = () => ({
-      host: process.env.DB_HOST || 'localhost',
-      user: process.env.DB_USER || 'naramakna_user',
-      password: process.env.DB_PASSWORD || 'password',
-      database: process.env.DB_NAME || 'naramakna_clean'
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME
     });
     
     const connection = await mysql.createConnection(getDbConfig());

@@ -20,10 +20,10 @@ class YouTubeController {
   // Get database connection
   async getConnection() {
     return mysql.createConnection({
-      host: process.env.DB_HOST || 'localhost',
-      user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || '',
-      database: process.env.DB_NAME || 'naramakna_clean',
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
       charset: 'utf8mb4'
     });
   }

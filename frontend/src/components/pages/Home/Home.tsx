@@ -9,6 +9,7 @@ import { useSEO } from '../../../hooks/useSEO';
 
 import { DynamicCategorySections } from '../../organisms/DynamicCategorySections/DynamicCategorySections';
 import { MainContentSection } from '../../organisms/MainContentSection/MainContentSection';
+import { PopupAd } from '../../organisms/PopupAd';
 
 export const Home: React.FC = () => {
   // SEO for homepage
@@ -69,6 +70,9 @@ export const Home: React.FC = () => {
         {/* Dynamic Category Sections */}
         <DynamicCategorySections />
       </div>
+      
+      {/* Popup Ad - Only on homepage */}
+      <PopupAd />
     </div>
   );
 };

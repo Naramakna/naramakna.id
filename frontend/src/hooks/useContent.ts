@@ -9,6 +9,7 @@ interface UseContentParams {
   category?: string;
   search?: string;
   autoFetch?: boolean;
+  mainCategoriesOnly?: boolean;
 }
 
 interface UseContentReturn {
@@ -26,14 +27,14 @@ export const useContent = (params: UseContentParams = {}): UseContentReturn => {
   const [pagination, setPagination] = useState<FeedResponse['pagination'] | null>(null);
 
   // Extract individual params to avoid object reference issues
-  const { autoFetch = true, page, limit, type, category, search } = params;
+  const { autoFetch = true, page, limit, type, category, search, mainCategoriesOnly } = params;
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await articlesAPI.getFeed({ page, limit, type, category, search });
+      const response = await articlesAPI.getFeed({ page, limit, type, category, search, mainCategoriesOnly });
       
       if (response.success) {
         setData(response.data.posts);
@@ -46,7 +47,7 @@ export const useContent = (params: UseContentParams = {}): UseContentReturn => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, type, category, search]);
+  }, [page, limit, type, category, search, mainCategoriesOnly]);
 
   useEffect(() => {
     if (autoFetch) {

@@ -5,14 +5,14 @@ interface NavServiceProps {
 }
 
 export const NavService: React.FC<NavServiceProps> = ({ className = '' }) => {
-  // Layanan
+  // Layanan dan sub-categories
   const services = [
     { name: 'Breaking News', href: '#' },
     { name: 'Video Story', href: '/video-story' },
     { name: 'Polling', href: '/polling' },
-    { name: 'Budaya', href: '#' },
-    { name: 'Pendidikan', href: '#' },
-    { name: 'Teknologi', href: '#' },
+    { name: 'Budaya', href: '/kategori/budaya' },
+    { name: 'Pendidikan', href: '/kategori/pendidikan' },
+    { name: 'Teknologi', href: '/kategori/teknologi' },
   ];
 
   return (

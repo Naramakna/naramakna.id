@@ -9,6 +9,7 @@ interface PollingItemProps {
   category: string;
   isActive: boolean;
   className?: string;
+  image_url?: string | null;
 }
 
 export const PollingItem: React.FC<PollingItemProps> = ({
@@ -19,7 +20,8 @@ export const PollingItem: React.FC<PollingItemProps> = ({
   endDate,
   category,
   isActive,
-  className = ''
+  className = '',
+  image_url
 }) => {
   const [selectedOption, setSelectedOption] = React.useState<string | null>(null);
   const [hasVoted, setHasVoted] = React.useState(false);
@@ -60,6 +62,21 @@ export const PollingItem: React.FC<PollingItemProps> = ({
           {category}
         </span>
       </div>
+
+      {/* Image if available */}
+      {image_url && (
+        <div className="mb-3">
+          <img 
+            src={image_url} 
+            alt={question}
+            className="w-full h-32 object-cover rounded-lg"
+            onError={(e) => {
+              // Hide image if failed to load
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        </div>
+      )}
 
       {/* Question */}
       <h3 className="text-sm font-semibold text-gray-900 mb-3 leading-tight">
