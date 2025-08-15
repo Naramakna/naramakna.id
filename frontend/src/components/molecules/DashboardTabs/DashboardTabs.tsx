@@ -24,18 +24,18 @@ export const DashboardTabs: React.FC<DashboardTabsProps> = ({
   return (
     <div className="px-4 sm:px-6">
       {/* Desktop Navigation */}
-      <nav className="hidden lg:flex lg:space-x-6 xl:space-x-8" aria-label="Tabs">
+      <nav className="hidden lg:flex lg:flex-wrap lg:gap-x-4 lg:gap-y-2 xl:gap-x-6" aria-label="Tabs">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+            className={`py-3 px-3 border-b-2 font-medium text-sm whitespace-nowrap ${
               activeTab === tab.id
                 ? `border-${colorScheme}-500 text-${colorScheme}-600`
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
-            <span className="truncate max-w-xs">{tab.name}</span>
+            <span className="truncate max-w-32">{tab.name}</span>
             {tab.count !== undefined && (
               <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
                 activeTab === tab.id

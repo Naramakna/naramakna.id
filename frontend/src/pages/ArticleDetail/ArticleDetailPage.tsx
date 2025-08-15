@@ -3,7 +3,7 @@ import { Navbar } from '../../components/organisms/Navbar';
 import { ArticleHeader } from '../../components/molecules/ArticleHeader';
 import { ArticleContent } from '../../components/organisms/ArticleContent';
 import { ArticleTags } from '../../components/molecules/ArticleTags';
-import { CommentsSection } from '../../components/organisms/CommentsSection';
+// import { CommentsSection } from '../../components/organisms/CommentsSection'; // Hidden temporarily
 import { RelatedArticles } from '../../components/organisms/RelatedArticles';
 import { AdSection } from '../../components/organisms/AdSection';
 import { useSEO, generateDescription, extractKeywords, formatStructuredDataDate } from '../../hooks/useSEO';
@@ -55,11 +55,11 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
     if (currentArticleId) {
       fetchArticleById(currentArticleId);
       fetchRelatedArticles(currentArticleId);
-      fetchComments(currentArticleId);
+      // fetchComments(currentArticleId); // Hidden temporarily
     } else if (currentArticleSlug) {
       fetchArticleBySlug(currentArticleSlug);
       fetchRelatedArticlesBySlug(currentArticleSlug);
-      fetchCommentsBySlug(currentArticleSlug);
+      // fetchCommentsBySlug(currentArticleSlug); // Hidden temporarily
     }
   }, [currentArticleId, currentArticleSlug]);
 
@@ -201,41 +201,41 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
     }
   };
 
-  const fetchComments = async (postId: string) => {
-    try {
-      const response = await fetch(`http://localhost:3001/api/content/posts/${postId}/comments`, {
-        credentials: 'include'
-      });
+  // const fetchComments = async (postId: string) => {
+  //   try {
+  //     const response = await fetch(`http://localhost:3001/api/content/posts/${postId}/comments`, {
+  //       credentials: 'include'
+  //     });
       
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.data) {
-          // Comments are handled by CommentsSection component
-          console.log('Comments loaded:', result.data.length);
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching comments:', err);
-    }
-  };
+  //     if (response.ok) {
+  //       const result = await response.json();
+  //       if (result.success && result.data) {
+  //         // Comments are handled by CommentsSection component
+  //         console.log('Comments loaded:', result.data.length);
+  //       }
+  //     }
+  //   } catch (err) {
+  //     console.error('Error fetching comments:', err);
+  //   }
+  // };
 
-  const fetchCommentsBySlug = async (slug: string) => {
-    try {
-      const response = await fetch(`http://localhost:3001/api/content/posts/slug/${slug}/comments`, {
-        credentials: 'include'
-      });
+  // const fetchCommentsBySlug = async (slug: string) => {
+  //   try {
+  //     const response = await fetch(`http://localhost:3001/api/content/posts/slug/${slug}/comments`, {
+  //       credentials: 'include'
+  //     });
       
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.data) {
-          // Comments are handled by CommentsSection component
-          console.log('Comments loaded:', result.data.length);
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching comments:', err);
-    }
-  };
+  //     if (response.ok) {
+  //       const result = await response.json();
+  //       if (result.success && result.data) {
+  //         // Comments are handled by CommentsSection component
+  //         console.log('Comments loaded:', result.data.length);
+  //       }
+  //     }
+  //   } catch (err) {
+  //     console.error('Error fetching comments:', err);
+  //   }
+  // };
 
   const trackView = async (postId: string) => {
     try {
@@ -374,10 +374,10 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
             {/* Article Tags */}
             <ArticleTags tags={article.tags} />
 
-            {/* Comments Section */}
-            <CommentsSection
+            {/* Comments Section - Hidden temporarily */}
+            {/* <CommentsSection
               postId={article.id}
-            />
+            /> */}
           </div>
         </div>
 

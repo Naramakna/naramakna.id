@@ -8,6 +8,7 @@ import { UserManagement } from '../../components/organisms/UserManagement';
 import { AdminAnalytics } from './Analytics';
 import { AdminPolling } from './AdminPolling';
 import { AdminAds } from './AdminAds';
+import { AnalyticsReports } from './AnalyticsReports';
 
 
 interface User {
@@ -492,16 +493,17 @@ const SuperAdminDashboard: React.FC = () => {
           {/* Tab Navigation */}
           <DashboardTabs
             tabs={[
-              { id: 'overview', name: 'System Overview' },
-              { id: 'users', name: 'All Users', count: users.length },
-              { id: 'admins', name: 'Admin Management', count: admins.length },
-              { id: 'posts', name: 'Posts Management', count: systemStats.totalPosts },
-              { id: 'categories', name: 'Categories Management', count: systemStats.totalCategories },
-              { id: 'pending-posts', name: 'Pending Posts', count: pendingPosts.length },
-              { id: 'polling', name: '📊 Polling Management' },
-              { id: 'ads', name: '🎯 Ads Management' },
-              { id: 'youtube', name: '📺 YouTube Management' },
-              { id: 'analytics', name: 'Analytics & Boost' },
+              { id: 'overview', name: '🏠 Overview' },
+              { id: 'analytics-reports', name: '📊 Analytics Reports' },
+              { id: 'users', name: '👥 Users', count: users.length },
+              { id: 'admins', name: '👨‍💼 Admins', count: admins.length },
+              { id: 'posts', name: '📝 Posts', count: systemStats.totalPosts },
+              { id: 'categories', name: '📂 Categories', count: systemStats.totalCategories },
+              { id: 'pending-posts', name: '⏳ Pending', count: pendingPosts.length },
+              { id: 'polling', name: '📊 Polling' },
+              { id: 'ads', name: '🎯 Ads' },
+              { id: 'youtube', name: '📺 YouTube' },
+              { id: 'analytics', name: '🚀 Boost' },
             ]}
             activeTab={activeTab}
             onTabChange={setActiveTab}
@@ -520,6 +522,10 @@ const SuperAdminDashboard: React.FC = () => {
             <>
               {activeTab === 'overview' && (
                 <SystemOverview stats={systemStats} />
+              )}
+
+              {activeTab === 'analytics-reports' && (
+                <AnalyticsReports />
               )}
 
               {activeTab === 'users' && (

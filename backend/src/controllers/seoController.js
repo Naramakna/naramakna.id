@@ -4,7 +4,7 @@ class SEOController {
   // Generate XML sitemap
   async generateSitemap(req, res) {
     try {
-      const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const baseUrl = process.env.FRONTEND_URL;
       
       // Get all published articles
       const articlesQuery = `
@@ -93,7 +93,7 @@ class SEOController {
   // Generate robots.txt
   async generateRobotsTxt(req, res) {
     try {
-      const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const baseUrl = process.env.FRONTEND_URL;
       
       const robotsTxt = `User-agent: *
 Allow: /

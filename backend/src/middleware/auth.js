@@ -16,7 +16,7 @@ const authenticate = async (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('🔍 Auth Debug - Decoded JWT:', decoded);
     
     const user = await User.findByPk(decoded.id);
@@ -83,7 +83,7 @@ const optionalAuth = async (req, res, next) => {
     const token = getTokenFromRequest(req);
     
     if (token) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const user = await User.findByPk(decoded.id);
       
       if (user && user.isActive()) {
