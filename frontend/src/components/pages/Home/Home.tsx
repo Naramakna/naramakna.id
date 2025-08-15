@@ -2,11 +2,10 @@
 import React from 'react';
 import { Navbar } from '../../organisms/Navbar';
 import { AdSection } from '../../organisms/AdSection/AdSection';
-import { PollingSection } from '../../organisms/PollingSection/PollingSection';
-import { VideoSection } from '../../organisms/VideoSection/VideoSection';
-import { TikTokSection } from '../../organisms/TikTokSection/TikTokSection';
-import { useSEO } from '../../../hooks/useSEO';
 
+import { VideoSection } from '../../organisms/VideoSection/VideoSection';
+import { PollingMain } from '../../organisms/PollingMain';
+import { useSEO } from '../../../hooks/useSEO';
 import { DynamicCategorySections } from '../../organisms/DynamicCategorySections/DynamicCategorySections';
 import { MainContentSection } from '../../organisms/MainContentSection/MainContentSection';
 import { PopupAd } from '../../organisms/PopupAd';
@@ -55,7 +54,7 @@ export const Home: React.FC = () => {
         <VideoSection />
         
         {/* Polling Section */}
-        <PollingSection />
+        <PollingMain />
 
         {/* YouTube Section */}
         {/* <TikTokSection limit={8} /> */}
