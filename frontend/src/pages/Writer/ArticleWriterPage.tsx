@@ -82,9 +82,13 @@ const ArticleWriterPage: React.FC = () => {
     defaultChannels: ['News', 'Entertainment', 'Tekno & Sains', 'Bisnis', 'Bola & Sports', 'Otomotif', 'Woman', 'Food & Travel', 'Mom', 'Bolanita']
   });
 
+  // Categories state
+  const [categories, setCategories] = useState<Array<{id: number, name: string, slug: string, parent?: number}>>([]);
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+
   const quillRef = useRef<ReactQuill>(null);
 
-  // Fetch popular tags on component mount
+  // Fetch popular tags and categories on component mount
   useEffect(() => {
     const fetchPopularTags = async () => {
       try {
@@ -98,7 +102,27 @@ const ArticleWriterPage: React.FC = () => {
       }
     };
 
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/api/content/categories?mainCategoriesOnly=true&minCount=0');
+        const result = await response.json();
+        
+        if (result.success && result.data.categories) {
+          // Remove Uncategorized from the list for cleaner UI
+          const filteredCategories = result.data.categories.filter((cat: any) => 
+            cat.slug !== 'uncategorized'
+          );
+          
+          setCategories(filteredCategories);
+          console.log('📂 Loaded main categories:', filteredCategories);
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+
     fetchPopularTags();
+    fetchCategories();
   }, []);
 
   // Custom image upload handler
@@ -204,32 +228,25 @@ const ArticleWriterPage: React.FC = () => {
 
   // Auto-save function
   const autoSave = useCallback(async () => {
-    console.log('🔧 Debug: Auto-save called with article:', { title: article.title, contentLength: article.content.length });
-    
     if (isSavingRef.current ||
         saveStatus === 'saving' ||
         !article.title.trim()) {
-      console.log('🔧 Debug: Auto-save skipped - validation failed or already saving');
       return;
     }
 
-    // console.log('🔧 Debug: Auto-save starting with saveStatus:', saveStatus);
     isSavingRef.current = true;
     setSaveStatus('saving');
 
     try {
-      // console.log('🔧 Debug: Auto-save called with:', { isEditMode, editId });
-      
       const url = isEditMode 
         ? `http://localhost:3001/api/writer/articles/${editId}`
         : 'http://localhost:3001/api/writer/articles';
       
-      // console.log('🔧 Debug: Auto-save URL:', url);
-      // console.log('🔧 Debug: Auto-save method:', isEditMode ? 'PUT' : 'POST');
-      
-      // Debug log untuk melihat apakah featured_image ada
-      console.log('🔧 Debug Frontend autoSave - article.featured_image:', article.featured_image);
-      console.log('🔧 Debug Frontend autoSave - full article:', article);
+      // Merge selectedCategories into article before sending
+      const articleWithCategories = {
+        ...article,
+        categories: selectedCategories
+      };
       
       const response = await fetch(url, {
         method: isEditMode ? 'PUT' : 'POST',
@@ -237,19 +254,15 @@ const ArticleWriterPage: React.FC = () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(article)
+        body: JSON.stringify(articleWithCategories)
       });
 
-      console.log('🔧 Debug Frontend autoSave - response status:', response.status);
-      console.log('🔧 Debug Frontend autoSave - response ok:', response.ok);
-      
       if (response.ok) {
         const result = await response.json();
-        console.log('🔧 Debug Frontend autoSave - result:', result);
         setSaveStatus('saved');
       } else {
         const errorText = await response.text();
-        console.error('❌ Frontend autoSave - error response:', response.status, errorText);
+        console.error('❌ Auto-save error:', response.status, errorText);
         setSaveStatus('unsaved');
       }
     } catch (error) {
@@ -263,18 +276,18 @@ const ArticleWriterPage: React.FC = () => {
   // Save Draft function
   const handleSaveDraft = async (): Promise<string | null> => {
     if (isSavingRef.current) {
-      console.log('🔧 Debug: Save draft skipped - save in progress');
       return null;
     }
     
     try {
-      console.log('🔧 Debug: Save draft called');
       isSavingRef.current = true;
       setSaveStatus('saving');
       
-      const draftData = { ...article, status: 'draft' as const };
-      
-      console.log('🔧 Debug Frontend handleSaveDraft - draftData:', draftData);
+      const draftData = { 
+        ...article, 
+        status: 'draft' as const,
+        categories: selectedCategories
+      };
       
       const url = isEditMode 
         ? `http://localhost:3001/api/writer/articles/${editId}`
@@ -289,11 +302,8 @@ const ArticleWriterPage: React.FC = () => {
         body: JSON.stringify(draftData)
       });
 
-      console.log('🔧 Debug Frontend handleSaveDraft - response status:', response.status);
-
       if (response.ok) {
         const result = await response.json();
-        console.log('🔧 Debug Frontend handleSaveDraft - result:', result);
         
         if (isEditMode) {
           alert('Draft berhasil disimpan!');
@@ -394,11 +404,13 @@ const ArticleWriterPage: React.FC = () => {
       // console.log('🔧 Debug: Publish called with:', { isEditMode, editId });
       isSavingRef.current = true;
       
-      const publishData = { ...article, status: 'published' as const };
+      const publishData = { 
+        ...article, 
+        status: 'published' as const,
+        categories: selectedCategories
+      };
       
-      // Debug log untuk melihat apakah featured_image ada di publish
-      console.log('🔧 Debug Frontend handlePublish - publishData.featured_image:', publishData.featured_image);
-      console.log('🔧 Debug Frontend handlePublish - full publishData:', publishData);
+      // Include categories in publish data
       
       const url = isEditMode 
         ? `http://localhost:3001/api/writer/articles/${editId}`
@@ -416,12 +428,8 @@ const ArticleWriterPage: React.FC = () => {
         body: JSON.stringify(publishData)
       });
 
-      console.log('🔧 Debug Frontend handlePublish - response status:', response.status);
-      console.log('🔧 Debug Frontend handlePublish - response ok:', response.ok);
-
       if (response.ok) {
         const result = await response.json();
-        console.log('🔧 Debug Frontend handlePublish - result:', result);
         if (isEditMode) {
           alert(`Artikel berhasil diupdate dan dipublikasi!`);
           // Don't reset form in edit mode, just update status
@@ -448,7 +456,7 @@ const ArticleWriterPage: React.FC = () => {
         setSaveStatus('saved');
       } else {
         const errorText = await response.text();
-        console.error('❌ Frontend handlePublish - error response:', response.status, errorText);
+        console.error('❌ Publish error:', response.status, errorText);
         try {
           const error = JSON.parse(errorText);
           alert(`Gagal mempublikasi artikel: ${error.message}`);
@@ -742,6 +750,46 @@ const ArticleWriterPage: React.FC = () => {
               />
               <div className="text-xs text-gray-500 mt-1">
                 {charCount.description}/160 karakter
+              </div>
+            </div>
+
+            {/* Categories */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Kategori
+              </label>
+              <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-md p-3">
+                {categories.map((category) => (
+                  <div key={category.id} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id={`category-${category.id}`}
+                      checked={selectedCategories.includes(category.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedCategories(prev => [...prev, category.id]);
+                        } else {
+                          setSelectedCategories(prev => prev.filter(id => id !== category.id));
+                        }
+                      }}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label 
+                      htmlFor={`category-${category.id}`}
+                      className="ml-2 text-sm text-gray-700 cursor-pointer"
+                    >
+                      {category.name}
+                    </label>
+                  </div>
+                ))}
+                {categories.length === 0 && (
+                  <div className="text-sm text-gray-500 text-center py-2">
+                    Loading categories...
+                  </div>
+                )}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                Pilih kategori yang sesuai dengan artikel Anda
               </div>
             </div>
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../../components/atoms/Button';
 import { Input } from '../../components/atoms/Input';
 import { LoadingSpinner } from '../../components/atoms/LoadingSpinner';
+import { FileUpload } from '../../components/atoms/FileUpload/FileUpload';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Advertisement, CreateAdRequest } from '../../services/api';
 import { adsAPI } from '../../services/api';
@@ -21,7 +22,7 @@ interface AdFormData {
 
 export const AdminAds: React.FC = () => {
   // Auth check
-  const { user, loading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   
   // State management
   const [ads, setAds] = useState<Advertisement[]>([]);
@@ -43,6 +44,14 @@ export const AdminAds: React.FC = () => {
     ad_content: '',
     google_ads_code: ''
   });
+  
+  // Edit state
+  const [editingAdId, setEditingAdId] = useState<string | null>(null);
+  const [showEditForm, setShowEditForm] = useState(false);
+  
+  // Upload state
+  const [uploading, setUploading] = useState(false);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
 
   // Fetch ads
   const fetchAds = async () => {
@@ -129,6 +138,7 @@ export const AdminAds: React.FC = () => {
           ad_content: '',
           google_ads_code: ''
         });
+        setUploadedImageUrl(null);
         setShowCreateForm(false);
         
         // Refresh ads list
@@ -143,12 +153,155 @@ export const AdminAds: React.FC = () => {
     }
   };
 
+  // Get placement description
+  const getPlacementDescription = (placement: string) => {
+    const descriptions: { [key: string]: string } = {
+      'hero-banner': '🏠 Homepage Banner (970x250)',
+      'header': '📄 Header Banner (970x250)', 
+      'mid-content': '🏠 Homepage Mid Section',
+      'bottom-content': '🏠 Homepage Bottom',
+      'popup': '🎯 Homepage Popup (Fullscreen)',
+      'regular': '📝 Content Pages (728x90)',
+      'sidebar': '📱 Sidebar Ads',
+      'article-top': '📰 Article Page Top',
+      'article-mid': '📰 Article Page Middle',
+      'article-bottom': '📰 Article Page Bottom',
+      'article-final': '📰 Article Page End',
+      'content-ad': '📰 In-Content Ads',
+      'breaking-pre': '⚡ Before Breaking News',
+      'breaking-post': '⚡ After Breaking News'
+    };
+    return descriptions[placement] || `📍 ${placement}`;
+  };
+
+  // Start editing an ad
+  const startEdit = (ad: Advertisement) => {
+    setEditingAdId(ad.id);
+    setFormData({
+      campaign_name: ad.campaign_name,
+      start_date: ad.start_date.split('T')[0],
+      end_date: ad.end_date.split('T')[0], 
+      budget: ad.budget?.toString() || '',
+      placement_type: ad.placement_type,
+      media_type: ad.media_type,
+      media_url: ad.media_url || '',
+      target_url: ad.target_url || '',
+      ad_content: ad.ad_content || '',
+      google_ads_code: ad.google_ads_code || ''
+    });
+    setUploadedImageUrl(ad.media_url || null);
+    setShowEditForm(true);
+    setShowCreateForm(false);
+  };
+
+  // Update existing ad
+  const updateAd = async () => {
+    if (!editingAdId) return;
+    
+    try {
+      setCreating(true);
+      setError(null);
+      
+      const response = await adsAPI.updateAd(editingAdId, {
+        advertiser_id: user?.ID?.toString() || '',
+        campaign_name: formData.campaign_name,
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        budget: formData.budget ? parseFloat(formData.budget) : undefined,
+        placement_type: formData.placement_type,
+        media_type: formData.media_type,
+        media_url: formData.media_url,
+        target_url: formData.target_url,
+        ad_content: formData.ad_content,
+        google_ads_code: formData.google_ads_code
+      });
+
+      if (response.success) {
+        setShowEditForm(false);
+        setEditingAdId(null);
+        // Update local state without full refresh
+        setAds(prevAds => prevAds.map(ad => 
+          ad.id === editingAdId 
+            ? { 
+                ...ad, 
+                campaign_name: formData.campaign_name,
+                start_date: formData.start_date,
+                end_date: formData.end_date,
+                budget: formData.budget ? parseFloat(formData.budget) : ad.budget,
+                placement_type: formData.placement_type as Advertisement['placement_type'],
+                media_type: formData.media_type as Advertisement['media_type'],
+                media_url: formData.media_url,
+                target_url: formData.target_url,
+                ad_content: formData.ad_content,
+                google_ads_code: formData.google_ads_code
+              }
+            : ad
+        ));
+        // Reset form
+        setFormData({
+          campaign_name: '',
+          start_date: '',
+          end_date: '',
+          budget: '',
+          placement_type: 'regular',
+          media_type: 'image',
+          media_url: '',
+          target_url: '',
+          ad_content: '',
+          google_ads_code: ''
+        });
+        setUploadedImageUrl(null);
+      } else {
+        setError(response.message || 'Failed to update advertisement');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  // Handle file upload
+  const handleFileSelect = (file: File) => {
+    // File is handled directly in handleFileUpload
+    console.log('📎 File selected:', file.name);
+  };
+
+  const handleFileUpload = async (file: File) => {
+    try {
+      setUploading(true);
+      setError(null);
+      
+      const response = await adsAPI.uploadAdImage(file);
+      
+      if (response.success && response.data) {
+        const imageUrl = response.data.fullUrl;
+        setUploadedImageUrl(imageUrl);
+        setFormData(prev => ({
+          ...prev,
+          media_url: imageUrl
+        }));
+        console.log('✅ Image uploaded successfully:', imageUrl);
+      } else {
+        setError(response.message || 'Failed to upload image');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   // Update ad status
   const updateAdStatus = async (adId: string, status: string) => {
     try {
       const response = await adsAPI.updateAdStatus(adId, status);
       if (response.success) {
-        await fetchAds(); // Refresh list
+        // Update local state without full refresh
+        setAds(prevAds => prevAds.map(ad => 
+          ad.id === adId ? { ...ad, status: status as any } : ad
+        ));
+        console.log(`✅ Ad ${adId} status updated to ${status}`);
       } else {
         setError(response.message || 'Failed to update ad status');
       }
@@ -253,11 +406,17 @@ export const AdminAds: React.FC = () => {
                 onChange={(e) => handleInputChange('placement_type', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="header">Header (970x250)</option>
-                <option value="regular">Regular (728x90)</option>
-                <option value="sidebar">Sidebar</option>
-                <option value="inline">Inline</option>
-                <option value="footer">Footer</option>
+                <option value="hero-banner">🏠 Homepage Banner (970x250)</option>
+                <option value="header">📄 Header Banner (970x250)</option>
+                <option value="mid-content">🏠 Homepage Mid Section</option>
+                <option value="bottom-content">🏠 Homepage Bottom</option>
+                <option value="popup">🎯 Homepage Popup (Fullscreen)</option>
+                <option value="regular">📝 Content Pages (728x90)</option>
+                <option value="sidebar">📱 Sidebar Ads</option>
+                <option value="article-top">📰 Article Page Top</option>
+                <option value="article-mid">📰 Article Page Middle</option>
+                <option value="article-bottom">📰 Article Page Bottom</option>
+                <option value="article-final">📰 Article Page End</option>
               </select>
             </div>
 
@@ -284,11 +443,12 @@ export const AdminAds: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Budget (IDR)
               </label>
-              <Input
+              <input
                 type="number"
                 value={formData.budget}
                 onChange={(e) => handleInputChange('budget', e.target.value)}
                 placeholder="1000000"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
@@ -318,17 +478,36 @@ export const AdminAds: React.FC = () => {
               />
             </div>
 
-            {/* Media URL */}
+            {/* Media Upload/URL */}
             {(formData.media_type === 'image' || formData.media_type === 'gif' || formData.media_type === 'video') && (
-              <div className="md:col-span-2">
+              <div className="md:col-span-2 space-y-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Media URL
+                  Media Upload or URL
                 </label>
-                <Input
-                  value={formData.media_url}
-                  onChange={(e) => handleInputChange('media_url', e.target.value)}
-                  placeholder="https://example.com/image.jpg"
-                />
+                
+                {/* File Upload Section */}
+                {formData.media_type === 'image' && (
+                  <div>
+                    <p className="text-sm text-gray-600 mb-2">Upload new image:</p>
+                    <FileUpload
+                      onFileSelect={handleFileSelect}
+                      onUpload={handleFileUpload}
+                      accept="image/*"
+                      preview={uploadedImageUrl || formData.media_url}
+                      uploading={uploading}
+                    />
+                  </div>
+                )}
+                
+                {/* Manual URL Input */}
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">Or enter URL manually:</p>
+                  <Input
+                    value={formData.media_url}
+                    onChange={(e) => handleInputChange('media_url', e.target.value)}
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </div>
               </div>
             )}
 
@@ -391,6 +570,172 @@ export const AdminAds: React.FC = () => {
               size="sm"
             >
               {creating ? '⏳ Creating...' : '✅ Create Ad'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Form */}
+      {showEditForm && (
+        <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <h3 className="text-lg font-semibold mb-4">Edit Advertisement</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Campaign Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Campaign Name *
+              </label>
+              <Input
+                value={formData.campaign_name}
+                onChange={(e) => handleInputChange('campaign_name', e.target.value)}
+                placeholder="Enter campaign name"
+              />
+            </div>
+
+            {/* Placement Type */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Placement Type
+              </label>
+              <select
+                value={formData.placement_type}
+                onChange={(e) => handleInputChange('placement_type', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="hero-banner">🏠 Homepage Banner (970x250)</option>
+                <option value="header">📄 Header Banner (970x250)</option>
+                <option value="mid-content">🏠 Homepage Mid Section</option>
+                <option value="bottom-content">🏠 Homepage Bottom</option>
+                <option value="popup">🎯 Homepage Popup (Fullscreen)</option>
+                <option value="regular">📝 Content Pages (728x90)</option>
+                <option value="sidebar">📱 Sidebar Ads</option>
+                <option value="article-top">📰 Article Page Top</option>
+                <option value="article-mid">📰 Article Page Middle</option>
+                <option value="article-bottom">📰 Article Page Bottom</option>
+                <option value="article-final">📰 Article Page End</option>
+              </select>
+            </div>
+
+            {/* Media Type */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Media Type
+              </label>
+              <select
+                value={formData.media_type}
+                onChange={(e) => handleInputChange('media_type', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="image">Image</option>
+                <option value="gif">GIF</option>
+                <option value="video">Video</option>
+                <option value="html">HTML Content</option>
+                <option value="google_ads">Google Ads</option>
+              </select>
+            </div>
+
+            {/* Media Upload/URL */}
+            <div className="md:col-span-2 space-y-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Media Upload or URL *
+              </label>
+              
+              {/* File Upload Section */}
+              {formData.media_type === 'image' && (
+                <div>
+                  <p className="text-sm text-gray-600 mb-2">Upload new image:</p>
+                  <FileUpload
+                    onFileSelect={handleFileSelect}
+                    onUpload={handleFileUpload}
+                    accept="image/*"
+                    preview={uploadedImageUrl || formData.media_url}
+                    uploading={uploading}
+                  />
+                </div>
+              )}
+              
+              {/* Manual URL Input */}
+              <div>
+                <p className="text-sm text-gray-600 mb-2">Or enter URL manually:</p>
+                <Input
+                  value={formData.media_url}
+                  onChange={(e) => handleInputChange('media_url', e.target.value)}
+                  placeholder="Enter image/video URL"
+                />
+              </div>
+            </div>
+
+            {/* Target URL */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Target URL
+              </label>
+              <Input
+                value={formData.target_url}
+                onChange={(e) => handleInputChange('target_url', e.target.value)}
+                placeholder="Enter link destination"
+              />
+            </div>
+
+            {/* Budget */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Budget (IDR)
+              </label>
+              <input
+                type="number"
+                value={formData.budget}
+                onChange={(e) => handleInputChange('budget', e.target.value)}
+                placeholder="Enter budget amount"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Start Date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Start Date *
+              </label>
+              <input
+                type="date"
+                value={formData.start_date}
+                onChange={(e) => handleInputChange('start_date', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* End Date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                End Date *
+              </label>
+              <input
+                type="date"
+                value={formData.end_date}
+                onChange={(e) => handleInputChange('end_date', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3 mt-6">
+            <Button
+              onClick={() => {
+                setShowEditForm(false);
+                setEditingAdId(null);
+              }}
+              variant="outline"
+              size="sm"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={updateAd}
+              disabled={creating}
+              size="sm"
+            >
+              {creating ? '⏳ Updating...' : '✅ Update Ad'}
             </Button>
           </div>
         </div>
@@ -461,6 +806,9 @@ export const AdminAds: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900 capitalize">{ad.media_type}</div>
                     <div className="text-sm text-gray-500 capitalize">{ad.placement_type}</div>
+                    <div className="text-xs text-blue-600 mt-1">
+                      {getPlacementDescription(ad.placement_type)}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div>{new Date(ad.start_date).toLocaleDateString()}</div>
@@ -481,6 +829,12 @@ export const AdminAds: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                    <button
+                      onClick={() => startEdit(ad)}
+                      className="text-blue-600 hover:text-blue-900"
+                    >
+                      ✏️ Edit
+                    </button>
                     {ad.status === 'active' && (
                       <button
                         onClick={() => updateAdStatus(ad.id, 'paused')}

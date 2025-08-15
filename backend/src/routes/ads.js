@@ -10,7 +10,11 @@ const { authenticate, canManageAds } = require('../middleware/auth');
 
 // Advertisement serving (public)
 router.get('/serve', AdsController.serve);
+router.get('/popup-active', AdsController.getActivePopupAd);
 router.post('/:id/click', AdsController.trackClick);
+
+// Image upload endpoint (requires auth)
+router.post('/upload', authenticate, canManageAds, AdsController.uploadImage);
 
 // Advertisement management (superadmin only)
 router.get('/stats', authenticate, canManageAds, AdsController.getStats);
