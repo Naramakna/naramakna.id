@@ -1,7 +1,7 @@
 import React from 'react';
 import { TrendingList } from '../../molecules/TrendingList';
 import { useTrending } from '../../../hooks/useTrending.ts';
-import { useTikTok } from '../../../hooks/useTikTok';
+import { useTikTokVideos } from '../../../hooks/useTikTok';
 import type { Article } from '../../../services/api/articles';
 
 interface TrendingArticle {
@@ -42,7 +42,7 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({
   const criteria = apiResponse?.criteria || 'most_viewed';
 
   // TikTok content integration
-  const { content: rawTiktokContent } = useTikTok();
+  const { videos: rawTiktokContent } = useTikTokVideos();
   
   // Memoize tiktokContent to prevent unnecessary re-renders
   const tiktokContent = React.useMemo(() => rawTiktokContent || [], [rawTiktokContent]);

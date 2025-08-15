@@ -3,7 +3,7 @@ const tiktokConfig = {
   // Basic TikTok API configuration
   clientKey: process.env.TIKTOK_CLIENT_KEY || '',
   clientSecret: process.env.TIKTOK_CLIENT_SECRET || '',
-  redirectUri: process.env.TIKTOK_REDIRECT_URI || 'http://localhost:5173/tiktok/callback',
+  redirectUri: process.env.TIKTOK_REDIRECT_URI || '',
   
   // API endpoints
   baseURL: 'https://open.tiktokapis.com',

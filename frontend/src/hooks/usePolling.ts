@@ -20,11 +20,15 @@ export const usePolling = (limit: number = 10): UsePollingReturn => {
       setLoading(true);
       setError(null);
       
+      console.log('usePolling - fetching polls with limit:', limit);
       const response = await pollingAPI.getActivePolls({ limit });
+      console.log('usePolling - API response:', response);
       
       if (response.success) {
+        console.log('usePolling - polls data:', response.data?.polls);
         setPolls(response.data?.polls || []);
       } else {
+        console.error('usePolling - API error:', response.message);
         setError(response.message || 'Failed to fetch polls');
         setPolls([]); // Ensure polls is always an array
       }
