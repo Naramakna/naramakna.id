@@ -18,6 +18,8 @@ interface CategoryPost {
   author_id: number;
   featured_image?: string;
   slug?: string;
+  featured_image?: string;
+  slug?: string;
 }
 
 interface CategoryPageData {
@@ -153,6 +155,11 @@ const CategoryPage: React.FC = () => {
       <AdSection position="top" size="header" />
       
       {/* Page Header */}
+      
+      {/* AdSection Header */}
+      <AdSection position="top" size="header" />
+      
+      {/* Page Header */}
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
@@ -199,6 +206,7 @@ const CategoryPage: React.FC = () => {
 
         {/* Load More Button */}
         {data.pagination.hasMore && (
+          <div className="text-center mt-8">
           <div className="text-center mt-8">
             <button
               onClick={handleLoadMore}

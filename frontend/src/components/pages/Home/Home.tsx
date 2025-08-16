@@ -8,8 +8,24 @@ import { useSEO } from '../../../hooks/useSEO';
 import { DynamicCategorySections } from '../../organisms/DynamicCategorySections/DynamicCategorySections';
 import { MainContentSection } from '../../organisms/MainContentSection/MainContentSection';
 import { PopupAd } from '../../organisms/PopupAd';
+import { PopupAd } from '../../organisms/PopupAd';
 
 export const Home: React.FC = () => {
+  // SEO for homepage
+  useSEO({
+    title: 'Naramakna - Berita Terkini Indonesia & Dunia',
+    description: 'Portal berita terpercaya dengan informasi terkini dari Indonesia dan dunia. Dapatkan berita politik, ekonomi, olahraga, hiburan, teknologi, dan lifestyle terupdate setiap hari.',
+    keywords: [
+      'berita indonesia', 'berita terkini', 'portal berita', 'naramakna',
+      'berita politik', 'berita ekonomi', 'berita olahraga', 'berita hiburan',
+      'berita teknologi', 'berita dunia', 'breaking news', 'news indonesia'
+    ],
+    image: `${typeof window !== 'undefined' ? window.location.origin : ''}/LogoNaramakna.png`,
+    url: typeof window !== 'undefined' ? window.location.href : undefined,
+    type: 'website',
+    locale: 'id_ID'
+  });
+
   // SEO for homepage
   useSEO({
     title: 'Naramakna - Berita Terkini Indonesia & Dunia',
@@ -68,6 +84,9 @@ export const Home: React.FC = () => {
         {/* Dynamic Category Sections */}
         <DynamicCategorySections />
       </div>
+      
+      {/* Popup Ad - Only on homepage */}
+      <PopupAd />
       
       {/* Popup Ad - Only on homepage */}
       <PopupAd />
