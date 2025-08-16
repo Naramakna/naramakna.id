@@ -8,7 +8,6 @@ import { useSEO } from '../../../hooks/useSEO';
 import { DynamicCategorySections } from '../../organisms/DynamicCategorySections/DynamicCategorySections';
 import { MainContentSection } from '../../organisms/MainContentSection/MainContentSection';
 import { PopupAd } from '../../organisms/PopupAd';
-import { PopupAd } from '../../organisms/PopupAd';
 
 export const Home: React.FC = () => {
   // SEO for homepage
