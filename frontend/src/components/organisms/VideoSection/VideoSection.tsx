@@ -55,33 +55,6 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
   const youtubeVideoData: VideoData[] = youtubeVideos.slice(0, 8).map(convertYouTubeToVideoData);
 
   // Dummy data untuk fallback when no YouTube videos or error
-  // Fetch YouTube videos
-  const { videos: youtubeVideos, loading, error } = useYouTubeVideos(false);
-
-  // Helper function to convert YouTube data to VideoData format
-  const convertYouTubeToVideoData = (ytVideo: YouTubeVideo): VideoData => {
-    // Format duration from seconds to MM:SS
-    const formatDuration = (seconds: number): string => {
-      const mins = Math.floor(seconds / 60);
-      const secs = seconds % 60;
-      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    };
-
-    return {
-      id: ytVideo.id.toString(),
-      title: ytVideo.title || 'Untitled Video',
-      source: ytVideo.youtube_channel_name || 'naramaknaTV',
-      duration: ytVideo.duration ? formatDuration(ytVideo.duration) : '00:00',
-      tag: 'YOUTUBE VIDEO',
-      imageSrc: ytVideo.thumbnail_url,
-      href: `/video/${ytVideo.id}`
-    };
-  };
-
-  // Convert YouTube videos to VideoData format
-  const youtubeVideoData: VideoData[] = youtubeVideos.slice(0, 8).map(convertYouTubeToVideoData);
-
-  // Dummy data untuk fallback when no YouTube videos or error
   const defaultVideos: VideoData[] = [
     {
       id: '1',
