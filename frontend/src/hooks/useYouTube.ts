@@ -16,6 +16,10 @@ export const useYouTubeConnection = () => {
       
       if (response.success && response.data) {
         setStatus(response.data);
+        // Check if there's an error in the data (for configuration issues)
+        if (response.data.error) {
+          setError(response.data.details || response.data.error);
+        }
       } else {
         setError(response.error || 'Failed to check connection status');
       }

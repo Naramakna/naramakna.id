@@ -185,7 +185,38 @@ export const AdminYouTube: React.FC = () => {
               {connectionLoading && <LoadingSpinner />}
               
               {connectionError && (
-                <AlertMessage type="error" message={connectionError} />
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <span className="text-2xl">❌</span>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-lg font-medium text-red-800">Connection Failed</h3>
+                      <p className="mt-1 text-sm text-red-700">{connectionError}</p>
+                      {connectionError.includes('not configured') && (
+                        <div className="mt-3 text-sm text-red-700">
+                          <p className="font-medium">Required Setup:</p>
+                          <ul className="mt-1 list-disc list-inside space-y-1">
+                            <li>Create YouTube API credentials in Google Cloud Console</li>
+                            <li>Configure OAuth 2.0 client ID and secret</li>
+                            <li>Set proper redirect URI: <code className="bg-red-100 px-1 rounded">http://localhost:3001/api/youtube/callback</code></li>
+                            <li>Update environment variables in backend/.env</li>
+                          </ul>
+                          <p className="mt-2">
+                            <a 
+                              href="https://developers.google.com/youtube/v3/getting-started" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-red-600 underline hover:text-red-800"
+                            >
+                              YouTube API Setup Guide →
+                            </a>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
 
               {connectionStatus.connected ? (

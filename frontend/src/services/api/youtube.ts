@@ -57,6 +57,9 @@ export interface YouTubeConnectionStatus {
     scope: string[];
     last_used_at?: string;
   };
+  error?: string;
+  details?: string;
+  code?: string;
 }
 
 export interface YouTubeAnalytics {

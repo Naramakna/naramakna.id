@@ -9,12 +9,36 @@ class YouTubeController {
   constructor() {
     this.youtube = google.youtube('v3');
     this.analytics = google.youtubeAnalytics('v2');
-    this.oauth2Client = new google.auth.OAuth2(
-      process.env.YOUTUBE_CLIENT_ID,
-      process.env.YOUTUBE_CLIENT_SECRET,
-      process.env.YOUTUBE_REDIRECT_URI
-    );
-    this.apiKey = process.env.YOUTUBE_API_KEY;
+    
+    // Check if YouTube credentials are properly configured
+    this.isConfigured = this.checkConfiguration();
+    
+    if (this.isConfigured) {
+      this.oauth2Client = new google.auth.OAuth2(
+        process.env.YOUTUBE_CLIENT_ID,
+        process.env.YOUTUBE_CLIENT_SECRET,
+        process.env.YOUTUBE_REDIRECT_URI
+      );
+      this.apiKey = process.env.YOUTUBE_API_KEY;
+    }
+  }
+
+  checkConfiguration() {
+    const requiredVars = [
+      'YOUTUBE_CLIENT_ID',
+      'YOUTUBE_CLIENT_SECRET', 
+      'YOUTUBE_REDIRECT_URI',
+      'YOUTUBE_API_KEY'
+    ];
+    
+    for (const varName of requiredVars) {
+      const value = process.env[varName];
+      if (!value || value.includes('your_youtube_') || value.includes('_here')) {
+        console.warn(`⚠️  YouTube ${varName} not properly configured`);
+        return false;
+      }
+    }
+    return true;
   }
 
   // Get database connection
@@ -91,6 +115,16 @@ class YouTubeController {
   // Get YouTube OAuth authorization URL
   async getAuthUrl(req, res) {
     try {
+      // Check if YouTube is properly configured
+      if (!this.isConfigured) {
+        return res.status(503).json({
+          success: false,
+          error: 'YouTube integration not configured',
+          details: 'YouTube API credentials are missing or invalid. Please contact administrator.',
+          code: 'YOUTUBE_NOT_CONFIGURED'
+        });
+      }
+
       const scopes = [
         'https://www.googleapis.com/auth/youtube.upload',
         'https://www.googleapis.com/auth/youtube',
@@ -112,7 +146,9 @@ class YouTubeController {
       console.error('YouTube auth URL error:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to generate authorization URL'
+        error: 'Failed to generate authorization URL',
+        details: error.message || 'Unknown error occurred',
+        code: 'AUTH_URL_GENERATION_FAILED'
       });
     }
   }
@@ -224,6 +260,19 @@ class YouTubeController {
   // Get connection status
   async getConnectionStatus(req, res) {
     try {
+      // Check if YouTube is properly configured first
+      if (!this.isConfigured) {
+        return res.json({
+          success: true,
+          data: { 
+            connected: false,
+            error: 'YouTube integration not configured',
+            details: 'YouTube API credentials are missing or invalid. Please contact administrator.',
+            code: 'YOUTUBE_NOT_CONFIGURED'
+          }
+        });
+      }
+
       const userId = req.user?.id;
       if (!userId) {
         return res.json({
