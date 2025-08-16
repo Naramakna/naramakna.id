@@ -1,13 +1,13 @@
 import React from 'react';
-import LogoImage from '../../../assets/LogoNaramakna.png';
+import LogoImage from '../../../assets/NaramaknaPutih.png';
 
-interface LogoProps {
+interface LogoFooterProps {
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   className?: string;
   onClick?: () => void;
 }
 
-export const Logo: React.FC<LogoProps> = ({
+export const LogoFooter: React.FC<LogoFooterProps> = ({
   size = 'md',
   className = '',
   onClick,

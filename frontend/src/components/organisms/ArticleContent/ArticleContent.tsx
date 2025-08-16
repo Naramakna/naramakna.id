@@ -17,8 +17,8 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
   content,
   featuredImage
 }) => {
-  // Parse content and render with proper styling, Instagram embeds, and enhanced images
-  const renderContent = (rawContent: string) => {
+  // Parse content and split for ad insertion
+  const splitContentForAd = (rawContent: string) => {
     // Check if content is HTML or plain text
     const isHTML = /<[a-z][\s\S]*>/i.test(rawContent);
     
@@ -33,8 +33,20 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
         .join('\n');
     }
     
+    // Split content roughly in half for ad placement
+    const paragraphs = htmlContent.split('</p>').filter(p => p.trim());
+    const midPoint = Math.floor(paragraphs.length / 2);
+    
+    const firstHalf = paragraphs.slice(0, midPoint).join('</p>') + (paragraphs.length > midPoint ? '</p>' : '');
+    const secondHalf = paragraphs.slice(midPoint).join('</p>') + (paragraphs.length > midPoint ? '</p>' : '');
+    
+    return { firstHalf, secondHalf, fullContent: htmlContent };
+  };
+
+  // Parse content and render with proper styling, Instagram embeds, and enhanced images
+  const renderContentPart = (rawContent: string) => {
     // Process content to handle Instagram embeds and enhanced images
-    const processedContent = htmlContent
+    const processedContent = rawContent
       // Replace Instagram URLs with embed placeholders
       .replace(
         /https:\/\/www\.instagram\.com\/p\/[A-Za-z0-9_-]+\/?/g,
@@ -66,17 +78,25 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
             prose-headings:font-bold prose-headings:text-gray-900
             prose-h2:text-2xl prose-h2:mt-12 prose-h2:mb-6
             prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-4
-            prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-6
+            prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-6 prose-p:text-justify
             prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
             prose-strong:text-gray-900 prose-strong:font-semibold
-            prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:pl-6 prose-blockquote:italic
+            prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:pl-6 prose-blockquote:italic prose-blockquote:text-justify
             prose-ul:space-y-2 prose-ol:space-y-2
-            prose-li:text-gray-700
+            prose-li:text-gray-700 prose-li:text-justify
+            text-justify
           "
           dangerouslySetInnerHTML={{ __html: processedContent }}
         />
-        
-                {/* Render Instagram embeds */}
+      </div>
+    );
+  };
+
+  // Render Instagram embeds and enhanced images for a content part
+  const renderContentExtras = (htmlContent: string) => {
+    return (
+      <>
+        {/* Render Instagram embeds */}
         {(() => {
           const instagramMatches = htmlContent.match(/https:\/\/www\.instagram\.com\/p\/[A-Za-z0-9_-]+\/?/g);
           return instagramMatches?.map((url, index) => (
@@ -110,7 +130,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
             return null;
           });
         })()}
-      </div>
+      </>
     );
   };
 
@@ -146,7 +166,34 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
 
       {/* Article Content */}
       <div className="article-content">
-        {renderContent(content)}
+        {(() => {
+          const { firstHalf, secondHalf } = splitContentForAd(content);
+          
+          return (
+            <>
+              {/* First Half of Content */}
+              <div className="content-part-1">
+                {renderContentPart(firstHalf)}
+                {renderContentExtras(firstHalf)}
+              </div>
+              
+              {/* Middle Ad - Regular Size */}
+              <div className="my-8 flex justify-center">
+                <AdSection 
+                  placement="content-middle" 
+                  size="regular" 
+                  rotationInterval={5000}
+                />
+              </div>
+              
+              {/* Second Half of Content */}
+              <div className="content-part-2">
+                {renderContentPart(secondHalf)}
+                {renderContentExtras(secondHalf)}
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       {/* Content Advertisement */}

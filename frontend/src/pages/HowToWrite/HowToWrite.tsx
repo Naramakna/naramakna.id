@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Navbar } from '../../components/organisms/Navbar';
 import { AdSection } from '../../components/organisms/AdSection/AdSection';
+import { Footer } from '../../components/organisms/Footer';
 
 export const HowToWrite: React.FC = () => {
   const [activeStep, setActiveStep] = useState(1);
@@ -252,6 +253,9 @@ export const HowToWrite: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

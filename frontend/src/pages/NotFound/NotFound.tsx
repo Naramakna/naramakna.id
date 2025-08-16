@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from '../../components/atoms/Button';
+import { Footer } from '../../components/organisms/Footer';
 import { SEOHead } from '../../components/atoms/SEOHead';
 
 export const NotFound: React.FC = () => {
@@ -112,12 +113,11 @@ export const NotFound: React.FC = () => {
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="mt-12 text-sm text-gray-500">
-            <p>© 2025 Naramakna. Semua hak dilindungi.</p>
-          </div>
         </div>
       </div>
+      
+      {/* Footer */}
+      <Footer />
     </>
   );
 };

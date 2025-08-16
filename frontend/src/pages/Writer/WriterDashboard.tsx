@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Footer } from '../../components/organisms/Footer';
 
 interface Post {
   ID: number;
@@ -312,6 +313,9 @@ const WriterDashboard: React.FC = () => {
           )}
         </div>
       )}
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };
