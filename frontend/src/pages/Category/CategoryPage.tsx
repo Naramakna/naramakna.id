@@ -18,6 +18,7 @@ interface CategoryPost {
   author_id: number;
   featured_image?: string;
   slug?: string;
+  view_count?: number;
 }
 
 interface CategoryPageData {
@@ -193,7 +194,8 @@ const CategoryPage: React.FC = () => {
               id: post.author_id
             },
             slug: post.slug || post.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-            category: data.category.name
+            category: data.category.name,
+            views: post.view_count || Math.floor(Math.random() * 3000) + 100 // Mock data for demo
           }))}
         />
 

@@ -88,7 +88,11 @@ export const Carousel: React.FC<CarouselProps> = ({
         {articles.length > 1 && (
           <>
             <button
-              onClick={prevSlide}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                prevSlide();
+              }}
               className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-2 rounded-full transition-all duration-200 z-10"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,7 +101,11 @@ export const Carousel: React.FC<CarouselProps> = ({
             </button>
 
             <button
-              onClick={nextSlide}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                nextSlide();
+              }}
               className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-2 rounded-full transition-all duration-200 z-10"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -110,7 +118,11 @@ export const Carousel: React.FC<CarouselProps> = ({
               {articles.map((_, index) => (
                 <button
                   key={index}
-                  onClick={() => goToSlide(index)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    goToSlide(index);
+                  }}
                   className={`w-3 h-3 rounded-full transition-all duration-200 ${
                     index === currentIndex 
                       ? 'bg-white' 
