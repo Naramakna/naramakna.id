@@ -57,6 +57,9 @@ export interface YouTubeConnectionStatus {
     scope: string[];
     last_used_at?: string;
   };
+  error?: string;
+  details?: string;
+  code?: string;
 }
 
 export interface YouTubeAnalytics {
@@ -163,7 +166,7 @@ export const youtubeAPI = {
       method: 'POST',
       credentials: 'include',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
     });
     return response.json();
@@ -215,7 +218,7 @@ export const youtubeAPI = {
       method: 'POST',
       credentials: 'include',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(data),
     });
@@ -240,11 +243,11 @@ export const youtubeAPI = {
     if (params.status) query.append('status', params.status);
     if (params.source) query.append('source', params.source);
 
-    const response = await fetch(buildApiUrl(`/api/youtube/videos?${query.toString()}`), {
+    const response = await fetch(buildApiUrl(`/youtube/videos?${query.toString()}`), {
       method: 'GET',
       credentials: 'include',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
     });
     return response.json();
@@ -264,7 +267,7 @@ export const youtubeAPI = {
     if (params.offset) query.append('offset', params.offset.toString());
     if (params.category) query.append('category', params.category);
 
-    const response = await fetch(buildApiUrl(`/api/youtube/public?${query.toString()}`), {
+    const response = await fetch(buildApiUrl(`/youtube/public?${query.toString()}`), {
       method: 'GET',
       credentials: 'include',
       headers: {
@@ -308,7 +311,7 @@ export const youtubeAPI = {
     referrer?: string;
     duration_watched?: number;
   }): Promise<ApiResponse> {
-    const response = await fetch(buildApiUrl(`/api/youtube/videos/${videoId}/view`), {
+    const response = await fetch(buildApiUrl(`/youtube/videos/${videoId}/view`), {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -323,7 +326,7 @@ export const youtubeAPI = {
    * Delete YouTube video
    */
   async deleteVideo(videoId: string): Promise<ApiResponse> {
-    const response = await fetch(buildApiUrl(`/api/youtube/videos/${videoId}`), {
+    const response = await fetch(buildApiUrl(`/youtube/videos/${videoId}`), {
       method: 'DELETE',
       credentials: 'include',
       headers: {
@@ -337,7 +340,7 @@ export const youtubeAPI = {
    * Update video metadata
    */
   async updateVideo(videoId: string, data: Partial<YouTubeUploadRequest>): Promise<ApiResponse> {
-    const response = await fetch(buildApiUrl(`/api/youtube/videos/${videoId}`), {
+    const response = await fetch(buildApiUrl(`/youtube/videos/${videoId}`), {
       method: 'PATCH',
       credentials: 'include',
       headers: {

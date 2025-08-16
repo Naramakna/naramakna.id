@@ -36,7 +36,10 @@ export const AdSection: React.FC<AdSectionProps> = ({
   // Get ads for this placement
   const availableAds = useMemo(() => {
     const ads = getAdsForPlacement(adPlacement);
-    console.log(`🎯 AdSection: Available ads for ${adPlacement}:`, ads);
+    // Only log when ads change
+    if (ads.length > 0) {
+      console.log(`🎯 AdSection: Available ads for ${adPlacement}:`, ads.length, 'ads');
+    }
     return ads;
   }, [getAdsForPlacement, adPlacement]);
 
@@ -101,9 +104,6 @@ export const AdSection: React.FC<AdSectionProps> = ({
 
   // Determine if we should show placeholder
   const shouldShowPlaceholder = isPlaceholder !== undefined ? isPlaceholder : !selectedAd;
-  
-  // Debug logging
-  console.log(`🎯 AdSection [${adPlacement}]: shouldShowPlaceholder=${shouldShowPlaceholder}, isPlaceholder=${isPlaceholder}, selectedAd=`, selectedAd);
 
   const handleAdClick = (adId: string) => {
     trackClick(adId);
@@ -162,17 +162,7 @@ export const AdSection: React.FC<AdSectionProps> = ({
           </div>
         )}
         
-        {/* Debug Refresh Button (only show if no ads are active) */}
-        {activeAds.length === 0 && process.env.NODE_ENV === 'development' && (
-          <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2">
-            <button
-              onClick={() => forceRefreshAds(adPlacement)}
-              className="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600"
-            >
-              🔄 Refresh {adPlacement} Ads
-            </button>
-          </div>
-        )}
+
       </div>
     </div>
   );

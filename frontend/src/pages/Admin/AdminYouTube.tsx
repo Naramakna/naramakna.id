@@ -6,6 +6,7 @@ import {
   useYouTubeVideos, 
   useYouTubeSync 
 } from '../../hooks/useYouTube';
+import { youtubeAPI } from '../../services/api/youtube';
 import { AlertMessage } from '../../components/atoms/AlertMessage';
 import { Button } from '../../components/atoms/Button';
 import { Input } from '../../components/atoms/Input';
@@ -17,7 +18,7 @@ export const AdminYouTube: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'connection' | 'upload' | 'videos' | 'sync' | 'analytics'>('connection');
 
   // YouTube hooks
-  const { status: connectionStatus, loading: connectionLoading, error: connectionError, connect, disconnect } = useYouTubeConnection();
+  const { status: connectionStatus, loading: connectionLoading, error: connectionError, disconnect, refresh: refreshConnection } = useYouTubeConnection();
   const { uploading, progress, error: uploadError, success: uploadSuccess, uploadVideo, reset: resetUpload } = useYouTubeUpload();
   const { videos, loading: videosLoading, error: videosError, refresh: refreshVideos } = useYouTubeVideos(true);
   const { syncing, error: syncError, success: syncSuccess, syncVideos, reset: resetSync } = useYouTubeSync();
@@ -32,6 +33,11 @@ export const AdminYouTube: React.FC = () => {
   });
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  
+  // OAuth Modal state
+  const [showOAuthModal, setShowOAuthModal] = useState(false);
+  const [oauthStatus, setOAuthStatus] = useState<'waiting' | 'processing' | 'success' | 'error'>('waiting');
+  const [oauthMessage, setOAuthMessage] = useState('');
 
   // Check user permission
   useEffect(() => {
@@ -112,6 +118,130 @@ export const AdminYouTube: React.FC = () => {
     }
   };
 
+  const handleOAuthConnect = async () => {
+    try {
+      setShowOAuthModal(true);
+      setOAuthStatus('waiting');
+      setOAuthMessage('Getting authorization URL...');
+      
+      const response = await youtubeAPI.getAuthUrl();
+      
+      if (response.success && response.data?.auth_url) {
+        setOAuthMessage('Opening Google OAuth window...');
+        
+        // Open OAuth in popup
+        const popup = window.open(
+          response.data.auth_url, 
+          'youtube-oauth', 
+          'width=600,height=700,scrollbars=yes,resizable=yes'
+        );
+        
+        setOAuthStatus('processing');
+        setOAuthMessage('Complete authorization in the popup window. This will auto-detect when done.');
+        
+        // Poll for connection status every 3 seconds
+        const pollInterval = setInterval(async () => {
+          try {
+            console.log('🔄 Polling YouTube connection status...');
+            const statusResponse = await youtubeAPI.getConnectionStatus();
+            console.log('📊 Poll response:', statusResponse);
+            
+            if (statusResponse.success && statusResponse.data?.connected) {
+              console.log('✅ Connection detected via polling!');
+              clearInterval(pollInterval);
+              setOAuthStatus('success');
+              setOAuthMessage(`✅ Connected to ${statusResponse.data.channel?.title}!`);
+              
+              // Update connection status
+              refreshConnection();
+              
+              // Try to close popup (may fail due to CORS but that's ok)
+              try {
+                if (popup && !popup.closed) {
+                  popup.close();
+                }
+              } catch (e) {
+                // Ignore CORS errors when trying to close popup
+              }
+              
+              // Close modal after 3 seconds
+              setTimeout(() => {
+                setShowOAuthModal(false);
+              }, 3000);
+            } else {
+              console.log('⏳ Still not connected, continuing polling...');
+            }
+          } catch (error) {
+            console.error('Polling error:', error);
+          }
+        }, 3000);
+        
+        // Stop polling after 10 minutes and show timeout
+        setTimeout(() => {
+          clearInterval(pollInterval);
+          setOAuthStatus('error');
+          setOAuthMessage('Authorization timed out. Please try again. If you completed authorization, it may still be processing.');
+        }, 600000);
+        
+        // Add postMessage listener for popup communication
+        const handlePostMessage = (event: MessageEvent) => {
+          console.log('🔔 Received postMessage:', event.data, 'from origin:', event.origin);
+          console.log('🔔 Current window origin:', window.location.origin);
+          
+          if (event.origin !== window.location.origin) {
+            console.log('❌ Origin mismatch, ignoring message');
+            return;
+          }
+          
+          if (event.data === 'youtube-oauth-success') {
+            console.log('✅ OAuth success message received!');
+            clearInterval(pollInterval);
+            setOAuthStatus('success');
+            setOAuthMessage('✅ Authorization completed! Checking connection...');
+            
+            // Check status immediately
+            setTimeout(async () => {
+              try {
+                console.log('🔍 Checking connection status...');
+                const statusResponse = await youtubeAPI.getConnectionStatus();
+                console.log('📊 Status response:', statusResponse);
+                
+                if (statusResponse.success && statusResponse.data?.connected) {
+                  setOAuthMessage(`✅ Connected to ${statusResponse.data.channel?.title}!`);
+                  refreshConnection();
+                  setTimeout(() => setShowOAuthModal(false), 2000);
+                } else {
+                  setOAuthMessage('⏳ Connection not detected yet, continuing to poll...');
+                  setOAuthStatus('processing');
+                }
+              } catch (error) {
+                console.error('Status check error:', error);
+                setOAuthMessage('❌ Error checking status, continuing to poll...');
+                setOAuthStatus('processing');
+              }
+            }, 1000);
+          }
+        };
+        
+        window.addEventListener('message', handlePostMessage);
+        
+        // Cleanup on unmount
+        return () => {
+          window.removeEventListener('message', handlePostMessage);
+          clearInterval(pollInterval);
+        };
+        
+      } else {
+        setOAuthStatus('error');
+        setOAuthMessage(response.error || 'Failed to get authorization URL');
+      }
+    } catch (error) {
+      setOAuthStatus('error');
+      setOAuthMessage('Connection failed. Please try again.');
+      console.error('OAuth error:', error);
+    }
+  };
+
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -185,7 +315,38 @@ export const AdminYouTube: React.FC = () => {
               {connectionLoading && <LoadingSpinner />}
               
               {connectionError && (
-                <AlertMessage type="error" message={connectionError} />
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <span className="text-2xl">❌</span>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-lg font-medium text-red-800">Connection Failed</h3>
+                      <p className="mt-1 text-sm text-red-700">{connectionError}</p>
+                      {connectionError.includes('not configured') && (
+                        <div className="mt-3 text-sm text-red-700">
+                          <p className="font-medium">Required Setup:</p>
+                          <ul className="mt-1 list-disc list-inside space-y-1">
+                            <li>Create YouTube API credentials in Google Cloud Console</li>
+                            <li>Configure OAuth 2.0 client ID and secret</li>
+                            <li>Set proper redirect URI: <code className="bg-red-100 px-1 rounded">http://localhost:3001/api/youtube/callback</code></li>
+                            <li>Update environment variables in backend/.env</li>
+                          </ul>
+                          <p className="mt-2">
+                            <a 
+                              href="https://developers.google.com/youtube/v3/getting-started" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-red-600 underline hover:text-red-800"
+                            >
+                              YouTube API Setup Guide →
+                            </a>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
 
               {connectionStatus.connected ? (
@@ -227,7 +388,7 @@ export const AdminYouTube: React.FC = () => {
                       </p>
                     </div>
                     <Button
-                      onClick={connect}
+                      onClick={handleOAuthConnect}
                       className="ml-4"
                       disabled={connectionLoading}
                     >
@@ -284,13 +445,14 @@ export const AdminYouTube: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Title *
                   </label>
-                  <Input
+                  <input
                     type="text"
                     value={uploadForm.title}
                     onChange={(e) => setUploadForm(prev => ({ ...prev, title: e.target.value }))}
                     placeholder="Enter video title"
                     maxLength={100}
                     required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <p className="mt-1 text-xs text-gray-500">{uploadForm.title.length}/100 characters</p>
                 </div>
@@ -480,13 +642,13 @@ export const AdminYouTube: React.FC = () => {
                           <p>Channel: {video.youtube_channel_name || 'Unknown'}</p>
                           <p>Views: {video.youtube_view_count?.toLocaleString() || 0}</p>
                           <p>Status: <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
-                            video.upload_status === 'published' 
+                            video.publish_status === 'published' 
                               ? 'bg-green-100 text-green-800' 
-                              : video.upload_status === 'processing'
+                              : video.publish_status === 'processing'
                               ? 'bg-yellow-100 text-yellow-800'
                               : 'bg-gray-100 text-gray-800'
                           }`}>
-                            {video.upload_status}
+                            {video.publish_status}
                           </span></p>
                         </div>
 
@@ -585,6 +747,99 @@ export const AdminYouTube: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* OAuth Modal */}
+      {showOAuthModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                YouTube OAuth Connection
+              </h3>
+              
+              <div className="mb-4">
+                {oauthStatus === 'waiting' && (
+                  <div className="text-blue-600">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  </div>
+                )}
+                
+                {oauthStatus === 'processing' && (
+                  <div className="text-blue-600">
+                    <div className="animate-pulse text-2xl mb-2">🔄</div>
+                  </div>
+                )}
+                
+                {oauthStatus === 'success' && (
+                  <div className="text-green-600">
+                    <div className="text-4xl mb-2">✅</div>
+                  </div>
+                )}
+                
+                {oauthStatus === 'error' && (
+                  <div className="text-red-600">
+                    <div className="text-4xl mb-2">❌</div>
+                  </div>
+                )}
+              </div>
+              
+              <p className="text-sm text-gray-600 mb-4">
+                {oauthMessage}
+              </p>
+              
+              <div className="flex gap-2 justify-center">
+                {(oauthStatus === 'error' || oauthStatus === 'success') && (
+                  <Button
+                    onClick={() => setShowOAuthModal(false)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Close
+                  </Button>
+                )}
+                
+                {oauthStatus === 'processing' && (
+                  <>
+                    <Button
+                      onClick={async () => {
+                        console.log('🔍 Manual status check...');
+                        try {
+                          const statusResponse = await youtubeAPI.getConnectionStatus();
+                          console.log('📊 Manual check response:', statusResponse);
+                          
+                          if (statusResponse.success && statusResponse.data?.connected) {
+                            setOAuthStatus('success');
+                            setOAuthMessage(`✅ Connected to ${statusResponse.data.channel?.title}!`);
+                            refreshConnection();
+                            setTimeout(() => setShowOAuthModal(false), 2000);
+                          } else {
+                            setOAuthMessage('❌ Still not connected. Please complete authorization in popup.');
+                          }
+                        } catch (error) {
+                          console.error('Manual check error:', error);
+                          setOAuthMessage('❌ Error checking status. Please try again.');
+                        }
+                      }}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Check Status
+                    </Button>
+                    
+                    <Button
+                      onClick={() => setShowOAuthModal(false)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -14,6 +14,14 @@ export const IndexBerita: React.FC = () => {
   const [data, setData] = useState<IndexBeritaData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState({
+    search: '',
+    category: '',
+    sortBy: 'date',
+    sortOrder: 'desc',
+    page: 1,
+    limit: 20
+  });
 
   console.log('🔄 IndexBerita render - loading:', loading, 'data:', data, 'error:', error);
 
@@ -22,63 +30,54 @@ export const IndexBerita: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      console.log('🔄 Fetching articles...');
+      console.log('🔄 Fetching articles with filters:', filters);
 
-      // Simple mock data that always works
-      const mockArticles = [
-        {
-          id: 1,
-          title: "Berita Politik Terkini: Perkembangan Terbaru di Dunia Politik",
-          content: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-          excerpt: "Lorem ipsum dolor sit amet, consectetur adipiscing elit...",
-          featured_image: "https://picsum.photos/400/300?random=1",
-          date: "2024-01-15T10:30:00Z",
-          author_name: "John Doe",
-          author_id: 1,
-          slug: "berita-politik-terkini",
-          category_name: "Politik",
-          view_count: 1250
-        },
-        {
-          id: 2,
-          title: "Update Ekonomi: Kondisi Perekonomian Indonesia Saat Ini",
-          content: "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
-          excerpt: "Ut enim ad minim veniam, quis nostrud exercitation...",
-          featured_image: "https://picsum.photos/400/300?random=2",
-          date: "2024-01-14T15:45:00Z",
-          author_name: "Jane Smith",
-          author_id: 2,
-          slug: "update-ekonomi-indonesia",
-          category_name: "Ekonomi",
-          view_count: 890
-        },
-        {
-          id: 3,
-          title: "Olahraga Nasional: Prestasi Atlet Indonesia di Kancah Internasional",
-          content: "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
-          excerpt: "Duis aute irure dolor in reprehenderit in voluptate...",
-          featured_image: "https://picsum.photos/400/300?random=3",
-          date: "2024-01-13T09:20:00Z",
-          author_name: "Bob Johnson",
-          author_id: 3,
-          slug: "olahraga-nasional-prestasi-atlet",
-          category_name: "Olahraga",
-          view_count: 2100
-        }
-      ];
+      // Build query parameters
+      const queryParams = new URLSearchParams({
+        page: filters.page.toString(),
+        limit: filters.limit.toString(),
+        sortBy: filters.sortBy,
+        sortOrder: filters.sortOrder
+      });
 
-      // Short delay
-      await new Promise(resolve => setTimeout(resolve, 300));
+      if (filters.search) queryParams.append('search', filters.search);
+      if (filters.category) queryParams.append('category', filters.category);
 
-      console.log('✅ Setting data...');
+      const response = await fetch(`http://localhost:3001/api/content/feed?${queryParams}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('📡 API Response:', result);
+
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to fetch articles');
+      }
+
+      // Transform API data to component format
+      const transformedArticles = result.data.posts.map((post: any) => ({
+        id: post.id,
+        title: post.title || 'Untitled',
+        content: post.content || '',
+        excerpt: post.excerpt || (post.content ? post.content.substring(0, 150) + '...' : ''),
+        featured_image: post.metadata?._thumbnail_id ? `/uploads/${post.metadata._thumbnail_id}` : '',
+        date: post.date || new Date().toISOString(),
+        author_name: post.author?.display_name || 'Unknown',
+        author_id: post.author?.ID || 0,
+        slug: post.slug || post.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'untitled',
+        category_name: post.categories?.[0]?.name || 'Umum',
+        view_count: Math.floor(Math.random() * 3000) + 100
+      }));
 
       setData({
-        articles: mockArticles,
+        articles: transformedArticles,
         pagination: {
-          currentPage: 1,
-          totalPages: 1,
-          totalArticles: 3,
-          hasMore: false
+          currentPage: result.data.pagination?.page || filters.page,
+          totalPages: result.data.pagination?.totalPages || 1,
+          totalArticles: result.data.pagination?.total || transformedArticles.length,
+          hasMore: result.data.pagination?.hasMore || false
         }
       });
 
@@ -94,7 +93,12 @@ export const IndexBerita: React.FC = () => {
 
   useEffect(() => {
     fetchArticles();
-  }, []);
+  }, [filters]);
+
+  // Handle filter changes
+  const handleFilterChange = (newFilters: Partial<typeof filters>) => {
+    setFilters(prev => ({ ...prev, ...newFilters, page: 1 })); // Reset to page 1 when filters change
+  };
 
 
 
@@ -148,29 +152,7 @@ export const IndexBerita: React.FC = () => {
     );
   }
 
-  if (!data || data.articles.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <SEOHead 
-          title="Index Berita - Naramakna.id"
-          description="Kumpulan lengkap semua berita dan artikel terbaru dari Naramakna.id"
-          
-        />
-        <Navbar />
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="text-gray-400 mb-4">
-              <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Belum Ada Artikel</h2>
-            <p className="text-gray-600">Belum ada artikel yang dipublikasikan.</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -211,27 +193,131 @@ export const IndexBerita: React.FC = () => {
         {/* Polling Section */}
         <PollingMain />
 
+        {/* Search and Filter UI */}
+        <div className="bg-white shadow-sm border-b border-gray-200 py-6 mb-6">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Search Bar */}
+            <div className="mb-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Cari artikel..."
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange({ search: e.target.value })}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter Row */}
+            <div className="flex flex-wrap gap-4 items-center">
+              {/* Category Filter */}
+              <div className="flex-1 min-w-48">
+                <select
+                  value={filters.category}
+                  onChange={(e) => handleFilterChange({ category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Semua Kategori</option>
+                  <option value="teknologi">Teknologi</option>
+                  <option value="politik">Politik</option>
+                  <option value="ekonomi">Ekonomi</option>
+                  <option value="olahraga">Olahraga</option>
+                  <option value="hiburan">Hiburan</option>
+                </select>
+              </div>
+
+              {/* Sort Options */}
+              <div className="flex-1 min-w-48">
+                <select
+                  value={`${filters.sortBy}-${filters.sortOrder}`}
+                  onChange={(e) => {
+                    const [sortBy, sortOrder] = e.target.value.split('-');
+                    handleFilterChange({ sortBy, sortOrder });
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="date-desc">Terbaru</option>
+                  <option value="date-asc">Terlama</option>
+                  <option value="title-asc">Judul A-Z</option>
+                  <option value="title-desc">Judul Z-A</option>
+                  <option value="views-desc">Paling Populer</option>
+                </select>
+              </div>
+
+              {/* Results Count */}
+              <div className="text-sm text-gray-500 whitespace-nowrap">
+                {data ? `${data.pagination.totalArticles} artikel` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* IndexCardList dengan iklan setiap 5 artikel */}
         <div className="bg-gray-50 py-8">
-          <IndexCardList 
-            articles={data.articles.map((article) => ({
-              id: article.id,
-              title: article.title,
-              excerpt: article.excerpt || article.content.substring(0, 150) + '...',
-              featured_image: article.featured_image || '',
-              date: article.date,
-              author: {
-                name: article.author_name,
-                id: article.author_id
-              },
-              slug: article.slug || article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-              category: article.category_name || 'Umum',
-              views: article.view_count || Math.floor(Math.random() * 3000) + 100
-            }))}
-          />
-
-
-
+          {data && data.articles.length > 0 ? (
+            <IndexCardList 
+              articles={data.articles.map((article) => ({
+                id: article.id,
+                title: article.title,
+                excerpt: article.excerpt || article.content.substring(0, 150) + '...',
+                featured_image: article.featured_image || '',
+                date: article.date,
+                author: {
+                  name: article.author_name,
+                  id: article.author_id
+                },
+                slug: article.slug || article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                category: article.category_name || 'Umum',
+                views: article.view_count || Math.floor(Math.random() * 3000) + 100
+              }))}
+            />
+          ) : (
+            /* Empty State - di dalam content area */
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12">
+                <div className="text-center">
+                  <div className="text-gray-400 mb-6">
+                    <svg className="w-20 h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-3">Tidak Ada Artikel Ditemukan</h3>
+                  <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                    {filters.search || filters.category 
+                      ? 'Tidak ada artikel yang sesuai dengan filter yang dipilih. Coba ubah kata kunci atau filter lainnya.'
+                      : 'Belum ada artikel yang dipublikasikan.'
+                    }
+                  </p>
+                  
+                  {/* Action buttons untuk clear filters */}
+                  {(filters.search || filters.category) && (
+                    <button
+                      onClick={() => setFilters({
+                        search: '',
+                        category: '',
+                        sortBy: 'date',
+                        sortOrder: 'desc',
+                        page: 1,
+                        limit: 20
+                      })}
+                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Reset Filter
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Bottom Banner - Slow rotation (10 seconds) */}
