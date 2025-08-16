@@ -2,7 +2,7 @@
 export { PasswordInput, FormLabel, AlertMessage, SocialButton, CheckboxField } from './atoms';
 
 // Molecules
-export { FormField, PasswordField, OAuthSection, TermsSection, NavHeader, RememberMeSection, LoginOAuthSection, BackToLoginSection } from './molecules';
+export { FormField, PasswordField, OAuthSection, TermsSection, NavHeader, RememberMeSection, LoginOAuthSection, BackToLoginSection, IndexCardList } from './molecules';
 
 // Organisms
 export { RegisterForm, LoginForm, ForgotPasswordForm } from './organisms';

@@ -7,7 +7,7 @@ interface NavServiceProps {
 export const NavService: React.FC<NavServiceProps> = ({ className = '' }) => {
   // Layanan dan sub-categories
   const services = [
-    { name: 'Breaking News', href: '#' },
+    { name: 'Index Berita', href: '/index-berita' },
     { name: 'Video Story', href: '/video-story' },
     { name: 'Polling', href: '/polling' },
     { name: 'Budaya', href: '/kategori/budaya' },
@@ -24,7 +24,7 @@ export const NavService: React.FC<NavServiceProps> = ({ className = '' }) => {
               key={index}
               href={service.href}
               className={`text-xs font-medium whitespace-nowrap transition-colors duration-200 flex-shrink-0 px-3 py-1 rounded-full ${
-                service.name === 'Breaking News' 
+                service.name === 'Index Berita' 
                   ? 'bg-red-100 text-red-700 hover:bg-red-200'
                   : service.name === 'Video Story'
                   ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'

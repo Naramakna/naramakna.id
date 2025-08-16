@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navbar } from '../../components/organisms/Navbar';
 import { AdSection } from '../../components/organisms/AdSection/AdSection';
+import { Footer } from '../../components/organisms/Footer';
 import { Logo } from '../../components/atoms/Logo';
 
 export const AboutUs: React.FC = () => {
@@ -224,6 +225,9 @@ export const AboutUs: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

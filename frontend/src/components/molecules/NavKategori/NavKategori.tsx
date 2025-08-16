@@ -16,7 +16,7 @@ export const NavKategori: React.FC<NavKategoriProps> = ({ className = '' }) => {
     { name: 'Cerita Rasa', slug: 'cerita-rasa' },
     { name: 'Akal Budi', slug: 'akal-budi' },
     { name: 'Horison', slug: 'horison' },
-    { name: 'Dunia', slug: 'dunia' },
+    { name: 'Jagat Kita', slug: 'Jagat Kita' },
   ];
 
   // Data untuk dropdown "Lainnya"
