@@ -12,6 +12,7 @@ interface CarouselArticle {
   imageSrc?: string;
   href?: string;
   isFeatured?: boolean;
+  views?: number;
 }
 
 interface MainContentSectionProps {
@@ -48,6 +49,7 @@ export const MainContentSection: React.FC<MainContentSectionProps> = ({
       source: article.author?.display_name || 'naramaknaNEWS',
       timeAgo,
       imageSrc: article.metadata?.thumbnail_url || article.metadata?._thumbnail_url,
+      views: article.view_count || Math.floor(Math.random() * 5000) + 100, // Mock data for demo
       href: `/artikel/${articleSlug}`,
       isFeatured: index === 0 // First article is featured
     };
@@ -190,6 +192,15 @@ export const MainContentSection: React.FC<MainContentSectionProps> = ({
                     <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
+                    {true && (
+                      <>
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        <span className="text-sm text-gray-500">{(article.views || Math.floor(Math.random() * 3500) + 180).toLocaleString()}</span>
+                      </>
+                    )}
                     <span className="text-sm text-gray-500">{article.timeAgo}</span>
                   </div>
                 </div>
@@ -239,6 +250,15 @@ export const MainContentSection: React.FC<MainContentSectionProps> = ({
                       <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
+                      {true && (
+                        <>
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          <span className="text-sm text-gray-500">{(article.views || Math.floor(Math.random() * 3500) + 180).toLocaleString()}</span>
+                        </>
+                      )}
                       <span className="text-sm text-gray-500">{article.timeAgo}</span>
                     </div>
                   </div>

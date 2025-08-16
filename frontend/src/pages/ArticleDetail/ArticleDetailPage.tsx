@@ -3,6 +3,7 @@ import { Navbar } from '../../components/organisms/Navbar';
 import { ArticleHeader } from '../../components/molecules/ArticleHeader';
 import { ArticleContent } from '../../components/organisms/ArticleContent';
 import { ArticleTags } from '../../components/molecules/ArticleTags';
+import { ArticleAnalyticsModal } from '../../components/organisms/ArticleAnalyticsModal';
 // import { CommentsSection } from '../../components/organisms/CommentsSection'; // Hidden temporarily
 import { RelatedArticles } from '../../components/organisms/RelatedArticles';
 import { AdSection } from '../../components/organisms/AdSection';
@@ -46,6 +47,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
   const [relatedArticles, setRelatedArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
 
   // Extract article identifier from URL or props
   const currentArticleId = articleId || (articleSlug ? null : window.location.pathname.split('/').pop());
@@ -256,7 +258,9 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
     }
   };
 
-
+  const handleAnalyticsClick = () => {
+    setShowAnalyticsModal(true);
+  };
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -354,6 +358,8 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
               likes={article.likes}
               comments={article.comments}
               categoryName={article.category}
+              articleId={article.id}
+              onAnalyticsClick={handleAnalyticsClick}
             />
 
             {/* Article Content */}
@@ -402,6 +408,16 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
           />
         </div>
       </main>
+
+      {/* Analytics Modal */}
+      {article && (
+        <ArticleAnalyticsModal
+          isOpen={showAnalyticsModal}
+          onClose={() => setShowAnalyticsModal(false)}
+          articleId={article.id}
+          articleTitle={article.title}
+        />
+      )}
     </div>
   );
 };
