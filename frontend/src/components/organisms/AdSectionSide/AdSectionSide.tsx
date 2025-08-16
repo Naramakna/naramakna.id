@@ -8,7 +8,7 @@ export const AdSectionSide: React.FC<AdSectionSideProps> = ({
   className = ''
 }) => {
   return (
-    <div className={`w-[300px] h-[250px] bg-gray-100 border border-gray-200 rounded-lg flex items-center justify-center sticky top-32 ${className}`}>
+    <div className={`w-[300px] h-[250px] bg-gray-100 border border-gray-200 rounded-lg flex items-center justify-center ${className}`}>
       {/* Dummy Ad Content */}
       <div className="text-center p-4">
         <div className="w-16 h-16 bg-blue-500 rounded-full mx-auto mb-3 flex items-center justify-center">

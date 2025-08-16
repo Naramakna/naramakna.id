@@ -1,6 +1,6 @@
 // Komponen gallery untuk display video grid
 import React, { useState, useEffect } from 'react';
-import { VideoItem } from '../../atoms/VideoItem';
+import { VideoItemGallery } from '../../atoms/VideoItemGallery';
 import { VideoModal } from '../VideoModal';
 
 export const VideoGallery: React.FC = () => {
@@ -137,11 +137,11 @@ export const VideoGallery: React.FC = () => {
 
   return (
     <div className="w-full">
-      {/* Video Grid - 4 kolom */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Video Grid - Mobile: 2 kolom, Desktop: 4 kolom */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
         {dummyVideos.map((video, index) => (
           <div key={video.id} className="flex-shrink-0">
-            <VideoItem
+            <VideoItemGallery
               id={video.id}
               title={video.title}
               source={video.source}

@@ -73,6 +73,15 @@ export const useYouTubeConnection = () => {
       
       if (response.success) {
         setStatus({ connected: false });
+        
+        // Show success message based on whether tokens were revoked from Google
+        const message = response.data?.revoked_from_google 
+          ? 'YouTube disconnected and tokens revoked from Google ✅'
+          : 'YouTube disconnected locally ⚠️';
+          
+        // You can use a toast/notification system here
+        console.log('🔓 Disconnect result:', message);
+        alert(message);
       } else {
         setError(response.error || 'Failed to disconnect');
       }
@@ -85,7 +94,7 @@ export const useYouTubeConnection = () => {
 
   useEffect(() => {
     checkConnection();
-  }, [checkConnection]);
+  }, []); // Run only once on mount
 
   return {
     status,

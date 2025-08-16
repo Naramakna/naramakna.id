@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from '../../components/organisms/Navbar';
+import { Footer } from '../../components/organisms/Footer';
 import { AdSection } from '../../components/organisms/AdSection';
 import { SingleCategorySection } from '../../components/organisms/SingleCategorySection';
 import { PollingMain } from '../../components/organisms/PollingMain';
@@ -219,6 +220,9 @@ const CategoryPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

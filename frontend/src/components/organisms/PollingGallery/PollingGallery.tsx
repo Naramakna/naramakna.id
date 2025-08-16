@@ -31,8 +31,8 @@ export const PollingGallery: React.FC = () => {
         </div>
       )}
 
-      {/* Polling Grid - 4 kolom */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Polling Grid - Mobile: 2 kolom, Desktop: 4 kolom */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
         {transformedPolls.length > 0 ? (
           transformedPolls.map((polling) => (
             <div key={polling.id} className="flex-shrink-0">

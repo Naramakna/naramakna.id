@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from '../../components/organisms/Navbar';
+import { Footer } from '../../components/organisms/Footer';
 import { ArticleHeader } from '../../components/molecules/ArticleHeader';
 import { ArticleContent } from '../../components/organisms/ArticleContent';
 import { ArticleTags } from '../../components/molecules/ArticleTags';
@@ -387,15 +388,6 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
           </div>
         </div>
 
-        {/* Before Related Articles Ad */}
-        <div className="my-8">
-          <AdSection 
-            placement="article-bottom" 
-            size="header" 
-            rotationInterval={12000}
-          />
-        </div>
-
         {/* Related Articles */}
         <RelatedArticles articles={relatedArticles} />
         
@@ -418,6 +410,9 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
           articleTitle={article.title}
         />
       )}
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

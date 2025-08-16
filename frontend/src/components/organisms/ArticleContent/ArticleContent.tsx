@@ -205,40 +205,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
         />
       </div>
 
-      {/* Breaking News Pre-Ad */}
-      <div className="my-8">
-        <AdSection 
-          placement="breaking-pre" 
-          size="regular" 
-          rotationInterval={6000}
-        />
-      </div>
 
-      {/* Breaking News Banner (like Kumparan) */}
-      <div className="my-8 bg-gradient-to-r from-red-600 to-blue-600 rounded-lg p-6 text-white">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="bg-white text-red-600 px-3 py-1 rounded font-bold text-sm">
-              BREAKING NEWS
-            </div>
-            <span className="text-sm">
-              Informasi penting disajikan secara kronologis
-            </span>
-          </div>
-          <button className="bg-white bg-opacity-20 text-white px-4 py-2 rounded-lg text-sm hover:bg-opacity-30 transition-colors">
-            Lihat Breaking News
-          </button>
-        </div>
-      </div>
-
-      {/* Breaking News Post-Ad */}
-      <div className="my-8">
-        <AdSection 
-          placement="breaking-post" 
-          size="header" 
-          rotationInterval={8000}
-        />
-      </div>
 
       {/* Follow Us Section */}
       <div className="my-8 p-6 bg-gray-50 rounded-lg border border-gray-200">

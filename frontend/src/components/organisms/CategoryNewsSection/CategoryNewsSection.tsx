@@ -126,8 +126,18 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
   } else if (!loading && !error && apiArticles.length > 0) {
     displayNewsItems = apiArticles.map(convertToNewsItem);
   } else {
+    // Always show fallback data when API data is empty or loading
     displayNewsItems = defaultNewsItems;
   }
+
+  // Debug logging
+  console.log(`CategoryNewsSection [${category}]:`, {
+    loading,
+    error,
+    apiArticles: apiArticles.length,
+    displayNewsItems: displayNewsItems.length,
+    fallback: displayNewsItems === defaultNewsItems
+  });
 
   // Determine display name for category
   const displayCategoryName = categoryDisplayName || 
