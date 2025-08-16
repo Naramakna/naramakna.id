@@ -2,16 +2,29 @@
 import React from 'react';
 import { Navbar } from '../../organisms/Navbar';
 import { AdSection } from '../../organisms/AdSection/AdSection';
-import { PollingSection } from '../../organisms/PollingSection/PollingSection';
 import { VideoSection } from '../../organisms/VideoSection/VideoSection';
-import { TikTokSection } from '../../organisms/TikTokSection/TikTokSection';
+import { PollingMain } from '../../organisms/PollingMain';
 import { useSEO } from '../../../hooks/useSEO';
-
 import { DynamicCategorySections } from '../../organisms/DynamicCategorySections/DynamicCategorySections';
 import { MainContentSection } from '../../organisms/MainContentSection/MainContentSection';
 import { PopupAd } from '../../organisms/PopupAd';
 
 export const Home: React.FC = () => {
+  // SEO for homepage
+  useSEO({
+    title: 'Naramakna - Berita Terkini Indonesia & Dunia',
+    description: 'Portal berita terpercaya dengan informasi terkini dari Indonesia dan dunia. Dapatkan berita politik, ekonomi, olahraga, hiburan, teknologi, dan lifestyle terupdate setiap hari.',
+    keywords: [
+      'berita indonesia', 'berita terkini', 'portal berita', 'naramakna',
+      'berita politik', 'berita ekonomi', 'berita olahraga', 'berita hiburan',
+      'berita teknologi', 'berita dunia', 'breaking news', 'news indonesia'
+    ],
+    image: `${typeof window !== 'undefined' ? window.location.origin : ''}/LogoNaramakna.png`,
+    url: typeof window !== 'undefined' ? window.location.href : undefined,
+    type: 'website',
+    locale: 'id_ID'
+  });
+
   // SEO for homepage
   useSEO({
     title: 'Naramakna - Berita Terkini Indonesia & Dunia',
@@ -55,7 +68,7 @@ export const Home: React.FC = () => {
         <VideoSection />
         
         {/* Polling Section */}
-        <PollingSection />
+        <PollingMain />
 
         {/* YouTube Section */}
         {/* <TikTokSection limit={8} /> */}
@@ -70,6 +83,9 @@ export const Home: React.FC = () => {
         {/* Dynamic Category Sections */}
         <DynamicCategorySections />
       </div>
+      
+      {/* Popup Ad - Only on homepage */}
+      <PopupAd />
       
       {/* Popup Ad - Only on homepage */}
       <PopupAd />

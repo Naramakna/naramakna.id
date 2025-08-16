@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from '../../components/organisms/Navbar';
 import { AdSection } from '../../components/organisms/AdSection';
 import { SingleCategorySection } from '../../components/organisms/SingleCategorySection';
-import { PollingSection } from '../../components/organisms/PollingSection';
+import { PollingMain } from '../../components/organisms/PollingMain';
 import { VideoSection } from '../../components/organisms/VideoSection';
 import { ArticleCardList } from '../../components/molecules/ArticleCardList';
 import { LoadingSpinner } from '../../components/atoms/LoadingSpinner/LoadingSpinner';
@@ -171,7 +171,7 @@ const CategoryPage: React.FC = () => {
       />
 
       {/* Polling Section */}
-      <PollingSection />
+      <PollingMain />  
 
       {/* Video Story Section */}
       <VideoSection />

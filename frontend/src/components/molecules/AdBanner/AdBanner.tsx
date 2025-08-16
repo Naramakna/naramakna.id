@@ -55,33 +55,55 @@ export const AdBanner: React.FC<AdBannerProps> = ({
     
     switch (size) {
       case 'header':
-        return `w-full max-w-[970px] h-[250px] md:w-[970px] ${baseClasses} ${visibilityClasses}`;
+        // Mobile: w-[90%] h-[120px], Tablet: w-[95%] h-[150px], Desktop: max-w-[970px] h-[250px]
+        return `w-[90%] sm:w-[95%] md:w-full lg:w-full xl:max-w-[970px] h-[120px] sm:h-[150px] md:h-[180px] lg:h-[200px] xl:h-[250px] ${baseClasses} ${visibilityClasses}`;
       case 'regular':
       default:
-        return `w-full max-w-[728px] h-[90px] md:w-[728px] ${baseClasses} ${visibilityClasses}`;
+        // Mobile: w-[90%] h-[60px], Tablet: w-[95%] h-[70px], Desktop: max-w-[728px] h-[90px]
+        return `w-[90%] sm:w-[95%] md:w-full lg:max-w-[728px] h-[60px] sm:h-[70px] md:h-[80px] lg:h-[90px] ${baseClasses} ${visibilityClasses}`;
     }
   };
 
   const getPlaceholderText = () => {
     switch (size) {
       case 'header':
-        return '970 x 250';
+        return {
+          mobile: '90% x 120px',
+          tablet: '95% x 180px',
+          desktop: '970 x 250px'
+        };
       case 'regular':
       default:
-        return '728 x 90';
+        return {
+          mobile: '90% x 60px',
+          tablet: '95% x 80px',
+          desktop: '728 x 90px'
+        };
     }
   };
 
   // Render placeholder if no real ad data
   if (!hasRealAd || isPlaceholder) {
+    const placeholderSizes = getPlaceholderText();
+    
     return (
       <div className={`${getSizeClasses()} bg-gray-200 border-2 border-dashed border-gray-400 flex items-center justify-center ${className}`}>
-        <div className="text-center">
-          <div className="text-gray-500 font-medium">Advertisement Banner</div>
-          <div className="text-gray-400 text-sm">{getPlaceholderText()}</div>
-          <div className="text-gray-400 text-xs mt-1">
-            Placeholder: {adMediaUrl || 'No image specified'}
+        <div className="text-center px-4">
+          <div className="text-gray-500 font-medium text-sm sm:text-base">Advertisement Banner</div>
+          
+          {/* Responsive size display */}
+          <div className="text-gray-400 text-xs sm:text-sm">
+            <span className="block sm:hidden">{placeholderSizes.mobile}</span>
+            <span className="hidden sm:block lg:hidden">{placeholderSizes.tablet}</span>
+            <span className="hidden lg:block">{placeholderSizes.desktop}</span>
           </div>
+          
+          {/* Image source info */}
+          {adMediaUrl && (
+            <div className="text-gray-400 text-xs mt-1 truncate max-w-full">
+              Placeholder: {adMediaUrl}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -96,7 +118,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({
           <img 
             src={adMediaUrl} 
             alt={altText}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover rounded-lg"
             loading="lazy"
           />
         );
@@ -105,7 +127,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({
         return (
           <video 
             src={adMediaUrl}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover rounded-lg"
             autoPlay 
             muted 
             loop
@@ -116,7 +138,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({
       case 'html':
         return (
           <div 
-            className="w-full h-full"
+            className="w-full h-full rounded-lg overflow-hidden"
             dangerouslySetInnerHTML={{ __html: advertisement?.ad_content || '' }}
           />
         );
@@ -124,22 +146,25 @@ export const AdBanner: React.FC<AdBannerProps> = ({
       case 'google_ads':
         return (
           <div 
-            className="w-full h-full flex items-center justify-center"
+            className="w-full h-full flex items-center justify-center rounded-lg overflow-hidden"
             dangerouslySetInnerHTML={{ __html: advertisement?.google_ads_code || advertisement?.ad_content || '' }}
           />
         );
       
       default:
         return (
-          <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-500">
-            Unsupported media type: {adMediaType}
+          <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-500 rounded-lg">
+            <div className="text-center">
+              <div className="text-sm">Unsupported media type</div>
+              <div className="text-xs mt-1">{adMediaType}</div>
+            </div>
           </div>
         );
     }
   };
 
   return (
-    <div className={`${getSizeClasses()} relative ${className}`}>
+    <div className={`${getSizeClasses()} relative rounded-lg overflow-hidden shadow-sm ${className}`}>
       {adTargetUrl ? (
         <a 
           href={adTargetUrl} 
@@ -156,10 +181,17 @@ export const AdBanner: React.FC<AdBannerProps> = ({
         </div>
       )}
       
-      {/* Ad attribution */}
+      {/* Ad attribution - Responsive positioning */}
       {hasRealAd && (
-        <div className="absolute top-1 right-1 bg-black bg-opacity-50 text-white text-xs px-1 py-0.5 rounded z-10">
+        <div className="absolute top-1 right-1 sm:top-2 sm:right-2 bg-black bg-opacity-60 text-white text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded z-10">
           Ad
+        </div>
+      )}
+      
+      {/* Optional: Responsive loading indicator */}
+      {!adMediaUrl && hasRealAd && (
+        <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-orange-500"></div>
         </div>
       )}
     </div>

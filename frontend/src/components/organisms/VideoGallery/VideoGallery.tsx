@@ -1,10 +1,13 @@
 // Komponen gallery untuk display video grid
 import React, { useState, useEffect } from 'react';
 import { VideoItem } from '../../atoms/VideoItem';
+import { VideoModal } from '../VideoModal';
 
 export const VideoGallery: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [hasMoreData, setHasMoreData] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedVideoIndex, setSelectedVideoIndex] = useState(0);
 
   // Dummy data untuk 8 video dengan format yang sama seperti VideoSection
   const dummyVideos = [
@@ -13,56 +16,89 @@ export const VideoGallery: React.FC = () => {
       title: 'Tips dan Trik Memasak Nasi Goreng yang Enak\nResep Rahasia Chef Professional',
       source: 'naramaknaFOOD',
       duration: '08:45',
-      tag: 'FOOD & LIFESTYLE'
+      tag: 'FOOD & LIFESTYLE',
+      // Tambahan data untuk modal
+      description: 'Resep rahasia chef professional untuk membuat nasi goreng yang enak dan lezat',
+      videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
+      thumbnailUrl: 'https://picsum.photos/400/225?random=1',
+      timeAgo: '2 jam yang lalu'
     },
     {
       id: '2',
       title: 'Review Gadget Terbaru 2024 - Mana yang Worth It?\nAnalisis Lengkap Spesifikasi dan Harga',
       source: 'naramaknaTECH',
       duration: '12:30',
-      tag: 'TECHNOLOGY'
+      tag: 'TECHNOLOGY',
+      description: 'Analisis mendalam gadget terbaru 2024, mana yang worth it untuk dibeli',
+      videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_2mb.mp4',
+      thumbnailUrl: 'https://picsum.photos/400/225?random=2',
+      timeAgo: '5 jam yang lalu'
     },
     {
       id: '3',
       title: 'Tutorial Makeup Natural untuk Pemula\nStep by Step dari Basic sampai Advanced',
       source: 'naramaknaBEAUTY',
       duration: '15:20',
-      tag: 'BEAUTY & FASHION'
+      tag: 'BEAUTY & FASHION',
+      description: 'Tutorial lengkap makeup natural untuk pemula, step by step yang mudah diikuti',
+      videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_5mb.mp4',
+      thumbnailUrl: 'https://picsum.photos/400/225?random=3',
+      timeAgo: '1 hari yang lalu'
     },
     {
       id: '4',
       title: 'Workout di Rumah - 30 Menit Full Body\nTanpa Alat, Efektif Bakar Kalori',
       source: 'naramaknaFITNESS',
       duration: '30:15',
-      tag: 'HEALTH & FITNESS'
+      tag: 'HEALTH & FITNESS',
+      description: 'Workout full body 30 menit yang bisa dilakukan di rumah tanpa alat',
+      videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_10mb.mp4',
+      thumbnailUrl: 'https://picsum.photos/400/225?random=4',
+      timeAgo: '2 hari yang lalu'
     },
     {
       id: '5',
       title: 'Resep Kue Brownies Cokelat Lembut\nTeknik Baking yang Mudah untuk Pemula',
       source: 'naramaknaBAKING',
       duration: '10:45',
-      tag: 'FOOD & LIFESTYLE'
+      tag: 'FOOD & LIFESTYLE',
+      description: 'Resep brownies cokelat yang lembut dengan teknik baking sederhana',
+      videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4',
+      thumbnailUrl: 'https://picsum.photos/400/225?random=5',
+      timeAgo: '3 hari yang lalu'
     },
     {
       id: '6',
       title: 'Travel Guide: 5 Tempat Wajib Kunjung di Bali\nHidden Gems yang Jarang Diketahui',
       source: 'naramaknaTRAVEL',
       duration: '18:30',
-      tag: 'TRAVEL & ADVENTURE'
+      tag: 'TRAVEL & ADVENTURE',
+      description: 'Panduan lengkap 5 tempat wajib kunjung di Bali, termasuk hidden gems',
+      videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_2mb.mp4',
+      thumbnailUrl: 'https://picsum.photos/400/225?random=6',
+      timeAgo: '1 minggu yang lalu'
     },
     {
       id: '7',
       title: 'Tips Investasi Saham untuk Pemula\nStrategi Aman dan Menguntungkan',
       source: 'naramaknaFINANCE',
       duration: '22:15',
-      tag: 'BUSINESS & FINANCE'
+      tag: 'BUSINESS & FINANCE',
+      description: 'Tips dan strategi investasi saham untuk pemula yang aman dan menguntungkan',
+      videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_5mb.mp4',
+      thumbnailUrl: 'https://picsum.photos/400/225?random=7',
+      timeAgo: '1 minggu yang lalu'
     },
     {
       id: '8',
       title: 'Review Film Terbaru - Bagaimana Plot Twist-nya?\nAnalisis Mendalam Storyline dan Acting',
       source: 'naramaknaENTERTAINMENT',
       duration: '14:50',
-      tag: 'ENTERTAINMENT'
+      tag: 'ENTERTAINMENT',
+      description: 'Review mendalam film terbaru dengan analisis storyline dan acting',
+      videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_10mb.mp4',
+      thumbnailUrl: 'https://picsum.photos/400/225?random=8',
+      timeAgo: '2 minggu yang lalu'
     }
   ];
 
@@ -88,11 +124,22 @@ export const VideoGallery: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [loading, hasMoreData]);
 
+  // Handler untuk membuka modal
+  const openModal = (videoIndex: number) => {
+    setSelectedVideoIndex(videoIndex);
+    setIsModalOpen(true);
+  };
+
+  // Handler untuk menutup modal
+  const closeModal = () => {
+    setIsModalOpen(false);
+  };
+
   return (
     <div className="w-full">
       {/* Video Grid - 4 kolom */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {dummyVideos.map((video) => (
+        {dummyVideos.map((video, index) => (
           <div key={video.id} className="flex-shrink-0">
             <VideoItem
               id={video.id}
@@ -100,6 +147,8 @@ export const VideoGallery: React.FC = () => {
               source={video.source}
               duration={video.duration}
               tag={video.tag}
+              imageSrc={video.thumbnailUrl}
+              onClick={() => openModal(index)} // Pass onClick handler
             />
           </div>
         ))}
@@ -121,6 +170,14 @@ export const VideoGallery: React.FC = () => {
           <p className="text-gray-500 text-sm">Tidak ada video lagi untuk ditampilkan</p>
         </div>
       )}
+
+      {/* Video Modal */}
+      <VideoModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        videos={dummyVideos}
+        initialVideoIndex={selectedVideoIndex}
+      />
     </div>
   );
 };

@@ -1,7 +1,6 @@
 import React from 'react';
 import { Navbar } from '../../components/organisms/Navbar';
 import { AdSection } from '../../components/organisms/AdSection/AdSection';
-import { Logo } from '../../components/atoms/Logo';
 import { SocialMediaSection } from '../../components/organisms/SocialMediaSection';
 import { PartnershipAreasSection } from '../../components/organisms/PartnershipAreasSection';
 

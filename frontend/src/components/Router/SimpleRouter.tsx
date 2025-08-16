@@ -129,6 +129,7 @@ const SimpleRouter: React.FC = () => {
       return <Help />;
     case '/partnership':
     case '/kemitraan':
+    case '/kerja-sama':
       return <Partnership />;
     case '/how-to-write':
     case '/cara-menulis':
