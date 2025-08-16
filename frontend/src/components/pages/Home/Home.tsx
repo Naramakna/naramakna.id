@@ -70,9 +70,6 @@ export const Home: React.FC = () => {
         {/* Polling Section */}
         <PollingMain />
 
-        {/* YouTube Section */}
-        {/* <TikTokSection limit={8} /> */}
-
         {/* Bottom Banner - Slow rotation (10 seconds) */}
         <AdSection 
           placement="bottom-content" 

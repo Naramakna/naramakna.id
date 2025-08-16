@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navbar } from '../../components/organisms/Navbar';
 import { AdSection } from '../../components/organisms/AdSection/AdSection';
+import { Footer } from '../../components/organisms/Footer';
 import { SocialMediaSection } from '../../components/organisms/SocialMediaSection';
 import { PartnershipAreasSection } from '../../components/organisms/PartnershipAreasSection';
 
@@ -206,6 +207,9 @@ export const Partnership: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

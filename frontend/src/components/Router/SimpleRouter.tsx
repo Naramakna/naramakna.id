@@ -22,6 +22,8 @@ import { Partnership } from '../../pages/Partnership';
 import { HowToWrite } from '../../pages/HowToWrite';
 import { Polling } from '../../pages/Polling';
 import { VideoStory } from '../../pages/VideoStory';
+import { IndexBerita } from '../../pages/IndexBerita/IndexBerita';
+import { OTPPage } from '../../pages/OTP';
 
 // Component for async username validation
 const AsyncUsernameRoute: React.FC<{ username: string }> = ({ username }) => {
@@ -96,6 +98,9 @@ const SimpleRouter: React.FC = () => {
       return <RegisterPage />;
     case '/forgot-password':
       return <ForgotPasswordPage />;
+    case '/otp':
+    case '/verify-otp':
+      return <OTPPage />;
     case '/profile':
       return <ProfileViewPage />;
     case '/profile/edit':
@@ -134,6 +139,8 @@ const SimpleRouter: React.FC = () => {
     case '/how-to-write':
     case '/cara-menulis':
       return <HowToWrite />;
+    case '/index-berita':
+      return <IndexBerita />;
     case '/':
       return <Home />;
     default:

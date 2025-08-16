@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Navbar } from '../../components/organisms/Navbar';
 import { AdSection } from '../../components/organisms/AdSection/AdSection';
-import { Logo } from '../../components/atoms/Logo';
+import { Footer } from '../../components/organisms/Footer';
+
 import { HelpCategories } from '../../components/organisms/HelpCategories';
 import { FAQSection } from '../../components/organisms/FAQSection';
 import { ContactSupportSection } from '../../components/organisms/ContactSupportSection';
@@ -203,6 +204,9 @@ export const Help: React.FC = () => {
           contactMethods={contactMethods}
         />
       </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

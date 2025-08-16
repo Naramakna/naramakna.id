@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navbar } from '../../components/organisms/Navbar';
 import { AdSection } from '../../components/organisms/AdSection/AdSection';
+import { Footer } from '../../components/organisms/Footer';
 import { PollingGallery } from '../../components/organisms/PollingGallery/PollingGallery';
 
 export const Polling: React.FC = () => {
@@ -27,6 +28,9 @@ export const Polling: React.FC = () => {
         {/* Polling Gallery */}
         <PollingGallery />
       </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navbar } from '../../components/organisms/Navbar';
 import { AdSection } from '../../components/organisms/AdSection/AdSection';
+import { Footer } from '../../components/organisms/Footer';
 import { VideoGallery } from '../../components/organisms/VideoGallery/VideoGallery';
 
 export const VideoStory: React.FC = () => {
@@ -27,6 +28,9 @@ export const VideoStory: React.FC = () => {
         {/* Video Gallery */}
         <VideoGallery />
       </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };
