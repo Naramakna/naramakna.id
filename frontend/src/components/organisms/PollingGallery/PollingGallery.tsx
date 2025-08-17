@@ -5,19 +5,15 @@ import { usePolling } from '../../../hooks/usePolling';
 export const PollingGallery: React.FC = () => {
   const { polls, loading, error } = usePolling(8); // Load 8 polls
 
-  // Transform polls data to match PollingData interface
+  // Transform polls data to match PollingItem interface
   const transformedPolls = polls.map((poll) => {
-    // Generate realistic mock vote counts if totalVotes is 0 or missing
-    const mockVoteCount = poll.totalVotes > 0 ? poll.totalVotes : Math.floor(Math.random() * 1500) + 150;
-    
     return {
       id: poll.id.toString(),
       question: poll.question || poll.title,
-      options: poll.options?.map(opt => opt.text) || [],
-      totalVotes: mockVoteCount, // Use mock data if no real votes
-      endDate: new Date(Date.now() + (poll.daysLeft || 7) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      options: poll.options || [], // Send full option objects with percentage and vote_count
+      totalVotes: poll.totalVotes || 0, // Use real totalVotes from API
+      endDate: poll.daysLeft === null ? '0' : poll.daysLeft?.toString() || '7', // Handle time limit correctly
       category: poll.source || 'GENERAL',
-      isActive: true,
       image_url: poll.image_url || null
     };
   });
@@ -43,7 +39,6 @@ export const PollingGallery: React.FC = () => {
                 totalVotes={polling.totalVotes}
                 endDate={polling.endDate}
                 category={polling.category}
-                isActive={polling.isActive}
                 image_url={polling.image_url}
               />
             </div>

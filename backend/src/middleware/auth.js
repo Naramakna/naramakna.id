@@ -53,7 +53,7 @@ const authenticate = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    console.error('🚨 Auth middleware error:', error.message, error.stack);
+    console.error('🚨 Auth middleware error:', error.message);
     
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
@@ -206,22 +206,38 @@ function getTokenFromRequest(req) {
   // Check Authorization header
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authHeader.substring(7);
+    const token = authHeader.substring(7);
+    // Validate token format before returning
+    if (token && token.length > 10 && token.includes('.')) {
+      return token;
+    }
   }
 
   // Check cookie
   if (req.cookies && req.cookies.naramakna_auth) {
-    return req.cookies.naramakna_auth;
+    const token = req.cookies.naramakna_auth;
+    // Validate token format before returning
+    if (token && token.length > 10 && token.includes('.')) {
+      return token;
+    }
   }
   
   // Fallback to old cookie name for compatibility
   if (req.cookies && req.cookies.token) {
-    return req.cookies.token;
+    const token = req.cookies.token;
+    // Validate token format before returning
+    if (token && token.length > 10 && token.includes('.')) {
+      return token;
+    }
   }
 
   // Check query parameter (not recommended for production)
   if (req.query.token) {
-    return req.query.token;
+    const token = req.query.token;
+    // Validate token format before returning
+    if (token && token.length > 10 && token.includes('.')) {
+      return token;
+    }
   }
 
   return null;

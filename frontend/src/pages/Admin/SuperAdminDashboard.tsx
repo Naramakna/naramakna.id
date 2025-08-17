@@ -9,6 +9,7 @@ import { AdminAnalytics } from './Analytics';
 import { AdminPolling } from './AdminPolling';
 import { AdminAds } from './AdminAds';
 import { AnalyticsReports } from './AnalyticsReports';
+import { AdminSettings } from './AdminSettings';
 
 
 interface User {
@@ -503,7 +504,9 @@ const SuperAdminDashboard: React.FC = () => {
               { id: 'polling', name: '📊 Polling' },
               { id: 'ads', name: '🎯 Ads' },
               { id: 'youtube', name: '📺 YouTube' },
+              { id: 'tiktok', name: '🎵 TikTok' },
               { id: 'analytics', name: '🚀 Boost' },
+              { id: 'settings', name: '⚙️ Settings' },
             ]}
             activeTab={activeTab}
             onTabChange={setActiveTab}
@@ -706,9 +709,30 @@ const SuperAdminDashboard: React.FC = () => {
             </div>
           )}
 
+          {activeTab === 'tiktok' && (
+            <div className="p-6">
+              <div className="text-center">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">TikTok Management</h2>
+                <p className="text-gray-600 mb-6">Connect @naramakna.id TikTok account, sync videos using Display API, and manage content</p>
+                <a
+                  href="/admin/tiktok"
+                  className="inline-flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                  <span className="mr-2">🎵</span>
+                  Open TikTok Dashboard
+                </a>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'analytics' && (
             <div className="p-6">
               <AdminAnalytics />
+            </div>
+          )}
+          {activeTab === 'settings' && (
+            <div className="p-6">
+              <AdminSettings />
             </div>
           )}
             </>

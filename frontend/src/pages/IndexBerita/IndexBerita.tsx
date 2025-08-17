@@ -20,7 +20,7 @@ export const IndexBerita: React.FC = () => {
     sortBy: 'date',
     sortOrder: 'desc',
     page: 1,
-    limit: 20
+    limit: 50
   });
 
   console.log('🔄 IndexBerita render - loading:', loading, 'data:', data, 'error:', error);
@@ -71,14 +71,26 @@ export const IndexBerita: React.FC = () => {
         view_count: Math.floor(Math.random() * 3000) + 100
       }));
 
+      // Always replace data since we're using incremental limit instead of pagination
+      const totalArticles = result.data.pagination?.totalItems || transformedArticles.length;
+      const hasMoreData = transformedArticles.length < totalArticles && filters.limit < 350;
+      
       setData({
         articles: transformedArticles,
         pagination: {
-          currentPage: result.data.pagination?.page || filters.page,
+          currentPage: result.data.pagination?.currentPage || filters.page,
           totalPages: result.data.pagination?.totalPages || 1,
-          totalArticles: result.data.pagination?.total || transformedArticles.length,
-          hasMore: result.data.pagination?.hasMore || false
+          totalArticles: totalArticles,
+          hasMore: hasMoreData
         }
+      });
+      
+      console.log('📊 Pagination debug:', {
+        totalArticles,
+        currentArticles: transformedArticles.length,
+        limit: filters.limit,
+        hasMoreData,
+        backendPagination: result.data.pagination
       });
 
       console.log('✅ Data set successfully');
@@ -98,6 +110,14 @@ export const IndexBerita: React.FC = () => {
   // Handle filter changes
   const handleFilterChange = (newFilters: Partial<typeof filters>) => {
     setFilters(prev => ({ ...prev, ...newFilters, page: 1 })); // Reset to page 1 when filters change
+  };
+
+  // Handle load more - increment by 50 each time
+  const handleLoadMore = () => {
+    if (data?.pagination.hasMore) {
+      const newLimit = Math.min(filters.limit + 50, 350); // Max 350 articles
+      setFilters(prev => ({ ...prev, limit: newLimit, page: 1 })); // Reset to page 1 with increased limit
+    }
   };
 
 
@@ -223,12 +243,19 @@ export const IndexBerita: React.FC = () => {
                   onChange={(e) => handleFilterChange({ category: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">Semua Kategori</option>
+                  <option value="">Semua Berita</option>
+                  <option value="narapandang">Narapandang</option>
+                  <option value="pelakon">Pelakon</option>
+                  <option value="laga-gaya">Laga & Gaya</option>
+                  <option value="wahana">Wahana</option>
+                  <option value="olah-bola">Olah Bola</option>
+                  <option value="cerita-rasa">Cerita Rasa</option>
+                  <option value="akal-budi">Akal Budi</option>
+                  <option value="budaya">Budaya</option>
+                  <option value="pendidikan">Pendidikan</option>
                   <option value="teknologi">Teknologi</option>
-                  <option value="politik">Politik</option>
-                  <option value="ekonomi">Ekonomi</option>
-                  <option value="olahraga">Olahraga</option>
-                  <option value="hiburan">Hiburan</option>
+                  <option value="horison">Horison</option>
+                  <option value="dunia">Dunia</option>
                 </select>
               </div>
 
@@ -304,7 +331,7 @@ export const IndexBerita: React.FC = () => {
                         sortBy: 'date',
                         sortOrder: 'desc',
                         page: 1,
-                        limit: 20
+                        limit: 50
                       })}
                       className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
                     >
@@ -315,6 +342,40 @@ export const IndexBerita: React.FC = () => {
                     </button>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+          {/* Load More Button */}
+          {data && data.pagination.hasMore && filters.limit < 350 && (
+            <div className="text-center mt-8 mb-8">
+              <button
+                onClick={handleLoadMore}
+                disabled={loading}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Memuat...
+                  </span>
+                ) : (
+                  `Tampilkan ${Math.min(50, data.pagination.totalArticles - data.articles.length)} Lagi (${filters.limit + 50} total)`
+                )}
+              </button>
+              <div className="text-sm text-gray-500 mt-2">
+                Menampilkan {data.articles.length} dari {data.pagination.totalArticles} artikel
+              </div>
+            </div>
+          )}
+          
+          {/* Show when reached maximum limit */}
+          {data && filters.limit >= 350 && data.articles.length >= 350 && (
+            <div className="text-center mt-8 mb-8">
+              <div className="text-gray-600">
+                Menampilkan maksimal 350 artikel. Gunakan filter untuk mempersempit pencarian.
               </div>
             </div>
           )}

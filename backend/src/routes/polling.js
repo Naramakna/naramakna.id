@@ -34,8 +34,14 @@ router.get('/active', async (req, res) => {
         p.total_votes,
         p.image_url,
         p.created_at,
+        p.expires_at,
+        CASE 
+          WHEN p.expires_at IS NULL THEN NULL
+          ELSE DATEDIFF(p.expires_at, NOW())
+        END as days_left,
         po.id as option_id,
         po.option_text,
+        po.vote_count,
         po.percentage,
         po.option_order
       FROM polls p
@@ -58,7 +64,7 @@ router.get('/active', async (req, res) => {
              source: row.category || 'Umum',
              timeAgo: 'Baru saja',
              totalVotes: row.total_votes || 0,
-             daysLeft: 7,
+             daysLeft: row.days_left, // null if no expiry, number if has expiry
              date: new Date(row.created_at).toLocaleDateString('id-ID'),
              created_at: row.created_at,
              image_url: row.image_url,
@@ -71,6 +77,7 @@ router.get('/active', async (req, res) => {
         pollsMap.get(row.poll_id).options.push({
           id: row.option_id.toString(),
           text: row.option_text,
+          vote_count: row.vote_count || 0,
           percentage: row.percentage || 0
         });
       }

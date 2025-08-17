@@ -1,4 +1,4 @@
-const { User, Post, Comment, UserProfile, Analytics, sequelize } = require('../models');
+const { User, Post, Comment, UserProfile, Analytics, Option, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
 class AdminController {
@@ -692,6 +692,126 @@ class AdminController {
     } catch (error) {
       await transaction.rollback();
       console.error('Boost single post error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  /**
+   * Get analytics button visibility setting
+   * GET /api/admin/settings/analytics-button
+   */
+  static async getAnalyticsButtonSetting(req, res) {
+    try {
+      // Check if user is superadmin
+      if (!req.user || req.user.user_role !== 'superadmin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. SuperAdmin privileges required.'
+        });
+      }
+
+      const setting = await Option.findOne({
+        where: { option_name: 'show_analytics_button' }
+      });
+
+      const showAnalyticsButton = setting ? setting.option_value === 'true' : true;
+
+      res.json({
+        success: true,
+        data: {
+          show_analytics_button: showAnalyticsButton
+        }
+      });
+
+    } catch (error) {
+      console.error('Get analytics button setting error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  /**
+   * Toggle analytics button visibility setting
+   * POST /api/admin/settings/analytics-button/toggle
+   */
+  static async toggleAnalyticsButtonSetting(req, res) {
+    try {
+      // Check if user is superadmin
+      if (!req.user || req.user.user_role !== 'superadmin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. SuperAdmin privileges required.'
+        });
+      }
+
+      const { enabled } = req.body;
+
+      // Find or create the setting
+      const [setting, created] = await Option.findOrCreate({
+        where: { option_name: 'show_analytics_button' },
+        defaults: {
+          option_name: 'show_analytics_button',
+          option_value: 'true',
+          autoload: 'yes'
+        }
+      });
+
+      // Update the setting
+      await setting.update({
+        option_value: enabled ? 'true' : 'false'
+      });
+
+      console.log(`📊 Analytics button ${enabled ? 'enabled' : 'disabled'} by ${req.user.user_login}`);
+
+      res.json({
+        success: true,
+        message: `Analytics button ${enabled ? 'enabled' : 'disabled'} successfully`,
+        data: {
+          show_analytics_button: enabled,
+          updated_by: req.user.user_login,
+          updated_at: new Date()
+        }
+      });
+
+    } catch (error) {
+      console.error('Toggle analytics button setting error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  /**
+   * Get site settings for public use (no auth required)
+   * GET /api/admin/settings/public
+   */
+  static async getPublicSettings(req, res) {
+    try {
+      const analyticsButtonSetting = await Option.findOne({
+        where: { option_name: 'show_analytics_button' }
+      });
+
+      const showAnalyticsButton = analyticsButtonSetting ? 
+        analyticsButtonSetting.option_value === 'true' : true;
+
+      res.json({
+        success: true,
+        data: {
+          show_analytics_button: showAnalyticsButton
+        }
+      });
+
+    } catch (error) {
+      console.error('Get public settings error:', error);
       res.status(500).json({
         success: false,
         message: 'Internal server error',

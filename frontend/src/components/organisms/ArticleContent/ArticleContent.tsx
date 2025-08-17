@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { SocialMediaLinks } from '../../molecules/SocialMediaLinks';
 import { InstagramEmbed } from '../../molecules/InstagramEmbed';
 import { ImageWithCaption } from '../../molecules/ImageWithCaption';
@@ -6,6 +6,7 @@ import { AdSection } from '../AdSection';
 
 interface ArticleContentProps {
   content: string;
+  title?: string;
   featuredImage?: {
     url: string;
     caption?: string;
@@ -15,8 +16,38 @@ interface ArticleContentProps {
 
 export const ArticleContent: React.FC<ArticleContentProps> = ({
   content,
+  title,
   featuredImage
 }) => {
+  
+  // Copy protection effect
+  useEffect(() => {
+    const handleCopy = (e: ClipboardEvent) => {
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim()) {
+        const selectedText = selection.toString();
+        const watermark = `\n\nDibaca dari Naramakna.id: ${window.location.href}`;
+        
+        // Modify clipboard data
+        e.clipboardData?.setData('text/plain', selectedText + watermark);
+        e.preventDefault();
+        
+        // Show notification
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+        notification.textContent = 'Teks disalin dengan sumber Naramakna.id';
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+          document.body.removeChild(notification);
+        }, 3000);
+      }
+    };
+
+    document.addEventListener('copy', handleCopy);
+    return () => document.removeEventListener('copy', handleCopy);
+  }, []);
+
   // Parse content and split for ad insertion
   const splitContentForAd = (rawContent: string) => {
     // Check if content is HTML or plain text
@@ -204,7 +235,6 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
           rotationInterval={7000}
         />
       </div>
-
 
 
       {/* Follow Us Section */}

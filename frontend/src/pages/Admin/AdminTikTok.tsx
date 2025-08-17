@@ -10,7 +10,8 @@ export const AdminTikTok: React.FC = () => {
     loading: connectionLoading, 
     error: connectionError,
     connect,
-    disconnect 
+    disconnect,
+    refresh: refreshConnection
   } = useTikTokConnection();
   
   const {
@@ -126,6 +127,29 @@ export const AdminTikTok: React.FC = () => {
     }
   };
 
+  // Handle URL parameters for OAuth success
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const username = urlParams.get('username');
+    const error = urlParams.get('error');
+    
+    if (success === 'connected' && username) {
+      setSuccessMessage(`🎉 TikTok account @${username} connected successfully!`);
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+      // Refresh connection status
+      refreshConnection();
+      // Auto-hide message after 5 seconds
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } else if (error) {
+      setSuccessMessage(`❌ Connection failed: ${urlParams.get('message') || error}`);
+      setTimeout(() => setSuccessMessage(null), 5000);
+    }
+  }, [refreshConnection]);
+
   // Cleanup preview URL
   useEffect(() => {
     return () => {
@@ -157,6 +181,12 @@ export const AdminTikTok: React.FC = () => {
       {/* Connection Status */}
       <div className="mb-6 bg-white rounded-lg shadow p-6">
         <h2 className="text-lg font-semibold mb-4">TikTok Account Connection</h2>
+        
+        {successMessage && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+            {successMessage}
+          </div>
+        )}
         
         {connectionError && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">

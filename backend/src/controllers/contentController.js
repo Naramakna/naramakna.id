@@ -342,7 +342,7 @@ class ContentController {
           {
             model: User,
             as: 'author',
-            attributes: ['ID', 'display_name', 'user_email']
+            attributes: ['ID', 'display_name', 'user_email', 'user_login']
           },
           {
             model: TermTaxonomy,
@@ -1067,6 +1067,7 @@ class ContentController {
       author: postData.author,
       categories: categories,
       metadata,
+      view_count: postData.views?.view_count || 0,
       // Content type specific formatting
       ...(postData.post_type === 'youtube_video' && {
         youtube: {

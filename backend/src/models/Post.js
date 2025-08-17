@@ -115,6 +115,11 @@ const Post = sequelize.define('Post', {
     type: DataTypes.BIGINT,
     allowNull: false,
     defaultValue: 0
+  },
+  like_count: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0
   }
 }, {
   tableName: 'posts',
