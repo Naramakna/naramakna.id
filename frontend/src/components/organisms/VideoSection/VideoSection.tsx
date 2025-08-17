@@ -1,8 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { VideoItem } from '../../atoms/VideoItem';
 import { useYouTubeVideos } from '../../../hooks/useYouTube';
+import { useTikTokVideos } from '../../../hooks/useTikTok';
 import { VideoModal } from '../VideoModal';
+import { TikTokVideoModal } from '../TikTokVideoModal/TikTokVideoModal';
 import type { YouTubeVideo } from '../../../services/api/youtube';
+import type { TikTokVideo } from '../../../services/api/tiktok';
 
 interface VideoData {
   id: string;
@@ -12,6 +15,8 @@ interface VideoData {
   tag?: string;
   imageSrc?: string;
   href?: string;
+  sourceType?: 'tiktok' | 'youtube' | 'default';
+  tiktokData?: TikTokVideo;
 }
 
 interface VideoSectionProps {
@@ -26,10 +31,37 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedVideoIndex, setSelectedVideoIndex] = useState(0);
+  const [isTikTokModalOpen, setIsTikTokModalOpen] = useState(false);
+  const [selectedTikTokVideo, setSelectedTikTokVideo] = useState<TikTokVideo | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Fetch YouTube videos
-  const { videos: youtubeVideos, loading, error } = useYouTubeVideos(false);
+  // Fetch YouTube and TikTok videos
+  const { videos: youtubeVideos } = useYouTubeVideos(false);
+  const { videos: tiktokVideos } = useTikTokVideos();
+  
+  // Helper function to convert TikTok data to VideoData format
+  const convertTikTokToVideoData = (ttVideo: TikTokVideo): VideoData => {
+    const formatDuration = (seconds: number): string => {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    return {
+      id: ttVideo.id.toString(),
+      title: ttVideo.title || ttVideo.description || 'TikTok Video',
+      source: 'naramakna.id',
+      duration: ttVideo.duration ? formatDuration(ttVideo.duration) : '00:00',
+      tag: 'TIKTOK',
+      imageSrc: ttVideo.cover_image_url,
+      href: `/video/tiktok/${ttVideo.id}`,
+      sourceType: 'tiktok' as const,
+      tiktokData: ttVideo
+    };
+  };
+  
+  // const loading = ytLoading || ttLoading;
+  // const error = ytError;
 
   // Helper function to convert YouTube data to VideoData format
   const convertYouTubeToVideoData = (ytVideo: YouTubeVideo): VideoData => {
@@ -47,12 +79,14 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
       duration: ytVideo.duration ? formatDuration(ytVideo.duration) : '00:00',
       tag: 'YOUTUBE VIDEO',
       imageSrc: ytVideo.thumbnail_url,
-      href: `/video/${ytVideo.id}`
+      href: `/video/${ytVideo.id}`,
+      sourceType: 'youtube' as const
     };
   };
 
   // Convert YouTube videos to VideoData format
   const youtubeVideoData: VideoData[] = youtubeVideos.slice(0, 8).map(convertYouTubeToVideoData);
+  const tiktokVideoData: VideoData[] = tiktokVideos.slice(0, 8).map(convertTikTokToVideoData);
 
   // Dummy data untuk fallback when no YouTube videos or error
   const defaultVideos: VideoData[] = [
@@ -61,42 +95,49 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
       title: 'Warga Jepara Tolak Pembangunan Peternakan Babi\nDitentang Keras Warga sampai MUI Keluarkan Fatwa Haram',
       source: 'naramaknaNEWS',
       duration: '01:09',
-      tag: 'NEWS UPDATE'
+      tag: 'NEWS UPDATE',
+      sourceType: 'default' as const
     },
     {
       id: '2',
       title: 'REZA ARAP UNGKAP TANTANGAN TERBERAT SAAT DEBUT SEBAGAI SUTRADARA',
       source: 'naramaknaHITS',
       duration: '00:39',
-      tag: 'NEWS UPDATE'
+      tag: 'NEWS UPDATE',
+      sourceType: 'default' as const
     },
     {
       id: '3',
       title: 'Komplotan Pemain Judol di DIY Ternak Akun buat Akali Bandar, Raup Puluhan Juta',
       source: 'naramaknaNEWS',
       duration: '00:28',
-      tag: 'NEWS UPDATE'
+      tag: 'NEWS UPDATE',
+      sourceType: 'default' as const
     },
     {
       id: '4',
       title: 'Ada Masalah, KRL Bogor-Jakarta Kota Cuma sampai Stasiun Manggarai',
       source: 'naramaknaNEWS',
       duration: '00:30',
-      tag: 'NEWS UPDATE'
+      tag: 'NEWS UPDATE',
+      sourceType: 'default' as const
     },
     {
       id: '5',
       title: 'Satu Juta Perempuan dan Anak Terjebak Kelaparan Kekerasan',
       source: 'naramaknaWOMAN',
       duration: '00:45',
-      tag: 'WOMEN\'S UPDATE'
+      tag: 'WOMEN\'S UPDATE',
+      sourceType: 'default' as const
     }
   ];
 
-  // Priority: props videos > YouTube API data > fallback dummy data
+  // Priority: props videos > TikTok API data > YouTube API data > fallback dummy data
   let displayVideos: VideoData[];
   if (videos.length > 0) {
     displayVideos = videos;
+  } else if (tiktokVideoData.length > 0) {
+    displayVideos = tiktokVideoData;
   } else if (youtubeVideoData.length > 0) {
     displayVideos = youtubeVideoData;
   } else {
@@ -147,15 +188,29 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
     }
   };
 
-  // Handler untuk membuka modal
+  // Handler untuk membuka modal yang sesuai
   const openModal = (videoIndex: number) => {
-    setSelectedVideoIndex(videoIndex);
-    setIsModalOpen(true);
+    const video = displayVideos[videoIndex];
+    
+    if (video.sourceType === 'tiktok' && video.tiktokData) {
+      // Buka TikTok modal
+      setSelectedTikTokVideo(video.tiktokData);
+      setIsTikTokModalOpen(true);
+    } else {
+      // Buka modal biasa untuk YouTube/default videos
+      setSelectedVideoIndex(videoIndex);
+      setIsModalOpen(true);
+    }
   };
 
   // Handler untuk menutup modal
   const closeModal = () => {
     setIsModalOpen(false);
+  };
+
+  const closeTikTokModal = () => {
+    setIsTikTokModalOpen(false);
+    setSelectedTikTokVideo(null);
   };
 
   return (
@@ -166,7 +221,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
           <div className="flex items-center space-x-2">
             <div className="w-1 h-6 bg-naramakna-gold rounded-full"></div>
             <h2 className="text-xl font-semibold text-gray-900">
-              {youtubeVideoData.length > 0 ? 'YouTube Videos' : 'Video Story'}
+              {tiktokVideoData.length > 0 ? 'TikTok Videos' : youtubeVideoData.length > 0 ? 'YouTube Videos' : 'Video Story'}
             </h2>
           </div>
         </div>
@@ -225,6 +280,13 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
           onClose={closeModal}
           videos={convertToModalVideos(displayVideos)}
           initialVideoIndex={selectedVideoIndex}
+        />
+
+        {/* TikTok Video Modal */}
+        <TikTokVideoModal
+          isOpen={isTikTokModalOpen}
+          onClose={closeTikTokModal}
+          video={selectedTikTokVideo}
         />
       </div>
     </div>

@@ -53,11 +53,44 @@ export interface CreateAdResponse {
   message?: string;
 }
 
+// Mapping function untuk menerjemahkan placement frontend ke backend
+const mapPlacementToBackend = (frontendPlacement: string): string => {
+  const placementMap: { [key: string]: string } = {
+    'hero-banner': 'header',
+    'mid-content': 'regular', 
+    'bottom-content': 'regular',
+    'article-top': 'header',
+    'article-mid': 'inline',
+    'article-final': 'regular',
+    'article-bottom': 'regular',
+    'content-ad': 'inline',
+    'content-middle': 'inline',
+    'breaking-pre': 'header',
+    'breaking-post': 'regular',
+    'sidebar': 'sidebar',
+    'header': 'header',
+    'regular': 'regular',
+    'inline': 'inline',
+    'footer': 'footer',
+    'popup': 'popup'
+  };
+  
+  // Dynamic index-list placements (index-list-1, index-list-2, etc.)
+  if (frontendPlacement.startsWith('index-list-')) {
+    return 'regular';
+  }
+  
+  return placementMap[frontendPlacement] || 'regular';
+};
+
 export const adsAPI = {
   // Fetch ads for specific placement
   async getAds(placement: string = 'regular', limit: number = 5): Promise<AdsResponse> {
+    const backendPlacement = mapPlacementToBackend(placement);
+    console.log(`🎯 Mapping placement: "${placement}" -> "${backendPlacement}"`);
+    
     const queryParams = new URLSearchParams({
-      placement,
+      placement: backendPlacement,
       limit: limit.toString()
     });
     

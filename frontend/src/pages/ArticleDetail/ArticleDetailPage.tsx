@@ -27,7 +27,9 @@ interface Article {
     alt?: string;
   };
   author: {
+    id?: string | number;
     name: string;
+    login?: string;
     isVerified: boolean;
     avatar?: string;
   };
@@ -35,6 +37,7 @@ interface Article {
   readTime: string;
   likes: number;
   comments: number;
+  views: number;
   category: string;
   tags: Array<{
     id: string;
@@ -87,7 +90,9 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
               alt: result.data.post_title || 'Article image'
             } : undefined,
             author: {
+              id: result.data.author?.ID,
               name: result.data.author?.display_name || result.data.author?.user_login || 'Anonymous',
+              login: result.data.author?.user_login,
               isVerified: result.data.author?.user_role === 'admin' || result.data.author?.user_role === 'writer',
               avatar: result.data.author?.profile_image || undefined
             },
@@ -95,6 +100,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
             readTime: calculateReadTime(result.data.post_content || result.data.content || ''),
             likes: result.data.likes || 0,
             comments: result.data.comment_count || 0,
+            views: result.data.view_count || result.data.views || 0,
             category: result.data.category || 'News',
             tags: result.data.tags || []
           };
@@ -138,7 +144,9 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
               alt: result.data.post_title || 'Article image'
             } : undefined,
             author: {
+              id: result.data.author?.ID,
               name: result.data.author?.display_name || result.data.author?.user_login || 'Anonymous',
+              login: result.data.author?.user_login,
               isVerified: result.data.author?.user_role === 'admin' || result.data.author?.user_role === 'writer',
               avatar: result.data.author?.profile_image || undefined
             },
@@ -146,6 +154,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
             readTime: calculateReadTime(result.data.post_content || result.data.content || ''),
             likes: result.data.likes || 0,
             comments: result.data.comment_count || 0,
+            views: result.data.view_count || result.data.views || 0,
             category: result.data.category || 'News',
             tags: result.data.tags || []
           };
@@ -360,12 +369,14 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
               comments={article.comments}
               categoryName={article.category}
               articleId={article.id}
+              viewCount={article.views}
               onAnalyticsClick={handleAnalyticsClick}
             />
 
             {/* Article Content */}
             <ArticleContent
               content={article.content}
+              title={article.title}
               featuredImage={article.featuredImage}
             />
 

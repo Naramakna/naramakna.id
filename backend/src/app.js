@@ -107,11 +107,13 @@ const youtubeRoutes = require('./routes/youtube');
 const seoRoutes = require('./routes/seo');
 const seoController = require('./controllers/seoController');
 const writerRoutes = require('./routes/writer');
+const likesRoutes = require('./routes/likes');
 const commentRoutes = require('./routes/comments');
 const adminRoutes = require('./routes/admin');
 const categoryRoutes = require('./routes/category');
 const pollingRoutes = require('./routes/polling');
 const schedulerRoutes = require('./routes/scheduler');
+const settingsRoutes = require('./routes/settings');
 // const taxonomyRoutes = require('./routes/taxonomy'); // TODO: Implement
 
 // Initialize scheduler for auto-publishing posts
@@ -130,6 +132,8 @@ app.use('/api/ads', adsRoutes);
 app.use('/api/tiktok', tiktokRoutes);
 app.use('/api/youtube', youtubeRoutes);
 app.use('/api/seo', seoRoutes);
+app.use('/api/likes', likesRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // SEO routes at root level
 app.get('/sitemap.xml', seoController.generateSitemap);

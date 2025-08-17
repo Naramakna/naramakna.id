@@ -8,7 +8,7 @@ interface AdBannerProps {
   altText?: string;
   href?: string;
   isPlaceholder?: boolean;
-  size?: 'header' | 'regular'; // header: 970x250, regular: 728x90
+  size?: 'header' | 'regular' | 'sidebar'; // header: 970x250, regular: 728x90, sidebar: 300x250
   // New props for advanced ads
   advertisement?: Advertisement;
   onAdClick?: (adId: string) => void;
@@ -57,6 +57,9 @@ export const AdBanner: React.FC<AdBannerProps> = ({
       case 'header':
         // Mobile: w-[90%] h-[120px], Tablet: w-[95%] h-[150px], Desktop: max-w-[970px] h-[250px]
         return `w-[90%] sm:w-[95%] md:w-full lg:w-full xl:max-w-[970px] h-[120px] sm:h-[150px] md:h-[180px] lg:h-[200px] xl:h-[250px] ${baseClasses} ${visibilityClasses}`;
+      case 'sidebar':
+        // Fixed sidebar size: 300x250px
+        return `w-[300px] h-[250px] ${baseClasses} ${visibilityClasses}`;
       case 'regular':
       default:
         // Mobile: w-[90%] h-[60px], Tablet: w-[95%] h-[70px], Desktop: max-w-[728px] h-[90px]
@@ -71,6 +74,12 @@ export const AdBanner: React.FC<AdBannerProps> = ({
           mobile: '90% x 120px',
           tablet: '95% x 180px',
           desktop: '970 x 250px'
+        };
+      case 'sidebar':
+        return {
+          mobile: '300 x 250px',
+          tablet: '300 x 250px',
+          desktop: '300 x 250px'
         };
       case 'regular':
       default:

@@ -24,8 +24,8 @@ export const AdsProvider: React.FC<AdsProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Cache duration in milliseconds (5 minutes)
-  const CACHE_DURATION = 5 * 60 * 1000;
+  // Cache duration in milliseconds (10 seconds for testing)
+  const CACHE_DURATION = 10 * 1000;
   const [lastFetch, setLastFetch] = useState<{ [placement: string]: number }>({});
 
   const getAdsForPlacement = (placement: string): Advertisement[] => {

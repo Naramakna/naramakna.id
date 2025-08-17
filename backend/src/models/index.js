@@ -17,6 +17,7 @@ const Option = require('./Option');
 const Link = require('./Link');
 const Advertisement = require('./Advertisement');
 const Analytics = require('./Analytics');
+const PostLikes = require('./PostLikes');
 
 // Define associations/relationships
 // User relationships
@@ -77,6 +78,13 @@ Analytics.belongsTo(Post, { foreignKey: 'content_id', as: 'post' });
 User.hasMany(Analytics, { foreignKey: 'user_id', as: 'analytics' });
 Analytics.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
+// Post Likes relationships
+Post.hasMany(PostLikes, { foreignKey: 'post_id', as: 'likes' });
+PostLikes.belongsTo(Post, { foreignKey: 'post_id', as: 'post' });
+
+User.hasMany(PostLikes, { foreignKey: 'user_id', as: 'likes' });
+PostLikes.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
 // Many-to-many relationship between Posts and Terms through TermRelationship - TODO: Implement
 // Post.belongsToMany(TermTaxonomy, {
 //   through: TermRelationship,
@@ -110,5 +118,6 @@ module.exports = {
   Option,
   Link,
   Advertisement,
-  Analytics
+  Analytics,
+  PostLikes
 };

@@ -9,6 +9,10 @@ const { authenticate, requireAdmin } = require('../middleware/auth');
 router.use(authenticate);
 router.use(requireAdmin);
 
+// Settings Management (SuperAdmin only)
+router.get('/settings/analytics-button', AdminController.getAnalyticsButtonSetting);
+router.post('/settings/analytics-button/toggle', AdminController.toggleAnalyticsButtonSetting);
+
 // User Management
 router.get('/users', AdminController.getAllUsers);
 router.delete('/users/:id', AdminController.deleteUser);

@@ -118,7 +118,7 @@ export const IndexCardList: React.FC<IndexCardListProps> = ({
         elements.push(
           <div key={`ad-${i}`} className="my-8 flex justify-center">
             <AdSection 
-              placement={`index-list-${Math.floor((i + 1) / 5)}`}
+              placement="regular"
               size="regular" 
               rotationInterval={6000}
             />

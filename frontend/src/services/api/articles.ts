@@ -75,6 +75,7 @@ export const articlesAPI = {
     limit?: number;
     type?: string;
     category?: string;
+    tag?: string;
     search?: string;
     sortBy?: string;
     sortOrder?: string;
