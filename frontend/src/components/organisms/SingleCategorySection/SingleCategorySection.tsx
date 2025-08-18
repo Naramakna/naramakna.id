@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { buildApiUrl } from '../../../config/api';
 
 interface SingleCategorySectionProps {
   categorySlug: string;
@@ -42,7 +43,7 @@ export const SingleCategorySection: React.FC<SingleCategorySectionProps> = ({
       try {
         setLoading(true);
         console.log('Fetching category posts for:', categorySlug);
-        const response = await fetch(`http://localhost:3001/api/category/${categorySlug}/posts`);
+        const response = await fetch(buildApiUrl(`category/${categorySlug}/posts`));
         if (!response.ok) {
           throw new Error('Failed to fetch category posts');
         }

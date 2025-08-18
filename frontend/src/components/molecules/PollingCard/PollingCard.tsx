@@ -25,7 +25,7 @@ export const PollingCard: React.FC<PollingCardProps> = ({
   id,
   title,
   source,
-  timeAgo,
+  timeAgo: _timeAgo,
   imageSrc,
   options,
   totalVotes,

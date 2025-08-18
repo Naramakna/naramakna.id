@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../../components/atoms/Button';
 import { Input } from '../../components/atoms/Input';
 import { LoadingSpinner } from '../../components/atoms/LoadingSpinner/LoadingSpinner';
+import { buildApiUrl } from '../../config/api';
 
 interface PollOption {
   id?: string;
@@ -74,7 +75,7 @@ export const AdminPolling: React.FC = () => {
   // Fetch existing polls (for admin - all polls with full details)
   const fetchPolls = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/polling/admin/all?limit=50', {
+      const response = await fetch(buildApiUrl('polling/admin/all?limit=50'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -84,7 +85,7 @@ export const AdminPolling: React.FC = () => {
         setPolls(data.data || []);
       } else {
         // Fallback to active polls if admin endpoint doesn't exist
-        const fallbackResponse = await fetch('http://localhost:3001/api/polling/active?limit=50', {
+        const fallbackResponse = await fetch(buildApiUrl('polling/active?limit=50'), {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -102,7 +103,7 @@ export const AdminPolling: React.FC = () => {
   // Fetch trending posts for poll generation
   const fetchTrendingPosts = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/polling/trending-candidates?limit=10', {
+      const response = await fetch(buildApiUrl('polling/trending-candidates?limit=10'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -119,7 +120,7 @@ export const AdminPolling: React.FC = () => {
   // Fetch recent articles for poll creation
   const fetchArticles = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/content/posts-with-views?limit=50&status=publish', {
+      const response = await fetch(buildApiUrl('content/posts-with-views?limit=50&status=publish'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -170,7 +171,7 @@ export const AdminPolling: React.FC = () => {
 
     setCreating(true);
     try {
-      const response = await fetch('http://localhost:3001/api/polling/create', {
+      const response = await fetch(buildApiUrl('polling/create'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -204,7 +205,7 @@ export const AdminPolling: React.FC = () => {
   const generatePollFromPost = async (post: TrendingPost) => {
     setCreating(true);
     try {
-      const response = await fetch('http://localhost:3001/api/polling/generate', {
+      const response = await fetch(buildApiUrl('polling/generate'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -237,7 +238,7 @@ export const AdminPolling: React.FC = () => {
   const generatePollFromArticle = async (article: Article) => {
     setCreating(true);
     try {
-      const response = await fetch('http://localhost:3001/api/polling/generate', {
+      const response = await fetch(buildApiUrl('polling/generate'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -284,7 +285,7 @@ export const AdminPolling: React.FC = () => {
     if (!confirm('Are you sure you want to close this poll?')) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/api/polling/${pollId}/close`, {
+      const response = await fetch(buildApiUrl(`polling/${pollId}/close`), {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`

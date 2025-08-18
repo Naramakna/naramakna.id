@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext/AuthContext';
+import { buildApiUrl, buildBackendUrl } from '../../../config/api';
 
 interface Comment {
   id: number;
@@ -37,7 +38,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ postId }) => {
     const fetchComments = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`http://localhost:3001/api/comments/post/${postId}`);
+        const response = await fetch(buildApiUrl(`comments/post/${postId}`));
         
         if (response.ok) {
           const result = await response.json();
@@ -71,7 +72,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ postId }) => {
 
     try {
       setIsSubmitting(true);
-      const response = await fetch('http://localhost:3001/api/comments', {
+      const response = await fetch(buildApiUrl('comments'), {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -110,7 +111,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ postId }) => {
     }
 
     try {
-      const response = await fetch('http://localhost:3001/api/comments', {
+      const response = await fetch(buildApiUrl('comments'), {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -260,7 +261,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ postId }) => {
               <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
                 {user?.profile_image ? (
                   <img 
-                    src={user.profile_image.startsWith('/') ? `http://localhost:3001${user.profile_image}` : user.profile_image} 
+                    src={user.profile_image.startsWith('/') ? buildBackendUrl(user.profile_image) : user.profile_image} 
                     alt={user.display_name || 'User'}
                     className="w-full h-full object-cover"
                     onError={(e) => {

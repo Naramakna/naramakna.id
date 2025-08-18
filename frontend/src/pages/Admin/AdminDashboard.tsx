@@ -6,6 +6,7 @@ import { UserManagement } from '../../components/organisms/UserManagement';
 import { DataTable } from '../../components/organisms/DataTable';
 import { AdminPolling } from './AdminPolling';
 import { AdminAds } from './AdminAds';
+import { buildApiUrl } from '../../config/api';
 
 
 
@@ -49,15 +50,15 @@ const AdminDashboard: React.FC = () => {
   const fetchData = async () => {
     try {
       const [usersRes, pendingPostsRes, pendingWritersRes] = await Promise.all([
-        fetch('http://localhost:3001/api/users', {
+        fetch(buildApiUrl('users'), {
           headers: { 'Authorization': `Bearer ${token}` },
           credentials: 'include'
         }),
-        fetch('http://localhost:3001/api/approval/pending', {
+        fetch(buildApiUrl('approval/pending'), {
           headers: { 'Authorization': `Bearer ${token}` },
           credentials: 'include'
         }),
-        fetch('http://localhost:3001/api/users/pending-writers', {
+        fetch(buildApiUrl('users/pending-writers'), {
           headers: { 'Authorization': `Bearer ${token}` },
           credentials: 'include'
         })
@@ -79,7 +80,7 @@ const AdminDashboard: React.FC = () => {
 
   const approveWriter = async (userId: number, approved: boolean) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/users/${userId}/approve-writer`, {
+      const response = await fetch(buildApiUrl(`users/${userId}/approve-writer`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

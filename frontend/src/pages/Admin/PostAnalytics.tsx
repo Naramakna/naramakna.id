@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext/AuthContext';
 import { Navbar } from '../../components/organisms/Navbar/Navbar';
 import { AnalyticsChart } from '../../components/organisms/AnalyticsChart';
+import { buildApiUrl } from '../../config/api';
 
 interface PostData {
   id: number;
@@ -68,7 +69,7 @@ const PostAnalytics: React.FC = () => {
   const fetchAnalyticsData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:3001/api/analytics/post/${postId}/detailed?period=${period}`, {
+      const response = await fetch(buildApiUrl(`analytics/post/${postId}/detailed?period=${period}`), {
         method: 'GET',
         credentials: 'include',
         headers: {

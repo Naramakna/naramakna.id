@@ -238,7 +238,7 @@ class AdminController {
         role: user.user_role,
         status: user.user_status || 'active',
         registered: user.user_registered,
-        profile_image: user.profile?.profile_image ? `http://localhost:3001${user.profile.profile_image}` : null,
+        profile_image: user.profile?.profile_image ? `${process.env.BACKEND_URL}${user.profile.profile_image}` : null,
         profile_complete: !!(user.profile?.birth_date && user.profile?.gender && user.profile?.city)
       }));
 

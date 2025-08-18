@@ -13,7 +13,7 @@ interface VideoItemProps {
 }
 
 export const VideoItem: React.FC<VideoItemProps> = ({
-  id,
+  id: _id,
   title,
   source,
   duration,

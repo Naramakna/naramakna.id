@@ -74,7 +74,7 @@ class CommentController {
           });
           
           if (userProfile && userProfile.profile_image) {
-            profileImage = `http://localhost:3001${userProfile.profile_image}`;
+            profileImage = `${process.env.BACKEND_URL}${userProfile.profile_image}`;
           }
         }
         
@@ -251,7 +251,7 @@ class CommentController {
         });
 
         if (userProfile && userProfile.profile_image) {
-          profileImage = `http://localhost:3001${userProfile.profile_image}`;
+          profileImage = `${process.env.BACKEND_URL}${userProfile.profile_image}`;
         }
       }
 

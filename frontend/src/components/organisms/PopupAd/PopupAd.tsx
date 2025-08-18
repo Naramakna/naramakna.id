@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { buildApiUrl } from '../../../config/api';
 
 interface PopupAdData {
   id: number;
@@ -36,7 +37,7 @@ export const PopupAd: React.FC<PopupAdProps> = ({ onClose }) => {
       }
 
       // Fetch active popup ad from API
-      const response = await fetch('http://localhost:3001/api/ads/popup-active');
+      const response = await fetch(buildApiUrl('ads/popup-active'));
       const result = await response.json();
 
       if (result.success && result.data) {

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
+import { buildBackendUrl, buildUploadsUrl } from '../../../config/api';
 
 // Helper function to get full image URL
 const getImageUrl = (imagePath: string | null) => {
@@ -8,13 +9,13 @@ const getImageUrl = (imagePath: string | null) => {
   // If it's already a full URL, return as is
   if (imagePath.startsWith('http')) return imagePath;
   
-  // If it's a relative path starting with /uploads, prepend backend URL
+  // If it's a relative path starting with /uploads, use backend URL
   if (imagePath.startsWith('/uploads/')) {
-    return `http://localhost:3001${imagePath}`;
+    return buildBackendUrl(imagePath);
   }
   
-  // Otherwise, assume it's a relative path and prepend backend URL
-  return `http://localhost:3001/uploads/${imagePath}`;
+  // Otherwise, assume it's a relative path and use uploads URL
+  return buildUploadsUrl(imagePath);
 };
 
 interface ProfileBadgeProps {

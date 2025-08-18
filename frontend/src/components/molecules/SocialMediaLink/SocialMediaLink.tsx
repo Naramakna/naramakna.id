@@ -14,7 +14,7 @@ export const SocialMediaLink: React.FC<SocialMediaLinkProps> = ({
   name,
   url,
   type,
-  color,
+  color: _color,
   bgColor,
   className = ''
 }) => {

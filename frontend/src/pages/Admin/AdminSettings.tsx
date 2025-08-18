@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { buildApiUrl } from '../../config/api';
 
 export const AdminSettings: React.FC = () => {
   const [showAnalyticsButton, setShowAnalyticsButton] = useState(true);
@@ -9,7 +10,7 @@ export const AdminSettings: React.FC = () => {
   useEffect(() => {
     const fetchAnalyticsButtonSetting = async () => {
       try {
-        const response = await fetch('http://localhost:3001/api/admin/settings/analytics-button', {
+        const response = await fetch(buildApiUrl('admin/settings/analytics-button'), {
           credentials: 'include'
         });
         const result = await response.json();
@@ -32,7 +33,7 @@ export const AdminSettings: React.FC = () => {
     setMessage('');
 
     try {
-      const response = await fetch('http://localhost:3001/api/admin/settings/analytics-button/toggle', {
+      const response = await fetch(buildApiUrl('admin/settings/analytics-button/toggle'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

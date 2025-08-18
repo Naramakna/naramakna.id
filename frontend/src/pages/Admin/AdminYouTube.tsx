@@ -329,7 +329,7 @@ export const AdminYouTube: React.FC = () => {
                           <ul className="mt-1 list-disc list-inside space-y-1">
                             <li>Create YouTube API credentials in Google Cloud Console</li>
                             <li>Configure OAuth 2.0 client ID and secret</li>
-                            <li>Set proper redirect URI: <code className="bg-red-100 px-1 rounded">http://localhost:3001/api/youtube/callback</code></li>
+                            <li>Set proper redirect URI: <code className="bg-red-100 px-1 rounded">[API_BASE_URL]/youtube/callback</code></li>
                             <li>Update environment variables in backend/.env</li>
                           </ul>
                           <p className="mt-2">

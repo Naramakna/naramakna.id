@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from '../../components/organisms/Navbar';
 import { useAuth } from '../../contexts/AuthContext';
-import { buildApiUrl } from '../../config/api';
+import { buildApiUrl, buildBackendUrl } from '../../config/api';
 import { ProfileImageUpload } from '../../components/atoms/ProfileImageUpload';
 import { AlertMessage } from '../../components/atoms/AlertMessage';
 import { ProfileInfoDisplay } from '../../components/molecules/ProfileInfoDisplay';
@@ -14,13 +14,13 @@ const getImageUrl = (imagePath: string | null) => {
   // If it's already a full URL, return as is
   if (imagePath.startsWith('http')) return imagePath;
   
-  // If it's a relative path starting with /uploads, prepend backend URL
+  // If it's a relative path starting with /uploads, use buildBackendUrl
   if (imagePath.startsWith('/uploads/')) {
-    return `http://localhost:3001${imagePath}`;
+    return buildBackendUrl(imagePath);
   }
   
   // Otherwise, assume it's a relative path and prepend backend URL
-  return `http://localhost:3001/uploads/${imagePath}`;
+  return buildBackendUrl(`uploads/${imagePath}`);
 };
 
 const ProfilePage: React.FC = () => {

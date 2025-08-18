@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Hash, Tag, Clock } from 'lucide-react';
+import { buildApiUrl } from '../../../config/api';
 
 interface SearchSuggestionsProps {
   query: string;
@@ -61,7 +62,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
     setLoading(true);
     try {
       const response = await fetch(
-        `http://localhost:3001/api/content/search/suggestions?query=${encodeURIComponent(searchQuery)}&limit=20`
+        buildApiUrl(`content/search/suggestions?query=${encodeURIComponent(searchQuery)}&limit=20`)
       );
       
       if (response.ok) {

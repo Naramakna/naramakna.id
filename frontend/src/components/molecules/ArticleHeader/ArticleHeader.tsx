@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext/AuthContext';
+import { buildApiUrl } from '../../../config/api';
 
 interface Author {
   id?: string | number;
@@ -28,8 +29,8 @@ export const ArticleHeader: React.FC<ArticleHeaderProps> = ({
   publishedDate,
   readTime,
   likes,
-  comments,
-  categoryName,
+  comments: _comments,
+  categoryName: _categoryName,
   articleId,
   viewCount,
   onAnalyticsClick
@@ -46,7 +47,7 @@ export const ArticleHeader: React.FC<ArticleHeaderProps> = ({
       if (!articleId) return;
       
       try {
-        const response = await fetch(`http://localhost:3001/api/likes/posts/${articleId}/like-status`, {
+        const response = await fetch(buildApiUrl(`likes/posts/${articleId}/like-status`), {
           credentials: 'include'
         });
         const result = await response.json();
@@ -67,7 +68,7 @@ export const ArticleHeader: React.FC<ArticleHeaderProps> = ({
   useEffect(() => {
     const fetchAnalyticsButtonSetting = async () => {
       try {
-        const response = await fetch('http://localhost:3001/api/settings/public');
+        const response = await fetch(buildApiUrl('settings/public'));
         const result = await response.json();
         
         if (result.success) {
@@ -94,7 +95,7 @@ export const ArticleHeader: React.FC<ArticleHeaderProps> = ({
 
     setIsLiking(true);
     try {
-      const response = await fetch(`http://localhost:3001/api/likes/posts/${articleId}/like`, {
+      const response = await fetch(buildApiUrl(`likes/posts/${articleId}/like`), {
         method: 'POST',
         credentials: 'include'
       });

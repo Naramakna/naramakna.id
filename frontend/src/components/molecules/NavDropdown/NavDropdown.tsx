@@ -16,7 +16,7 @@ interface NavDropdownProps {
 
 export const NavDropdown: React.FC<NavDropdownProps> = ({
   trigger,
-  items,
+  items: _items,
   className = '',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -36,7 +36,7 @@ export const NavDropdown: React.FC<NavDropdownProps> = ({
     };
   }, []);
 
-  const handleItemClick = (item: DropdownItem) => {
+  const _handleItemClick = (item: DropdownItem) => {
     if (item.onClick) {
       item.onClick();
     } else if (item.href) {

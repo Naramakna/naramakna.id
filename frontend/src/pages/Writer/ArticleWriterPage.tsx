@@ -92,7 +92,7 @@ const ArticleWriterPage: React.FC = () => {
   useEffect(() => {
     const fetchPopularTags = async () => {
       try {
-        const response = await fetch('http://localhost:3001/api/category/popular-tags');
+        const response = await fetch(buildApiUrl('category/popular-tags'));
         if (response.ok) {
           const data = await response.json();
           setPopularTags(data.data);
@@ -104,7 +104,7 @@ const ArticleWriterPage: React.FC = () => {
 
     const fetchCategories = async () => {
       try {
-        const response = await fetch('http://localhost:3001/api/content/categories?mainCategoriesOnly=true&minCount=0');
+        const response = await fetch(buildApiUrl('content/categories?mainCategoriesOnly=true&minCount=0'));
         const result = await response.json();
         
         if (result.success && result.data.categories) {
@@ -139,7 +139,7 @@ const ArticleWriterPage: React.FC = () => {
         formData.append('image', file);
 
         try {
-          const response = await fetch('http://localhost:3001/api/writer/upload-image', {
+          const response = await fetch(buildApiUrl('writer/upload-image'), {
             method: 'POST',
             credentials: 'include',
             body: formData
@@ -174,7 +174,7 @@ const ArticleWriterPage: React.FC = () => {
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await fetch('http://localhost:3001/api/writer/upload-image', {
+      const response = await fetch(buildApiUrl('writer/upload-image'), {
         method: 'POST',
         credentials: 'include',
         body: formData
@@ -239,8 +239,8 @@ const ArticleWriterPage: React.FC = () => {
 
     try {
       const url = isEditMode 
-        ? `http://localhost:3001/api/writer/articles/${editId}`
-        : 'http://localhost:3001/api/writer/articles';
+        ? buildApiUrl(`writer/articles/${editId}`)
+        : buildApiUrl('writer/articles');
       
       // Merge selectedCategories into article before sending
       const articleWithCategories = {
@@ -258,7 +258,7 @@ const ArticleWriterPage: React.FC = () => {
       });
 
       if (response.ok) {
-        const result = await response.json();
+        const _result = await response.json();
         setSaveStatus('saved');
       } else {
         const errorText = await response.text();
@@ -290,8 +290,8 @@ const ArticleWriterPage: React.FC = () => {
       };
       
       const url = isEditMode 
-        ? `http://localhost:3001/api/writer/articles/${editId}`
-        : 'http://localhost:3001/api/writer/articles';
+        ? buildApiUrl(`writer/articles/${editId}`)
+        : buildApiUrl('writer/articles');
       
       const response = await fetch(url, {
         method: isEditMode ? 'PUT' : 'POST',
@@ -413,8 +413,8 @@ const ArticleWriterPage: React.FC = () => {
       // Include categories in publish data
       
       const url = isEditMode 
-        ? `http://localhost:3001/api/writer/articles/${editId}`
-        : 'http://localhost:3001/api/writer/articles';
+        ? buildApiUrl(`writer/articles/${editId}`)
+        : buildApiUrl('writer/articles');
       
       // console.log('🔧 Debug: Publish URL:', url);
       // console.log('🔧 Debug: Publish method:', isEditMode ? 'PUT' : 'POST');
@@ -537,7 +537,7 @@ const ArticleWriterPage: React.FC = () => {
       try {
         console.log('🔧 Debug: Starting to load article for edit, editId:', editId);
         setIsLoadingArticle(true);
-        const response = await fetch(`http://localhost:3001/api/writer/articles/${editId}`, {
+        const response = await fetch(buildApiUrl(`writer/articles/${editId}`), {
           credentials: 'include'
         });
         

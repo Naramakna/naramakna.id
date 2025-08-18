@@ -8,6 +8,7 @@ import { Footer } from '../../components/organisms/Footer';
 import { IndexCardList } from '../../components/molecules/IndexCardList/IndexCardList';
 import { LoadingSpinner } from '../../components/atoms/LoadingSpinner';
 import { SEOHead } from '../../components/atoms/SEOHead';
+import { buildApiUrl } from '../../config/api';
 import type { IndexBeritaData } from './IndexBerita.types';
 
 export const IndexBerita: React.FC = () => {
@@ -43,7 +44,7 @@ export const IndexBerita: React.FC = () => {
       if (filters.search) queryParams.append('search', filters.search);
       if (filters.category) queryParams.append('category', filters.category);
 
-      const response = await fetch(`http://localhost:3001/api/content/feed?${queryParams}`);
+      const response = await fetch(buildApiUrl(`content/feed?${queryParams}`));
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

@@ -1,4 +1,4 @@
-import { Category } from '../../atoms/CategoryLink/CategoryLink.types';
+import type { Category } from '../../atoms/CategoryLink/CategoryLink.types';
 
 export interface CategoryNavigationProps {
   activeSlug?: string;

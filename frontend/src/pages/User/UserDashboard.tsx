@@ -34,7 +34,7 @@ const UserDashboard: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/content/feed?limit=10', {
+      const response = await fetch(buildApiUrl('content/feed?limit=10'), {
         headers: { 'Authorization': `Bearer ${token}` },
         credentials: 'include'
       });
@@ -53,7 +53,7 @@ const UserDashboard: React.FC = () => {
     setUpdating(true);
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/profile', {
+      const response = await fetch(buildApiUrl('auth/profile'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

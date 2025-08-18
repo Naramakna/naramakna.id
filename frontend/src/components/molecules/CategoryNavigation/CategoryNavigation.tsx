@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import CategoryLink from '../../atoms/CategoryLink/CategoryLink';
 import type { CategoryNavigationProps } from './CategoryNavigation.types';
 import type { Category } from '../../atoms/CategoryLink/CategoryLink.types';
+import { buildApiUrl } from '../../../config/api';
 
 const CategoryNavigation: React.FC<CategoryNavigationProps> = ({ 
   activeSlug = '',
@@ -23,7 +24,7 @@ const CategoryNavigation: React.FC<CategoryNavigationProps> = ({
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/api/category/navigation', {
+      const response = await fetch(buildApiUrl('category/navigation'), {
         credentials: 'include'
       });
       
