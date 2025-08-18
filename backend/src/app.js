@@ -35,8 +35,9 @@ const corsOptions = {
       // Production - add your domains here
       'https://naramakna.id',
       'https://www.naramakna.id',
-      // Add your Cloudflare tunnel domain when you get it
-      // 'https://your-tunnel-domain.cloudflareaccess.com'
+      // Cloudflare tunnel domains
+      'https://fenarmak.naramakna.id',
+      'https://benarmak.naramakna.id'
     ];
 
     // If CORS_ORIGIN is set in environment, use it (for production flexibility)
