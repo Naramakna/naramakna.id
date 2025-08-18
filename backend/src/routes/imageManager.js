@@ -15,6 +15,14 @@ router.use(requireAdmin);
 router.get('/analysis', ImageManagerController.analyzeImageUrls);
 
 /**
+ * @route   POST /api/image-manager/convert-relative
+ * @desc    Convert relative image paths to full URLs and store them
+ * @access  Admin/SuperAdmin
+ * @body    { baseUrl: 'https://example.com/uploads', dryRun: true/false }
+ */
+router.post('/convert-relative', ImageManagerController.convertRelativeToFullUrls);
+
+/**
  * @route   POST /api/image-manager/update
  * @desc    Update image URLs based on selected tables and patterns
  * @access  Admin/SuperAdmin

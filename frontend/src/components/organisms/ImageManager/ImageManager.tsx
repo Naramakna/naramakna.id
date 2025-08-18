@@ -37,6 +37,7 @@ const ImageManager: React.FC = () => {
   const [selectedPatterns, setSelectedPatterns] = useState<string[]>([]);
   const [customUrl, setCustomUrl] = useState('');
   const [lastUpdate, setLastUpdate] = useState<UpdateResult | null>(null);
+  const [lastConvert, setLastConvert] = useState<any | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const tableOptions = [
@@ -47,11 +48,12 @@ const ImageManager: React.FC = () => {
   ];
 
   const commonPatterns = [
-    { value: 'localhost:3001/uploads/', label: 'localhost:3001/uploads/' },
-    { value: 'localhost:5173/uploads/', label: 'localhost:5173/uploads/' },
-    { value: 'localhost:5000/uploads/', label: 'localhost:5000/uploads/' },
-    { value: '.ngrok.app/uploads/', label: 'Ngrok App URLs' },
-    { value: '.ngrok.io/uploads/', label: 'Ngrok IO URLs' }
+    { value: 'localhost:3001', label: 'localhost:3001 (All URLs)' },
+    { value: 'localhost:5173', label: 'localhost:5173 (All URLs)' },
+    { value: 'localhost:5000', label: 'localhost:5000 (All URLs)' },
+    { value: '.ngrok.app', label: 'Ngrok App URLs' },
+    { value: '.ngrok.io', label: 'Ngrok IO URLs' },
+    { value: '2025/', label: 'Relative image paths (2025/...)' }
   ];
 
   useEffect(() => {
@@ -147,6 +149,55 @@ const ImageManager: React.FC = () => {
     } catch (error) {
       console.error('Error updating images:', error);
       alert('Error updating image URLs. Please try again.');
+    }
+    setUpdating(false);
+  };
+
+  const convertRelativePaths = async (dryRun = false) => {
+    if (!customUrl.trim()) {
+      alert('Please enter the new base URL');
+      return;
+    }
+
+    const confirmMessage = dryRun 
+      ? 'Run analysis to see which relative paths would be converted?' 
+      : `This will convert all relative image paths to full URLs using ${customUrl}. Are you sure?`;
+
+    if (!confirm(confirmMessage)) return;
+
+    setUpdating(true);
+    try {
+      const response = await fetch(buildApiUrl('image-manager/convert-relative'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          baseUrl: customUrl,
+          dryRun
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to convert relative paths');
+
+      const data = await response.json();
+      setLastConvert(data.data);
+
+      const totalConverted = Object.values(data.data.results).reduce((sum: number, result: any) => 
+        sum + (result.converted || 0), 0
+      );
+
+      if (dryRun) {
+        alert(`Dry run completed. Found ${Object.values(data.data.results).reduce((sum: number, result: any) => 
+          sum + (result.found || 0), 0)} relative paths that can be converted.`);
+      } else {
+        alert(`✅ Successfully converted ${totalConverted} relative paths to full URLs!`);
+        // Refresh analysis after conversion
+        setTimeout(analyzeImages, 1000);
+      }
+
+    } catch (error) {
+      console.error('Error converting relative paths:', error);
+      alert('Error converting relative paths. Please try again.');
     }
     setUpdating(false);
   };
@@ -312,7 +363,62 @@ const ImageManager: React.FC = () => {
             {updating ? '⚡ Updating...' : '⚡ Update URLs (Live)'}
           </button>
         </div>
+
+        {/* Convert Relative Paths Section */}
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <h4 className="text-sm font-semibold text-gray-900 mb-3">🔄 Convert Relative Paths to Full URLs</h4>
+          <p className="text-xs text-gray-600 mb-4">
+            Convert relative image paths (like "2025/07/image.jpg") to full URLs so they can be managed with the URL updater above.
+          </p>
+          
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => convertRelativePaths(true)}
+              disabled={updating || !customUrl.trim()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {updating ? '🔍 Analyzing...' : '🔍 Analyze Relative Paths'}
+            </button>
+            
+            <button
+              onClick={() => convertRelativePaths(false)}
+              disabled={updating || !customUrl.trim()}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+            >
+              {updating ? '🔄 Converting...' : '🔄 Convert to Full URLs'}
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* Last Convert Results */}
+      {lastConvert && (
+        <div className="mt-6 bg-white border border-gray-200 rounded-lg p-6">
+          <h3 className="text-md font-semibold text-gray-900 mb-4">
+            {lastConvert.dryRun ? '🔍 Relative Paths Analysis Results' : '🔄 Conversion Results'}
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {Object.entries(lastConvert.results).map(([key, result]: [string, any]) => (
+              <div key={key} className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-900 capitalize">
+                  {key.replace('_', ' ').replace(/([A-Z])/g, ' $1')}
+                </h4>
+                <div className="mt-2 text-sm">
+                  <div className="text-blue-600">Found: {result.found || 0}</div>
+                  <div className="text-green-600">
+                    {lastConvert.dryRun ? 'Would convert' : 'Converted'}: {result.converted || 0}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <div className="mt-4 text-xs text-gray-500">
+            {lastConvert.dryRun ? 'Analysis' : 'Conversion'} completed by {lastConvert.convertedBy} at {new Date(lastConvert.timestamp).toLocaleString()}
+          </div>
+        </div>
+      )}
 
       {/* Last Update Results */}
       {lastUpdate && (
