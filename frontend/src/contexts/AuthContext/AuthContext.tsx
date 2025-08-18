@@ -53,6 +53,8 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
   checkProfileCompletion: () => boolean;
   canApplyForWriter: () => boolean;
+  loginWithGoogle: () => Promise<void>;
+  redirectToProfileIfIncomplete: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -113,13 +115,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Logout function
   const logout = async () => {
     try {
+      console.log('🔄 AuthContext: Calling authAPI.logout()...');
       await authAPI.logout();
+      console.log('✅ AuthContext: API logout successful');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('❌ AuthContext: Logout API error:', error);
     } finally {
+      console.log('🧹 AuthContext: Cleaning up local data...');
       setUser(null);
       localStorage.removeItem('user');
       localStorage.removeItem('token');
+      console.log('✅ AuthContext: Local data cleaned');
     }
   };
 
@@ -207,6 +213,52 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     );
   };
 
+  // Google OAuth login
+  const loginWithGoogle = async (): Promise<void> => {
+    try {
+      // Get Google OAuth URL from backend
+      const response = await fetch(buildApiUrl('auth/google'));
+      const data = await response.json();
+      
+      if (data.success && data.data.auth_url) {
+        // Redirect to Google OAuth
+        window.location.href = data.data.auth_url;
+      } else {
+        throw new Error('Failed to get Google OAuth URL');
+      }
+    } catch (error) {
+      console.error('Google login error:', error);
+      throw error;
+    }
+  };
+
+  // Redirect to profile page if incomplete
+  const redirectToProfileIfIncomplete = (): boolean => {
+    if (!user || !isAuthenticated) return false;
+    
+    if (!checkProfileCompletion()) {
+      // Store the intended destination 
+      const currentPath = window.location.pathname;
+      // Don't redirect if already on profile pages, login, register, or auth pages
+      const allowedPaths = ['/profile', '/profile/edit', '/login', '/register', '/auth/success', '/auth/error'];
+      const isAllowedPath = allowedPaths.some(path => currentPath.startsWith(path));
+      
+      if (!isAllowedPath) {
+        localStorage.setItem('redirect_after_profile', currentPath);
+        window.location.href = '/profile?incomplete=true';
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // Auto-redirect effect for incomplete profiles
+  useEffect(() => {
+    if (user && isAuthenticated && !isLoading) {
+      redirectToProfileIfIncomplete();
+    }
+  }, [user, isAuthenticated, isLoading]);
+
   const value: AuthContextType = {
     user,
     isLoading,
@@ -216,7 +268,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     updateUser,
     refreshUser,
     checkProfileCompletion,
-    canApplyForWriter
+    canApplyForWriter,
+    loginWithGoogle,
+    redirectToProfileIfIncomplete
   };
 
   return (

@@ -18,7 +18,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ className = "" }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,10 +48,13 @@ export const LoginForm: React.FC<LoginFormProps> = ({ className = "" }) => {
     }
   };
 
-  const handleGoogleLogin = () => {
-    // Implement Google OAuth
-    console.log('Google login clicked');
-    setError('Fitur Google OAuth belum tersedia');
+  const handleGoogleLogin = async () => {
+    try {
+      await loginWithGoogle();
+    } catch (error) {
+      console.error('Google login error:', error);
+      setError('Gagal memulai login dengan Google. Silakan coba lagi.');
+    }
   };
 
   return (

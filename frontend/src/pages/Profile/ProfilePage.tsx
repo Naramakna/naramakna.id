@@ -41,9 +41,10 @@ const ProfilePage: React.FC = () => {
   const [isApplyingWriter, setIsApplyingWriter] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
-  // Check if this is a writer application flow
+  // Check if this is a writer application flow or profile incomplete redirect
   const urlParams = new URLSearchParams(window.location.search);
   const isWriterApplication = urlParams.get('apply') === 'writer';
+  const isIncompleteProfile = urlParams.get('incomplete') === 'true';
 
   // Handle authentication and user data
   useEffect(() => {
@@ -294,6 +295,44 @@ const ProfilePage: React.FC = () => {
           />
 
           <div className="space-y-6">{/* Form Container */}
+
+            {/* Profile Incomplete Warning */}
+            {isIncompleteProfile && !checkProfileCompletion() && (
+              <AlertMessage 
+                type="warning" 
+                message="Anda perlu melengkapi profil terlebih dahulu sebelum dapat mengakses fitur lainnya. Silakan isi data yang diperlukan di bawah ini."
+              />
+            )}
+
+            {/* Profile Complete - Ready to Continue */}
+            {isIncompleteProfile && checkProfileCompletion() && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3 flex-1">
+                    <p className="text-sm text-green-800">
+                      Profil Anda sudah lengkap! Anda dapat melanjutkan ke halaman yang diinginkan.
+                    </p>
+                  </div>
+                  <div className="ml-4">
+                    <button
+                      onClick={() => {
+                        const redirectPath = localStorage.getItem('redirect_after_profile') || '/user/dashboard';
+                        localStorage.removeItem('redirect_after_profile');
+                        window.location.href = redirectPath;
+                      }}
+                      className="bg-green-100 hover:bg-green-200 text-green-800 text-xs font-medium py-1 px-3 rounded-md transition-colors"
+                    >
+                      Lanjutkan
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Success/Error Messages */}
             {success && (

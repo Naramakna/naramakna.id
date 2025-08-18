@@ -774,6 +774,88 @@ class TikTokController {
     
     return videos;
   }
+
+  /**
+   * Handle TikTok webhook events
+   * POST /api/tiktok/webhook
+   */
+  static async handleWebhook(req, res) {
+    try {
+      console.log('🔔 TikTok webhook received');
+      console.log('📋 Headers:', JSON.stringify(req.headers, null, 2));
+      console.log('📋 Body:', JSON.stringify(req.body, null, 2));
+      
+      // TikTok webhook signature verification
+      const signature = req.headers['x-tiktok-signature'];
+      const timestamp = req.headers['x-tiktok-timestamp'];
+      
+      if (signature && timestamp) {
+        console.log('🔐 Verifying webhook signature...');
+        
+        // Create the expected signature
+        const payload = JSON.stringify(req.body);
+        const expectedSignature = crypto
+          .createHmac('sha256', TIKTOK_CONFIG.CLIENT_SECRET)
+          .update(timestamp + payload)
+          .digest('hex');
+        
+        console.log('🔍 Expected signature:', expectedSignature);
+        console.log('🔍 Received signature:', signature);
+        
+        // Verify signature
+        if (signature !== expectedSignature) {
+          console.log('❌ Webhook signature verification failed');
+          return res.status(401).json({
+            success: false,
+            message: 'Invalid webhook signature'
+          });
+        }
+        
+        console.log('✅ Webhook signature verified');
+      } else {
+        console.log('⚠️ No signature headers found - this might be a test webhook');
+      }
+      
+      // Handle different event types
+      const { event, data } = req.body;
+      
+      switch (event) {
+        case 'video.published':
+          console.log('🎬 Video published event:', data);
+          // Handle video published event
+          break;
+          
+        case 'video.deleted':
+          console.log('🗑️ Video deleted event:', data);
+          // Handle video deleted event
+          break;
+          
+        case 'user.deauthorized':
+          console.log('🔓 User deauthorized event:', data);
+          // Handle user deauthorization
+          break;
+          
+        default:
+          console.log('📦 Unknown webhook event:', event, data);
+      }
+      
+      // Respond to TikTok that webhook was received
+      res.status(200).json({
+        success: true,
+        message: 'Webhook received',
+        event: event,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('❌ TikTok webhook error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Webhook processing failed',
+        error: error.message
+      });
+    }
+  }
 }
 
 module.exports = TikTokController;

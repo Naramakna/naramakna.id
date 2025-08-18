@@ -1,5 +1,5 @@
 const { Post, User } = require('../models');
-const { sequelize } = require('../config/database');
+const sequelize = require('../config/database');
 const { QueryTypes, Op } = require('sequelize');
 
 class SchedulerController {
@@ -433,7 +433,18 @@ class SchedulerController {
         });
       } else {
         // Called by cron job
-        console.log(`📅 Scheduler: Published ${publishedPosts.length} posts at ${now}`);
+        const wibTime = now.toLocaleString('id-ID', { 
+          timeZone: 'Asia/Jakarta',
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          timeZoneName: 'short'
+        });
+        console.log(`📅 Scheduler: Published ${publishedPosts.length} posts at ${wibTime}`);
         if (publishedPosts.length > 0) {
           publishedPosts.forEach(post => {
             console.log(`  ✅ Published: ${post.title} (ID: ${post.id})`);
@@ -450,6 +461,95 @@ class SchedulerController {
           error: error.message
         });
       }
+    }
+  }
+
+  // Force publish a specific scheduled post immediately
+  static async forcePublishPost(req, res) {
+    try {
+      const { postId } = req.params;
+      const forcedBy = req.user.ID;
+
+      // Find the scheduled post
+      const post = await Post.findByPk(postId);
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: 'Post not found'
+        });
+      }
+
+      // Check if post is scheduled
+      if (post.post_status !== 'scheduled') {
+        return res.status(400).json({
+          success: false,
+          message: 'Post is not scheduled for publishing'
+        });
+      }
+
+      // Only admin/superadmin can force publish
+      if (!['admin', 'superadmin'].includes(req.user.user_role)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only admin and superadmin can force publish posts'
+        });
+      }
+
+      const now = new Date();
+
+      // Update post status to published
+      await post.update({
+        post_status: 'publish',
+        post_date: now,
+        post_date_gmt: now,
+        scheduled_publish_date: null,
+        original_status: null
+      });
+
+      // Log the force publishing action
+      await sequelize.query(
+        `INSERT INTO post_schedule_log 
+         (post_id, action_type, scheduled_by, notes) 
+         VALUES (:postId, 'published', :scheduledBy, 'Force published by admin')`,
+        {
+          replacements: {
+            postId: postId,
+            scheduledBy: forcedBy
+          }
+        }
+      );
+
+      const wibTime = now.toLocaleString('id-ID', { 
+        timeZone: 'Asia/Jakarta',
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'short'
+      });
+
+      console.log(`🚀 Force published post "${post.post_title}" (ID: ${postId}) by ${req.user.user_login} at ${wibTime}`);
+
+      res.json({
+        success: true,
+        message: 'Post force published successfully',
+        data: {
+          post_id: postId,
+          post_title: post.post_title,
+          published_at: now,
+          forced_by: req.user.user_login
+        }
+      });
+    } catch (error) {
+      console.error('Error force publishing post:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to force publish post',
+        error: error.message
+      });
     }
   }
 }

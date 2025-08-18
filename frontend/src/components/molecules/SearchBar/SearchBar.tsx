@@ -17,19 +17,49 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Close suggestions when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setShowSuggestions(false);
       }
     };
 
+    // Prevent scroll when suggestions are open on mobile
+    const preventScroll = (e: TouchEvent) => {
+      if (showSuggestions && window.innerWidth <= 768) {
+        // Allow scrolling within suggestions container
+        const target = e.target as Element;
+        if (!target.closest('[data-suggestions]')) {
+          e.preventDefault();
+        }
+      }
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    document.addEventListener('touchstart', handleClickOutside, { passive: false });
+    document.addEventListener('touchmove', preventScroll, { passive: false });
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('touchmove', preventScroll);
+    };
+  }, [showSuggestions]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,13 +99,18 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
   const handleFocus = () => {
     setIsFocused(true);
-    setShowSuggestions(true);
+    // Don't show suggestions on mobile
+    if (!isMobile) {
+      setShowSuggestions(true);
+    }
   };
 
   const handleBlur = () => {
     setIsFocused(false);
-    // Delay hiding suggestions to allow clicks
-    setTimeout(() => setShowSuggestions(false), 200);
+    // Delay hiding suggestions to allow clicks (increased for mobile)
+    setTimeout(() => {
+      setShowSuggestions(false);
+    }, 500);
   };
 
   return (
@@ -93,7 +128,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             onFocus={handleFocus}
             onBlur={handleBlur}
             placeholder={placeholder}
-            className="w-full pl-10 pr-10 py-2.5 text-sm border-0 rounded-lg focus:outline-none focus:ring-0 placeholder-gray-500"
+            className={`w-full pl-10 pr-10 ${isMobile ? 'py-3 text-base' : 'py-2.5 text-sm'} border-0 rounded-lg focus:outline-none focus:ring-0 placeholder-gray-500`}
             autoComplete="off"
           />
           
@@ -109,14 +144,16 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         </div>
       </form>
 
-      {/* Search Suggestions */}
-      <SearchSuggestions
-        query={query}
-        onSelectSuggestion={handleSelectSuggestion}
-        onSelectCategory={handleSelectCategory}
-        onSelectTag={handleSelectTag}
-        isVisible={showSuggestions}
-      />
+      {/* Search Suggestions - Only show on desktop */}
+      {!isMobile && (
+        <SearchSuggestions
+          query={query}
+          onSelectSuggestion={handleSelectSuggestion}
+          onSelectCategory={handleSelectCategory}
+          onSelectTag={handleSelectTag}
+          isVisible={showSuggestions}
+        />
+      )}
     </div>
   );
 };

@@ -175,6 +175,31 @@ class AuthAPI {
   }
 
   /**
+   * Verify OTP for password reset
+   */
+  async verifyOTP(email: string, otpCode: string): Promise<{ success: boolean; message: string; data?: { reset_token: string } }> {
+    try {
+      const response = await fetch(buildApiUrl('auth/verify-otp'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ user_email: email, otp_code: otpCode })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'OTP verification failed');
+      }
+
+      return await response.json();
+    } catch (error: any) {
+      throw new Error(error.message || 'OTP verification failed');
+    }
+  }
+
+  /**
    * Reset password with token
    */
   async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {

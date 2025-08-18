@@ -10,7 +10,18 @@ const schedulerJob = cron.schedule('* * * * *', async () => {
     const publishedPosts = await SchedulerController.publishScheduledPosts();
     
     if (publishedPosts && publishedPosts.length > 0) {
-      console.log(`📅 [${new Date().toISOString()}] Published ${publishedPosts.length} scheduled posts`);
+      const wibTime = new Date().toLocaleString('id-ID', { 
+        timeZone: 'Asia/Jakarta',
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'short'
+      });
+      console.log(`📅 [${wibTime}] Cron published ${publishedPosts.length} scheduled posts`);
     }
   } catch (error) {
     console.error('❌ Scheduler error:', error.message);

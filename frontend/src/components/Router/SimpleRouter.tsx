@@ -3,6 +3,7 @@ import { Home } from '../pages/Home/Home';
 import LoginPage from '../../pages/Login/LoginPage';
 import RegisterPage from '../../pages/Register/RegisterPage';
 import ForgotPasswordPage from '../../pages/ForgotPassword/ForgotPasswordPage';
+import ResetPasswordPage from '../../pages/ResetPassword/ResetPasswordPage';
 import ProfilePage from '../../pages/Profile/ProfilePage';
 import ProfileViewPage from '../../pages/Profile/ProfileViewPage';
 import AdminDashboard from '../../pages/Admin/AdminDashboard';
@@ -24,6 +25,8 @@ import { Polling } from '../../pages/Polling';
 import { VideoStory } from '../../pages/VideoStory';
 import { IndexBerita } from '../../pages/IndexBerita/IndexBerita';
 import { OTPPage } from '../../pages/OTP';
+import AuthSuccessPage from '../../pages/Auth/AuthSuccessPage';
+import AuthErrorPage from '../../pages/Auth/AuthErrorPage';
 
 // Component for async username validation
 const AsyncUsernameRoute: React.FC<{ username: string }> = ({ username }) => {
@@ -98,9 +101,16 @@ const SimpleRouter: React.FC = () => {
       return <RegisterPage />;
     case '/forgot-password':
       return <ForgotPasswordPage />;
+    case '/reset-password':
+      return <ResetPasswordPage />;
     case '/otp':
     case '/verify-otp':
+    case '/otp-verification':
       return <OTPPage />;
+    case '/auth/success':
+      return <AuthSuccessPage />;
+    case '/auth/error':
+      return <AuthErrorPage />;
     case '/profile':
       return <ProfileViewPage />;
     case '/profile/edit':

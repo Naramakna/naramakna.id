@@ -61,9 +61,8 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
 
     setLoading(true);
     try {
-      const response = await fetch(
-        buildApiUrl(`content/search/suggestions?query=${encodeURIComponent(searchQuery)}&limit=20`)
-      );
+      const url = buildApiUrl(`content/search/suggestions?query=${encodeURIComponent(searchQuery)}&limit=20`);
+      const response = await fetch(url);
       
       if (response.ok) {
         const data = await response.json();
@@ -86,7 +85,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
 
     return () => clearTimeout(timer);
   }, [query, fetchSuggestions]);
-
+  
   if (!isVisible || (!query && recentSearches.length === 0)) {
     return null;
   }
@@ -97,7 +96,12 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
     suggestions.tags.length > 0;
 
   return (
-    <div className={`absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-b-lg shadow-lg z-50 ${className}`}>
+    <div data-suggestions
+         className={`absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-b-lg shadow-lg z-[9999] max-h-80 md:max-h-96 overflow-y-auto ${className}`}
+         style={{ 
+           maxHeight: window.innerHeight < 700 ? '50vh' : '24rem',
+           boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+         }}>
       {/* Recent searches when no query */}
       {!query && recentSearches.length > 0 && (
         <div className="p-3 border-b border-gray-100">
@@ -109,7 +113,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
             <button
               key={index}
               onClick={() => onSelectSuggestion(search)}
-              className="block w-full text-left px-2 py-1 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors"
+              className="block w-full text-left px-3 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 rounded transition-colors touch-manipulation"
             >
               {search}
             </button>
@@ -144,7 +148,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
             <button
               key={index}
               onClick={() => onSelectSuggestion(suggestion)}
-              className="block w-full text-left px-2 py-1 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors truncate"
+              className="block w-full text-left px-3 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 rounded transition-colors truncate touch-manipulation"
               title={suggestion}
             >
               {suggestion}
@@ -164,7 +168,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
             <button
               key={index}
               onClick={() => onSelectCategory(category.slug)}
-              className="flex items-center justify-between w-full text-left px-2 py-1 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors"
+              className="flex items-center justify-between w-full text-left px-3 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 rounded transition-colors touch-manipulation"
             >
               <span className="font-medium">{category.name}</span>
               <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
@@ -186,7 +190,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
             <button
               key={index}
               onClick={() => onSelectTag(tag.slug)}
-              className="flex items-center justify-between w-full text-left px-2 py-1 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors"
+              className="flex items-center justify-between w-full text-left px-3 py-3 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 rounded transition-colors touch-manipulation"
             >
               <div>
                 <span className="text-yellow-500">#</span>
@@ -205,7 +209,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
         <div className="p-3 border-t border-gray-100">
           <button
             onClick={() => onSelectSuggestion(query)}
-            className="flex items-center gap-2 w-full px-2 py-2 text-sm text-yellow-500 hover:bg-yellow-500 hover:text-white rounded transition-colors"
+            className="flex items-center gap-2 w-full px-3 py-3 text-sm text-yellow-500 hover:bg-yellow-500 hover:text-white active:bg-yellow-600 rounded transition-colors touch-manipulation"
           >
             <Search size={14} />
             <span>Cari "{query}"</span>
