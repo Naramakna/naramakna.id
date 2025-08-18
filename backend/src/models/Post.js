@@ -120,6 +120,27 @@ const Post = sequelize.define('Post', {
     type: DataTypes.INTEGER,
     allowNull: false,
     defaultValue: 0
+  },
+  scheduled_by: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'ID'
+    }
+  },
+  scheduled_publish_date: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  original_status: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    defaultValue: 'draft'
+  },
+  scheduling_notes: {
+    type: DataTypes.TEXT,
+    allowNull: true
   }
 }, {
   tableName: 'posts',

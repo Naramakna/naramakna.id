@@ -53,6 +53,9 @@ router.get('/auth-url', TikTokController.getAuthUrl);
 // OAuth callback - Public (needed for OAuth flow) 
 router.get('/callback', TikTokController.handleCallback);
 
+// Webhook endpoint for TikTok events - Public (TikTok needs to access this)
+router.post('/webhook', TikTokController.handleWebhook);
+
 // Connection status - Public (needed for frontend to check if connected)
 router.get('/connection-status', async (req, res) => {
   try {
@@ -70,6 +73,284 @@ router.get('/connection-status', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to check connection status',
+      error: error.message
+    });
+  }
+});
+
+// Download and cache TikTok images locally (with fresh URL sync)
+router.post('/cache-images', async (req, res) => {
+  try {
+    const mysql = require('mysql2/promise');
+    const axios = require('axios');
+    const fs = require('fs').promises;
+    const path = require('path');
+    
+    const getDbConfig = () => ({
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME
+    });
+    
+    const connection = await mysql.createConnection(getDbConfig());
+    
+    console.log('🔄 Step 1: Syncing with TikTok API to get fresh URLs...');
+    
+    // First, sync with TikTok API to get fresh URLs
+    const [tokenRows] = await connection.query(`
+      SELECT * FROM tiktok_tokens 
+      WHERE is_active = TRUE AND access_token IS NOT NULL
+      AND (expires_at IS NULL OR expires_at > NOW())
+      ORDER BY created_at DESC LIMIT 1
+    `);
+    
+    if (tokenRows.length > 0) {
+      const token = tokenRows[0];
+      const TikTokController = require('../controllers/tiktokController');
+      
+      try {
+        const freshVideos = await TikTokController.fetchUserVideos(token.access_token, 20);
+        console.log(`📥 Fetched ${freshVideos.length} fresh videos from TikTok API`);
+        
+        // Update existing videos with fresh image URLs
+        for (const freshVideo of freshVideos) {
+          await connection.query(`
+            UPDATE tiktok_videos 
+            SET cover_image_url = ? 
+            WHERE tiktok_video_id = ? AND cover_image_url != ?
+          `, [freshVideo.cover_image_url, freshVideo.id, freshVideo.cover_image_url]);
+        }
+        
+        console.log('✅ Updated image URLs with fresh data from TikTok API');
+      } catch (apiError) {
+        console.warn('⚠️ Could not sync with TikTok API:', apiError.message);
+        console.log('📦 Proceeding with existing URLs...');
+      }
+    } else {
+      console.warn('⚠️ No active TikTok token found, using existing URLs');
+    }
+    
+    // Create tiktok cache directory if it doesn't exist (in project root public)
+    const cacheDir = path.join(__dirname, '../../../public/uploads/tiktok-cache');
+    try {
+      await fs.mkdir(cacheDir, { recursive: true });
+    } catch (error) {
+      // Directory might already exist
+    }
+    
+    console.log('📦 Step 2: Caching images locally...');
+    
+    // Get TikTok videos with external CDN images (prioritize non-expired ones)
+    const [videos] = await connection.query(`
+      SELECT id, tiktok_video_id, cover_image_url, title, tiktok_created_at
+      FROM tiktok_videos 
+      WHERE cover_image_url LIKE 'https://p16-sign%'
+      AND cover_image_url NOT LIKE '%benarmak.naramakna.id%'
+      ORDER BY tiktok_created_at DESC
+      LIMIT 10
+    `);
+    
+    console.log(`📥 Found ${videos.length} TikTok videos with external images to cache`);
+    
+    let cachedCount = 0;
+    let errorCount = 0;
+    let skippedCount = 0;
+    
+    for (const video of videos) {
+      try {
+        const imageUrl = video.cover_image_url;
+        if (!imageUrl || !imageUrl.startsWith('http')) {
+          skippedCount++;
+          continue;
+        }
+        
+        // Check if URL appears to be expired
+        const isLikelyExpired = imageUrl.includes('x-expires=') && (() => {
+          try {
+            const match = imageUrl.match(/x-expires=([0-9]+)/);
+            if (match) {
+              const expires = parseInt(match[1]);
+              return expires < Date.now() / 1000;
+            }
+          } catch (e) {}
+          return false;
+        })();
+        
+        if (isLikelyExpired) {
+          console.log(`⏭️ Skipping expired URL for: ${video.title?.substring(0, 50) || video.tiktok_video_id}`);
+          skippedCount++;
+          continue;
+        }
+        
+        // Generate local filename
+        const ext = '.jpg'; // TikTok covers are usually JPEG
+        const filename = `tiktok-${video.tiktok_video_id}-${Date.now()}${ext}`;
+        const localPath = path.join(cacheDir, filename);
+        const publicUrl = `${process.env.UPLOADS_URL || 'https://benarmak.naramakna.id/uploads'}/tiktok-cache/${filename}`;
+        
+        // Download image with timeout
+        console.log(`📥 Downloading: ${video.title?.substring(0, 50) || video.tiktok_video_id}`);
+        
+        const response = await axios({
+          method: 'GET',
+          url: imageUrl,
+          responseType: 'stream',
+          timeout: 15000, // 15 second timeout
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          }
+        });
+        
+        if (response.status !== 200) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
+        // Save to local file
+        const writer = require('fs').createWriteStream(localPath);
+        response.data.pipe(writer);
+        
+        await new Promise((resolve, reject) => {
+          writer.on('finish', resolve);
+          writer.on('error', reject);
+        });
+        
+        // Verify file was created and has content
+        const stats = await fs.stat(localPath);
+        if (stats.size < 1000) { // Less than 1KB is probably an error
+          throw new Error('Downloaded file too small');
+        }
+        
+        // Update database with local URL
+        await connection.query(
+          'UPDATE tiktok_videos SET cover_image_url = ? WHERE id = ?',
+          [publicUrl, video.id]
+        );
+        
+        cachedCount++;
+        console.log(`✅ Cached: ${filename} (${Math.round(stats.size/1024)}KB)`);
+        
+      } catch (error) {
+        errorCount++;
+        console.error(`❌ Error caching image for ${video.tiktok_video_id}:`, error.message);
+      }
+    }
+    
+    await connection.end();
+    
+    const message = cachedCount > 0 
+      ? `Successfully cached ${cachedCount} TikTok images locally`
+      : skippedCount > 0 
+      ? `No fresh URLs available to cache. Try syncing with TikTok API first.`
+      : `No external images found to cache`;
+    
+    res.json({
+      success: true,
+      message,
+      data: {
+        cached: cachedCount,
+        errors: errorCount,
+        skipped: skippedCount,
+        total: videos.length
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error caching TikTok images:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to cache TikTok images',
+      error: error.message
+    });
+  }
+});
+
+// Refresh TikTok images - Public for admin use  
+router.post('/refresh-images', async (req, res) => {
+  try {
+    const mysql = require('mysql2/promise');
+    const getDbConfig = () => ({
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME
+    });
+    
+    const connection = await mysql.createConnection(getDbConfig());
+    
+    // Get latest valid TikTok token
+    const [tokenRows] = await connection.query(`
+      SELECT * FROM tiktok_tokens 
+      WHERE is_active = TRUE AND access_token IS NOT NULL
+      AND (expires_at IS NULL OR expires_at > NOW())
+      ORDER BY created_at DESC LIMIT 1
+    `);
+    
+    if (tokenRows.length === 0) {
+      await connection.end();
+      return res.json({
+        success: false,
+        message: 'No valid TikTok token found. Please reconnect TikTok account.',
+        data: { refreshed: 0, total: 0 }
+      });
+    }
+    
+    const token = tokenRows[0];
+    console.log('🔄 Refreshing TikTok images with token for user:', token.tiktok_username);
+    
+    // Get all TikTok videos that need image refresh
+    const [videos] = await connection.query(`
+      SELECT id, tiktok_video_id, cover_image_url, title
+      FROM tiktok_videos 
+      WHERE cover_image_url IS NOT NULL 
+      ORDER BY tiktok_created_at DESC
+    `);
+    
+    console.log(`🖼️ Found ${videos.length} TikTok videos to refresh images`);
+    
+    // Fetch fresh video data from TikTok API
+    const TikTokController = require('../controllers/tiktokController');
+    const freshVideos = await TikTokController.fetchUserVideos(token.access_token, 50);
+    
+    let refreshedCount = 0;
+    
+    for (const localVideo of videos) {
+      try {
+        // Find matching fresh video data
+        const freshVideo = freshVideos.find(fv => fv.id === localVideo.tiktok_video_id);
+        
+        if (freshVideo && freshVideo.cover_image_url) {
+          // Update with fresh cover image URL
+          await connection.query(
+            'UPDATE tiktok_videos SET cover_image_url = ? WHERE id = ?',
+            [freshVideo.cover_image_url, localVideo.id]
+          );
+          
+          refreshedCount++;
+          console.log(`✅ Refreshed image for: ${localVideo.title || localVideo.tiktok_video_id}`);
+        }
+      } catch (error) {
+        console.error(`❌ Error refreshing image for video ${localVideo.tiktok_video_id}:`, error.message);
+      }
+    }
+    
+    await connection.end();
+    
+    res.json({
+      success: true,
+      message: `Refreshed ${refreshedCount} TikTok images`,
+      data: {
+        refreshed: refreshedCount,
+        total: videos.length,
+        fresh_videos_fetched: freshVideos.length
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error refreshing TikTok images:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to refresh TikTok images',
       error: error.message
     });
   }

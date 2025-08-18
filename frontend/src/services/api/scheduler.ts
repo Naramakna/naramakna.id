@@ -152,6 +152,14 @@ class SchedulerAPI {
     });
     return await response.json();
   }
+
+  // Force publish a specific post immediately
+  async forcePublishPost(postId: number): Promise<ScheduleResponse> {
+    const response = await apiRequest(`scheduler/force-publish/${postId}`, {
+      method: 'POST',
+    });
+    return await response.json();
+  }
 }
 
 export const schedulerAPI = new SchedulerAPI();

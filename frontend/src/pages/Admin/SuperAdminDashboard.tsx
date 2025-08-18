@@ -10,6 +10,9 @@ import { AdminPolling } from './AdminPolling';
 import { AdminAds } from './AdminAds';
 import { AnalyticsReports } from './AnalyticsReports';
 import { AdminSettings } from './AdminSettings';
+import ScheduledPosts from '../../components/organisms/ScheduledPosts/ScheduledPosts';
+import ImageManager from '../../components/organisms/ImageManager/ImageManager';
+import TikTokImageManager from '../../components/organisms/TikTokImageManager/TikTokImageManager';
 import { buildApiUrl } from '../../config/api';
 
 
@@ -95,6 +98,7 @@ const SuperAdminDashboard: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [pendingPosts, setPendingPosts] = useState<PendingPost[]>([]);
+  const [scheduledPosts, setScheduledPosts] = useState<any[]>([]);
   const [systemStats, setSystemStats] = useState<SystemStats>({
     totalUsers: 0,
     totalAdmins: 0,
@@ -133,7 +137,7 @@ const SuperAdminDashboard: React.FC = () => {
       setLoading(true);
       
       // Fetch all data in parallel
-      const [usersRes, userStatsRes, contentStatsRes, categoriesRes, postsRes, pendingPostsRes] = await Promise.all([
+      const [usersRes, userStatsRes, contentStatsRes, categoriesRes, postsRes, pendingPostsRes, scheduledPostsRes] = await Promise.all([
         fetch(buildApiUrl('users'), {
           method: 'GET',
           credentials: 'include',
@@ -177,6 +181,13 @@ const SuperAdminDashboard: React.FC = () => {
           headers: {
             'Content-Type': 'application/json'
           }
+        }),
+        fetch(buildApiUrl('scheduler/scheduled'), {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
         })
       ]);
 
@@ -187,6 +198,7 @@ const SuperAdminDashboard: React.FC = () => {
       const categoriesData = categoriesRes.ok ? await categoriesRes.json() : { success: false, data: [] };
       const postsData = postsRes.ok ? await postsRes.json() : { success: false, data: { posts: [] } };
       const pendingPostsData = pendingPostsRes.ok ? await pendingPostsRes.json() : { success: false, data: { pending_posts: [] } };
+      const scheduledPostsData = scheduledPostsRes.ok ? await scheduledPostsRes.json() : { success: false, data: { posts: [] } };
 
       console.log('API Responses:', { usersData, userStatsData, contentStatsData, categoriesData, postsData, pendingPostsData });
 
@@ -233,6 +245,11 @@ const SuperAdminDashboard: React.FC = () => {
         setPendingPosts(pendingPostsData.data.pending_posts || []);
       }
 
+      // Set scheduled posts
+      if (scheduledPostsData.success) {
+        setScheduledPosts(scheduledPostsData.data.posts || []);
+      }
+
 
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -242,6 +259,7 @@ const SuperAdminDashboard: React.FC = () => {
       setPosts([]);
       setCategories([]);
       setPendingPosts([]);
+      setScheduledPosts([]);
       setSystemStats({
         totalUsers: 0,
         totalAdmins: 0,
@@ -335,12 +353,15 @@ const SuperAdminDashboard: React.FC = () => {
 
   const promoteToAdmin = async (userId: number) => {
     try {
-      const response = await fetch(`/api/superadmin/promote-admin/${userId}`, {
-        method: 'POST',
+      const response = await fetch(buildApiUrl(`users/${userId}`), {
+        method: 'PUT',
+        credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          user_role: 'admin'
+        })
       });
 
       if (response.ok) {
@@ -502,6 +523,8 @@ const SuperAdminDashboard: React.FC = () => {
               { id: 'posts', name: '📝 Posts', count: systemStats.totalPosts },
               { id: 'categories', name: '📂 Categories', count: systemStats.totalCategories },
               { id: 'pending-posts', name: '⏳ Pending', count: pendingPosts.length },
+              { id: 'scheduled-posts', name: '⏰ Scheduled', count: scheduledPosts.length },
+              { id: 'image-manager', name: '🖼️ Images' },
               { id: 'polling', name: '📊 Polling' },
               { id: 'ads', name: '🎯 Ads' },
               { id: 'youtube', name: '📺 YouTube' },
@@ -682,6 +705,18 @@ const SuperAdminDashboard: React.FC = () => {
                 </div>
               )}
 
+              {activeTab === 'scheduled-posts' && (
+                <ScheduledPosts
+                  posts={scheduledPosts}
+                  loading={loading}
+                  onRefresh={fetchData}
+                />
+              )}
+
+              {activeTab === 'image-manager' && (
+                <ImageManager />
+              )}
+
                         {activeTab === 'polling' && (
             <div className="p-6">
               <AdminPolling />
@@ -712,17 +747,7 @@ const SuperAdminDashboard: React.FC = () => {
 
           {activeTab === 'tiktok' && (
             <div className="p-6">
-              <div className="text-center">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">TikTok Management</h2>
-                <p className="text-gray-600 mb-6">Connect @naramakna.id TikTok account, sync videos using Display API, and manage content</p>
-                <a
-                  href="/admin/tiktok"
-                  className="inline-flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
-                >
-                  <span className="mr-2">🎵</span>
-                  Open TikTok Dashboard
-                </a>
-              </div>
+              <TikTokImageManager />
             </div>
           )}
 

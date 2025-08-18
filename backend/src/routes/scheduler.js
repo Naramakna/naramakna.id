@@ -26,4 +26,7 @@ router.get('/history/:postId', auth, requireAdmin, SchedulerController.getSchedu
 // Manually trigger publishing of scheduled posts (for testing)
 router.post('/publish-now', auth, requireAdmin, SchedulerController.publishScheduledPosts);
 
+// Force publish a specific post immediately
+router.post('/force-publish/:postId', auth, requireAdmin, SchedulerController.forcePublishPost);
+
 module.exports = router;

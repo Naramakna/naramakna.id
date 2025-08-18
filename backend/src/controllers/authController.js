@@ -1,7 +1,10 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
+const { google } = require('googleapis');
 const User = require('../models/User');
+const PasswordReset = require('../models/PasswordReset');
+const emailService = require('../utils/emailService');
 const { USER_ROLES, POST_STATUS } = require('../../../shared/constants/roles.cjs');
 
 class AuthController {
@@ -392,24 +395,25 @@ class AuthController {
       // Always return success to prevent email enumeration
       res.json({
         success: true,
-        message: 'If the email exists, a password reset link has been sent'
+        message: 'If the email exists, an OTP code has been sent'
       });
 
       if (user) {
-        // Generate reset token
-        const resetToken = jwt.sign(
-          { id: user.ID, type: 'password_reset' },
-          process.env.JWT_SECRET,
-          { expiresIn: '1h' }
+        // Create OTP for password reset
+        const passwordReset = await PasswordReset.createOTP(user_email);
+
+        // Send OTP via email
+        const emailResult = await emailService.sendOTP(
+          user_email, 
+          passwordReset.otp_code, 
+          user.display_name || user.user_login
         );
 
-        // Save reset token
-        await user.update({
-          user_activation_key: resetToken
-        });
+        if (!emailResult.success) {
+          console.error('Failed to send OTP email:', emailResult.error);
+        }
 
-        // TODO: Send email with reset link
-        console.log(`Password reset token for ${user_email}: ${resetToken}`);
+        console.log(`🔐 Password reset OTP sent to ${user_email}: ${passwordReset.otp_code}`);
       }
 
     } catch (error) {
@@ -417,6 +421,60 @@ class AuthController {
       res.status(500).json({
         success: false,
         message: 'Failed to process password reset request'
+      });
+    }
+  }
+
+  // Verify OTP for password reset
+  static async verifyOTP(req, res) {
+    try {
+      const { user_email, otp_code } = req.body;
+
+      if (!user_email || !otp_code) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email and OTP code are required'
+        });
+      }
+
+      // Verify OTP
+      const result = await PasswordReset.verifyOTP(user_email, otp_code);
+
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          message: result.message
+        });
+      }
+
+      // Generate reset token for password change
+      const user = await User.findOne({ where: { user_email } });
+      if (!user) {
+        return res.status(400).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      const resetToken = jwt.sign(
+        { id: user.ID, email: user_email, type: 'password_reset_verified' },
+        process.env.JWT_SECRET,
+        { expiresIn: '10m' } // Short-lived token after OTP verification
+      );
+
+      res.json({
+        success: true,
+        message: 'OTP verified successfully',
+        data: {
+          reset_token: resetToken
+        }
+      });
+
+    } catch (error) {
+      console.error('OTP verification error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to verify OTP'
       });
     }
   }
@@ -443,7 +501,7 @@ class AuthController {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
-      if (decoded.type !== 'password_reset') {
+      if (decoded.type !== 'password_reset_verified') {
         return res.status(400).json({
           success: false,
           message: 'Invalid reset token'
@@ -472,6 +530,16 @@ class AuthController {
         failed_login_attempts: 0,
         locked_until: null
       });
+
+      // Send password reset confirmation email
+      try {
+        await emailService.sendPasswordResetConfirmation(
+          user.user_email,
+          user.display_name || user.user_login
+        );
+      } catch (emailError) {
+        console.error('Failed to send password reset confirmation email:', emailError);
+      }
 
       res.json({
         success: true,
@@ -536,6 +604,127 @@ class AuthController {
         success: false,
         message: 'Email verification failed'
       });
+    }
+  }
+
+  // Get Google OAuth URL
+  static async getGoogleAuthUrl(req, res) {
+    try {
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        process.env.GOOGLE_REDIRECT_URI
+      );
+
+      const scopes = [
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile'
+      ];
+
+      const authUrl = oauth2Client.generateAuthUrl({
+        access_type: 'offline',
+        scope: scopes,
+        prompt: 'consent'
+      });
+
+      res.json({
+        success: true,
+        data: {
+          auth_url: authUrl
+        }
+      });
+
+    } catch (error) {
+      console.error('Google auth URL error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to generate Google auth URL'
+      });
+    }
+  }
+
+  // Handle Google OAuth callback
+  static async handleGoogleCallback(req, res) {
+    try {
+      const { code } = req.query;
+
+      if (!code) {
+        return res.status(400).json({
+          success: false,
+          message: 'Authorization code not provided'
+        });
+      }
+
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        process.env.GOOGLE_REDIRECT_URI
+      );
+
+      // Exchange code for tokens
+      const { tokens } = await oauth2Client.getToken(code);
+      oauth2Client.setCredentials(tokens);
+
+      // Get user info from Google
+      const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+      const { data: googleUser } = await oauth2.userinfo.get();
+
+      // Check if user exists
+      let user = await User.findOne({ where: { user_email: googleUser.email } });
+
+      if (user) {
+        // User exists, log them in
+        const jwtToken = jwt.sign(
+          { id: user.ID, email: user.user_email, role: user.user_role },
+          process.env.JWT_SECRET,
+          { expiresIn: '24h' }
+        );
+
+        // Set cookie
+        res.cookie('token', jwtToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        });
+
+        // Redirect to frontend with success
+        res.redirect(`${process.env.FRONTEND_URL}/auth/success`);
+      } else {
+        // User doesn't exist, create new account
+        const newUser = await User.create({
+          user_login: googleUser.email.split('@')[0],
+          user_email: googleUser.email,
+          user_pass: 'google_oauth', // Placeholder password
+          display_name: googleUser.name,
+          user_role: 'user',
+          user_status: 1,
+          email_verified: true, // Google emails are verified
+          user_registered: new Date(),
+          profile_image: googleUser.picture
+        });
+
+        const jwtToken = jwt.sign(
+          { id: newUser.ID, email: newUser.user_email, role: newUser.user_role },
+          process.env.JWT_SECRET,
+          { expiresIn: '24h' }
+        );
+
+        // Set cookie
+        res.cookie('token', jwtToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        });
+
+        // Redirect to frontend with success
+        res.redirect(`${process.env.FRONTEND_URL}/auth/success`);
+      }
+
+    } catch (error) {
+      console.error('Google callback error:', error);
+      res.redirect(`${process.env.FRONTEND_URL}/auth/error?message=Google authentication failed`);
     }
   }
 }

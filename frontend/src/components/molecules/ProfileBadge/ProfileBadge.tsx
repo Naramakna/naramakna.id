@@ -44,8 +44,18 @@ export const ProfileBadge: React.FC<ProfileBadgeProps> = ({ className = '' }) =>
   if (!user) return null;
 
   const handleLogout = async () => {
-    await logout();
-    window.location.href = '/';
+    try {
+      console.log('🔄 Starting logout process...');
+      await logout();
+      console.log('✅ Logout successful, redirecting...');
+      window.location.href = '/';
+    } catch (error) {
+      console.error('❌ Logout failed:', error);
+      // Still redirect even if logout fails
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      window.location.href = '/';
+    }
   };
 
   const getInitials = (name: string) => {

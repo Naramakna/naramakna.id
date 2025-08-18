@@ -115,6 +115,7 @@ const categoryRoutes = require('./routes/category');
 const pollingRoutes = require('./routes/polling');
 const schedulerRoutes = require('./routes/scheduler');
 const settingsRoutes = require('./routes/settings');
+const imageManagerRoutes = require('./routes/imageManager');
 // const taxonomyRoutes = require('./routes/taxonomy'); // TODO: Implement
 
 // Initialize scheduler for auto-publishing posts
@@ -145,6 +146,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/category', categoryRoutes);
 app.use('/api/polling', pollingRoutes);
 app.use('/api/scheduler', schedulerRoutes);
+app.use('/api/image-manager', imageManagerRoutes);
 // app.use('/api/taxonomy', taxonomyRoutes); // TODO: Implement
 
 // Halaman utama API
