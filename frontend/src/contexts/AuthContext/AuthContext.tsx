@@ -80,9 +80,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.log('🔄 Loaded user from localStorage:', userData.user_login);
         }
 
-        // Verify with server
+        // Verify with server (optional - don't logout on failure)
         console.log('🔄 Verifying user session with server...');
-        await refreshUser();
+        try {
+          await refreshUser();
+        } catch (refreshError: any) {
+          console.log('⚠️ Session refresh failed, keeping local session:', refreshError.message);
+          // Keep user logged in with localStorage data
+        }
       } catch (error: any) {
         console.log('❌ No valid session found:', error.message);
         localStorage.removeItem('user');

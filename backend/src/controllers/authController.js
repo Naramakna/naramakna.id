@@ -71,12 +71,12 @@ class AuthController {
       const token = user.generateToken();
 
       // Set cookie
-      res.cookie('token', token, {
+      res.cookie('naramakna_auth', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        domain: process.env.NODE_ENV === 'production' ? undefined : 'localhost'
+        domain: process.env.NODE_ENV === 'production' ? '.naramakna.id' : 'localhost'
       });
 
       res.status(201).json({
@@ -194,12 +194,12 @@ class AuthController {
 
       // Set cookie
       const cookieAge = remember_me ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
-      res.cookie('token', token, {
+      res.cookie('naramakna_auth', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         maxAge: cookieAge,
-        domain: process.env.NODE_ENV === 'production' ? undefined : 'localhost'
+        domain: process.env.NODE_ENV === 'production' ? '.naramakna.id' : 'localhost'
       });
 
       res.json({
@@ -223,12 +223,23 @@ class AuthController {
   // Logout user
   static async logout(req, res) {
     try {
-      res.clearCookie('token');
+      // Clear cookies with proper options
+      const cookieOptions = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        domain: process.env.NODE_ENV === 'production' ? '.naramakna.id' : 'localhost'
+      };
+
+      res.clearCookie('naramakna_auth', cookieOptions);
+      res.clearCookie('token', cookieOptions); // Also clear old cookie for compatibility
+      
       res.json({
         success: true,
         message: 'Logged out successfully'
       });
     } catch (error) {
+      console.error('Logout error:', error);
       res.status(500).json({
         success: false,
         message: 'Logout failed'

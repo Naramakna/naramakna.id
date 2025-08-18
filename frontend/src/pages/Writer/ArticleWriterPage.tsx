@@ -7,6 +7,7 @@ import '../../styles/editor.css';
 import ScheduleModal from '../../components/molecules/ScheduleModal';
 import { schedulerAPI } from '../../services/api/scheduler';
 import type { ScheduledPost, ScheduleRequest } from '../../services/api/scheduler';
+import { buildApiUrl } from '../../config/api';
 
 interface ArticleData {
   title: string;
