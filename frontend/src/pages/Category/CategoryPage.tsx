@@ -7,6 +7,7 @@ import { PollingMain } from '../../components/organisms/PollingMain';
 import { VideoSection } from '../../components/organisms/VideoSection';
 import { ArticleCardList } from '../../components/molecules/ArticleCardList';
 import { LoadingSpinner } from '../../components/atoms/LoadingSpinner/LoadingSpinner';
+import { buildApiUrl } from '../../config/api';
 
 interface CategoryPost {
   id: number;
@@ -61,7 +62,7 @@ const CategoryPage: React.FC = () => {
       }
 
       const response = await fetch(
-        `http://localhost:3001/api/category/${categorySlug}/posts?limit=10&offset=${offset}`,
+        buildApiUrl(`category/${categorySlug}/posts?limit=10&offset=${offset}`),
         { credentials: 'include' }
       );
 

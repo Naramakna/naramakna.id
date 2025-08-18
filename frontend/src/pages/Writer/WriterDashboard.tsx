@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Footer } from '../../components/organisms/Footer';
+import { buildApiUrl } from '../../config/api';
 
 interface Post {
   ID: number;
@@ -11,7 +12,7 @@ interface Post {
 }
 
 const WriterDashboard: React.FC = () => {
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [_posts, _setPosts] = useState<Post[]>([]);
   const [pendingPosts, setPendingPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
@@ -34,7 +35,7 @@ const WriterDashboard: React.FC = () => {
   const fetchData = async () => {
     try {
       const [pendingRes] = await Promise.all([
-        fetch('http://localhost:3001/api/approval/my-pending', {
+        fetch(buildApiUrl('approval/my-pending'), {
           headers: { 'Authorization': `Bearer ${token}` },
           credentials: 'include'
         })
@@ -81,7 +82,7 @@ const WriterDashboard: React.FC = () => {
         formData.append('gallery_images', file);
       });
       
-      const response = await fetch('http://localhost:3001/api/content', {
+      const response = await fetch(buildApiUrl('content'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

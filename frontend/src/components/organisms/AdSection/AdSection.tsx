@@ -25,7 +25,7 @@ export const AdSection: React.FC<AdSectionProps> = ({
   placement,
   rotationInterval = 5000 // Default 5 seconds
 }) => {
-  const { getAdsForPlacement, trackClick, forceRefreshAds } = useAds();
+  const { getAdsForPlacement, trackClick, forceRefreshAds: _forceRefreshAds } = useAds();
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [progress, setProgress] = useState(0);

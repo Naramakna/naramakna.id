@@ -13,7 +13,7 @@ interface VideoItemGalleryProps {
 }
 
 export const VideoItemGallery: React.FC<VideoItemGalleryProps> = ({
-  id,
+  id: _id,
   title,
   source,
   duration,

@@ -69,7 +69,7 @@ export const Carousel: React.FC<CarouselProps> = ({
           className="flex transition-transform duration-300 ease-in-out"
           style={{ transform: `translateX(-${currentIndex * 100}%)` }}
         >
-          {articles.map((article, index) => (
+          {articles.map((article, _index) => (
             <div key={article.id} className="w-full flex-shrink-0">
               <CarouselItem
                 title={article.title}

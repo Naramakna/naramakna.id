@@ -5,6 +5,7 @@ import { ProfileAvatar } from '../../components/atoms/ProfileAvatar';
 import { SocialStats } from '../../components/molecules/SocialStats';
 import { ProfileActionButtons } from '../../components/molecules/ProfileActionButtons';
 import { ProfileTabs } from '../../components/molecules/ProfileTabs';
+import { buildApiUrl, buildBackendUrl } from '../../config/api';
 
 // Helper function to get full image URL
 const getImageUrl = (imagePath: string | null) => {
@@ -15,11 +16,11 @@ const getImageUrl = (imagePath: string | null) => {
   
   // If it's a relative path starting with /uploads, prepend backend URL
   if (imagePath.startsWith('/uploads/')) {
-    return `http://localhost:3001${imagePath}`;
+    return buildBackendUrl(imagePath);
   }
   
   // Otherwise, assume it's a relative path and prepend backend URL
-  return `http://localhost:3001/uploads/${imagePath}`;
+  return buildBackendUrl(`uploads/${imagePath}`);
 };
 
 interface ProfileViewPageProps {
@@ -111,17 +112,17 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
         if (isOwnProfile) {
           // For own profile, fetch published, pending, and draft posts separately
           console.log('🔍 Fetching published posts...');
-          const publishedResponse = await fetch(`http://localhost:3001/api/content/author/${authorId}?status=publish&limit=20`, {
+          const publishedResponse = await fetch(buildApiUrl(`content/author/${authorId}?status=publish&limit=20`), {
             credentials: 'include'
           });
           
           console.log('🔍 Fetching pending posts...');
-          const pendingResponse = await fetch(`http://localhost:3001/api/content/author/${authorId}?status=pending&limit=20`, {
+          const pendingResponse = await fetch(buildApiUrl(`content/author/${authorId}?status=pending&limit=20`), {
             credentials: 'include'
           });
           
           console.log('🔍 Fetching draft posts...');
-          const draftResponse = await fetch(`http://localhost:3001/api/content/author/${authorId}?status=draft&limit=20`, {
+          const draftResponse = await fetch(buildApiUrl(`content/author/${authorId}?status=draft&limit=20`), {
             credentials: 'include'
           });
 
@@ -144,7 +145,7 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
           }
         } else {
           // For other profiles, fetch only published posts
-          const apiUrl = `http://localhost:3001/api/content/author/${authorId}?status=publish&limit=20`;
+          const apiUrl = buildApiUrl(`content/author/${authorId}?status=publish&limit=20`);
           console.log('📡 API URL:', apiUrl);
           
           const response = await fetch(apiUrl, {

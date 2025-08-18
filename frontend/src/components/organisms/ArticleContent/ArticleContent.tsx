@@ -16,7 +16,7 @@ interface ArticleContentProps {
 
 export const ArticleContent: React.FC<ArticleContentProps> = ({
   content,
-  title,
+  title: _title,
   featuredImage
 }) => {
   

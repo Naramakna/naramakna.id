@@ -10,6 +10,7 @@ import { AdminPolling } from './AdminPolling';
 import { AdminAds } from './AdminAds';
 import { AnalyticsReports } from './AnalyticsReports';
 import { AdminSettings } from './AdminSettings';
+import { buildApiUrl } from '../../config/api';
 
 
 interface User {
@@ -133,44 +134,44 @@ const SuperAdminDashboard: React.FC = () => {
       
       // Fetch all data in parallel
       const [usersRes, userStatsRes, contentStatsRes, categoriesRes, postsRes, pendingPostsRes] = await Promise.all([
-        fetch('http://localhost:3001/api/users', {
+        fetch(buildApiUrl('users'), {
           method: 'GET',
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json'
           }
         }),
-        fetch('http://localhost:3001/api/users/stats', {
+        fetch(buildApiUrl('users/stats'), {
           method: 'GET',
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json'
           }
         }),
-        fetch('http://localhost:3001/api/content/stats', {
+        fetch(buildApiUrl('content/stats'), {
           method: 'GET',
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json'
           }
         }),
-        fetch('http://localhost:3001/api/content/categories?minCount=0', {
+        fetch(buildApiUrl('content/categories?minCount=0'), {
           method: 'GET',
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json'
           }
         }),
-        fetch(`http://localhost:3001/api/content/posts-with-views?limit=${pagination.itemsPerPage}&page=${pagination.currentPage}&${new URLSearchParams(
+        fetch(buildApiUrl(`content/posts-with-views?limit=${pagination.itemsPerPage}&page=${pagination.currentPage}&${new URLSearchParams(
           Object.fromEntries(Object.entries(filters).filter(([_, value]) => value !== ''))
-        ).toString()}`, {
+        ).toString()}`), {
           method: 'GET',
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json'
           }
         }),
-        fetch('http://localhost:3001/api/approval/pending', {
+        fetch(buildApiUrl('approval/pending'), {
           method: 'GET',
           credentials: 'include',
           headers: {
@@ -378,7 +379,7 @@ const SuperAdminDashboard: React.FC = () => {
 
   const suspendUser = async (userId: number) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/admin/users/${userId}/suspend`, {
+      const response = await fetch(buildApiUrl(`admin/users/${userId}/suspend`), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -403,7 +404,7 @@ const SuperAdminDashboard: React.FC = () => {
 
   const unsuspendUser = async (userId: number) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/admin/users/${userId}/suspend`, {
+      const response = await fetch(buildApiUrl(`admin/users/${userId}/suspend`), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -428,7 +429,7 @@ const SuperAdminDashboard: React.FC = () => {
 
   const deleteUser = async (userId: number) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/admin/users/${userId}`, {
+      const response = await fetch(buildApiUrl(`admin/users/${userId}`), {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -449,7 +450,7 @@ const SuperAdminDashboard: React.FC = () => {
 
   const deleteArticle = async (articleId: number) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/content/admin/articles/${articleId}`, {
+      const response = await fetch(buildApiUrl(`content/admin/articles/${articleId}`), {
         method: 'DELETE',
         credentials: 'include'
       });

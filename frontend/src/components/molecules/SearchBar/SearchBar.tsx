@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
 import { SearchSuggestions } from '../SearchSuggestions';
 
-interface SearchBarProps {
+export interface SearchBarProps {
   placeholder?: string;
   onSearch?: (query: string) => void;
   className?: string;
@@ -120,3 +120,5 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     </div>
   );
 };
+
+export default SearchBar;

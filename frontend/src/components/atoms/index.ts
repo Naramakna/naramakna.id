@@ -3,7 +3,7 @@ export { Avatar } from './Avatar';
 export { Badge } from './Badge';
 export { Button } from './Button';
 export { CarouselItem } from './CarouselItem';
-export { CategoryLink } from './CategoryLink';
+// export { CategoryLink } from './CategoryLink'; // Module not found
 export { CheckboxField } from './CheckboxField';
 export { FormLabel } from './FormLabel';
 export { HelpCategoryIcon } from './HelpCategoryIcon';

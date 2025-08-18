@@ -248,7 +248,7 @@ class AuthController {
       });
       
       if (userProfile && userProfile.profile_image) {
-        userData.profile_image = `http://localhost:3001${userProfile.profile_image}`;
+        userData.profile_image = `${process.env.BACKEND_URL}${userProfile.profile_image}`;
       }
       
       res.json({
