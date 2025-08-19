@@ -43,23 +43,6 @@ export const HowToWrite: React.FC = () => {
     },
     {
       id: 3,
-      title: 'Review & Publish',
-      description: 'Admin akan review tulisan sebelum publish',
-      icon: (
-        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-      color: 'bg-orange-500',
-      details: [
-        'Submit artikel untuk review admin',
-        'Admin akan check kualitas dan konten',
-        'Jika ada revisi, admin akan memberikan feedback',
-        'Setelah approved, artikel akan dipublish'
-      ]
-    },
-    {
-      id: 4,
       title: 'Mulai Menulis',
       description: 'Buat artikel pertama dan publish',
       icon: (
@@ -73,6 +56,23 @@ export const HowToWrite: React.FC = () => {
         'Pilih kategori dan sub-kategori yang sesuai',
         'Tulis artikel dengan format yang baik',
         'Upload gambar pendukung dan submit untuk review'
+      ]
+    },
+        {
+      id: 4,
+      title: 'Review & Publish',
+      description: 'Admin akan review tulisan sebelum publish',
+      icon: (
+        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      color: 'bg-orange-500',
+      details: [
+        'Submit artikel untuk review admin',
+        'Admin akan check kualitas dan konten',
+        'Jika ada revisi, admin akan memberikan feedback',
+        'Setelah approved, artikel akan dipublish'
       ]
     }
   ];
@@ -209,9 +209,6 @@ export const HowToWrite: React.FC = () => {
                 rel="noopener noreferrer"
                 className="bg-white text-orange-600 px-6 py-3 rounded-full font-semibold hover:bg-orange-50 transition-colors duration-300 shadow-lg flex items-center justify-center gap-2"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-3 3v-3z" />
-                </svg>
                 Hubungi Kami
               </a>
               <a 

@@ -1,8 +1,8 @@
 // Atoms
-export { PasswordInput, FormLabel, AlertMessage, SocialButton, CheckboxField, VideoItemGallery } from './atoms';
+export { PasswordInput, FormLabel, AlertMessage, SocialButton, CheckboxField } from './atoms';
 
 // Molecules
-// export { FormField, PasswordField, OAuthSection, TermsSection, NavHeader, RememberMeSection, LoginOAuthSection, BackToLoginSection, IndexCardList } from './molecules'; // Module not found
+export { FormField, PasswordField, OAuthSection, TermsSection, NavHeader, RememberMeSection, LoginOAuthSection, BackToLoginSection } from './molecules';
 
 // Organisms
 export { RegisterForm, LoginForm, ForgotPasswordForm } from './organisms';
