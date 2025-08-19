@@ -197,7 +197,7 @@ const CategoryPage: React.FC = () => {
             },
             slug: post.slug || post.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
             category: data.category.name,
-            views: post.view_count || Math.floor(Math.random() * 3000) + 100 // Mock data for demo
+            views: post.view_count || 0
           }))}
         />
 

@@ -53,6 +53,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+  const [viewTracked, setViewTracked] = useState(false);
 
   // Extract article identifier from URL or props
   const currentArticleId = articleId || (articleSlug ? null : window.location.pathname.split('/').pop());
@@ -69,6 +70,14 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
       // fetchCommentsBySlug(currentArticleSlug); // Hidden temporarily
     }
   }, [currentArticleId, currentArticleSlug]);
+  
+  // Separate useEffect for tracking views to ensure it only happens once per article
+  useEffect(() => {
+    if (article && !viewTracked && article.id) {
+      trackView(article.id);
+      setViewTracked(true);
+    }
+  }, [article, viewTracked]);
 
   const fetchArticleById = async (id: string) => {
     try {
@@ -107,9 +116,6 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
           };
           
           setArticle(transformedArticle);
-          
-          // Track view analytics
-          trackView(id);
         } else {
           setError('Article not found');
         }
@@ -161,11 +167,6 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
           };
           
           setArticle(transformedArticle);
-          
-          // Track view analytics using the actual ID
-          if (result.data.ID) {
-            trackView(result.data.ID.toString());
-          }
         } else {
           setError('Article not found');
         }

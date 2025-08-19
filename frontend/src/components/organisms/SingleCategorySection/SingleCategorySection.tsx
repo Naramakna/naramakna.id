@@ -37,6 +37,9 @@ export const SingleCategorySection: React.FC<SingleCategorySectionProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [startY, setStartY] = useState(0);
 
   useEffect(() => {
     const fetchCategoryPosts = async () => {
@@ -101,7 +104,97 @@ export const SingleCategorySection: React.FC<SingleCategorySectionProps> = ({
   };
 
   const handleClick = (slug: string) => {
-    window.location.href = `/artikel/${slug}`;
+    if (!isDragging) {
+      window.location.href = `/artikel/${slug}`;
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setStartX(e.touches[0].clientX);
+    setStartY(e.touches[0].clientY);
+    setIsDragging(false);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!startX || !startY) return;
+    
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    
+    const diffX = Math.abs(currentX - startX);
+    const diffY = Math.abs(currentY - startY);
+    
+    // If horizontal movement is greater than vertical, consider it a drag
+    if (diffX > 10 && diffX > diffY) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!startX || !isDragging) {
+      setStartX(0);
+      setStartY(0);
+      setIsDragging(false);
+      return;
+    }
+    
+    const endX = e.changedTouches[0].clientX;
+    const diffX = startX - endX;
+    
+    // Swipe threshold
+    if (Math.abs(diffX) > 50) {
+      if (diffX > 0) {
+        nextSlide(); // Swipe left = next
+      } else {
+        prevSlide(); // Swipe right = previous  
+      }
+    }
+    
+    setStartX(0);
+    setStartY(0);
+    // Keep isDragging true for a moment to prevent click
+    setTimeout(() => setIsDragging(false), 100);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setStartX(e.clientX);
+    setStartY(e.clientY);
+    setIsDragging(false);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!startX || !startY) return;
+    
+    const diffX = Math.abs(e.clientX - startX);
+    const diffY = Math.abs(e.clientY - startY);
+    
+    if (diffX > 10 && diffX > diffY) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (!startX || !isDragging) {
+      setStartX(0);
+      setStartY(0);
+      setIsDragging(false);
+      return;
+    }
+    
+    const endX = e.clientX;
+    const diffX = startX - endX;
+    
+    if (Math.abs(diffX) > 50) {
+      if (diffX > 0) {
+        nextSlide();
+      } else {
+        prevSlide();
+      }
+    }
+    
+    setStartX(0);
+    setStartY(0);
+    setTimeout(() => setIsDragging(false), 100);
   };
 
   const nextSlide = () => {
@@ -204,6 +297,12 @@ export const SingleCategorySection: React.FC<SingleCategorySectionProps> = ({
                  <div 
                    className="relative h-full rounded-lg overflow-hidden cursor-pointer hover:scale-[1.02] transition-transform duration-300"
                    onClick={() => handleClick(currentPost.slug || currentPost.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'))}
+                   onTouchStart={handleTouchStart}
+                   onTouchMove={handleTouchMove}
+                   onTouchEnd={handleTouchEnd}
+                   onMouseDown={handleMouseDown}
+                   onMouseMove={handleMouseMove}
+                   onMouseUp={handleMouseUp}
                  >
                    {/* Background Image */}
                    <div className="absolute inset-0">
@@ -257,18 +356,21 @@ export const SingleCategorySection: React.FC<SingleCategorySectionProps> = ({
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                          </svg>
-                         <span className="text-gray-200">{(currentPost.view_count || Math.floor(Math.random() * 3000) + 100).toLocaleString()}</span>
+                         <span className="text-gray-200">{(currentPost.view_count || 0).toLocaleString()}</span>
                        </>
                        <span className="text-gray-200">{formatDate(currentPost.date)}</span>
                      </div>
                    </div>
                    
                    {/* Carousel Navigation */}
-                   <div className="absolute top-3 right-3 flex space-x-2">
+                   <div className="absolute top-3 right-3 flex space-x-2 z-20">
                      {posts.map((_, index) => (
                        <button
                          key={index}
-                         onClick={() => setCurrentIndex(index)}
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           setCurrentIndex(index);
+                         }}
                          className={`w-2 h-2 rounded-full transition-all ${
                            index === currentIndex ? 'bg-orange-500 w-6' : 'bg-white bg-opacity-60'
                          }`}
@@ -278,8 +380,11 @@ export const SingleCategorySection: React.FC<SingleCategorySectionProps> = ({
                    
                    {/* Navigation Arrows */}
                    <button
-                     onClick={prevSlide}
-                     className="absolute left-3 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-black bg-opacity-50 rounded-full flex items-center justify-center hover:bg-opacity-70 transition-all text-white"
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       prevSlide();
+                     }}
+                     className="absolute left-3 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-black bg-opacity-50 rounded-full flex items-center justify-center hover:bg-opacity-70 transition-all text-white z-20"
                    >
                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -287,8 +392,11 @@ export const SingleCategorySection: React.FC<SingleCategorySectionProps> = ({
                    </button>
                    
                    <button
-                     onClick={nextSlide}
-                     className="absolute right-3 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-black bg-opacity-50 rounded-full flex items-center justify-center hover:bg-opacity-70 transition-all text-white"
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       nextSlide();
+                     }}
+                     className="absolute right-3 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-black bg-opacity-50 rounded-full flex items-center justify-center hover:bg-opacity-70 transition-all text-white z-20"
                    >
                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

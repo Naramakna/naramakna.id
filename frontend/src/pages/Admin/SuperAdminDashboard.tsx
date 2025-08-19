@@ -8,6 +8,7 @@ import { UserManagement } from '../../components/organisms/UserManagement';
 import { AdminAnalytics } from './Analytics';
 import { AdminPolling } from './AdminPolling';
 import { AdminAds } from './AdminAds';
+import { AdminArticles } from './AdminArticles';
 import { AnalyticsReports } from './AnalyticsReports';
 import { AdminSettings } from './AdminSettings';
 import ScheduledPosts from '../../components/organisms/ScheduledPosts/ScheduledPosts';
@@ -522,6 +523,7 @@ const SuperAdminDashboard: React.FC = () => {
               { id: 'admins', name: '👨‍💼 Admins', count: admins.length },
               { id: 'posts', name: '📝 Posts', count: systemStats.totalPosts },
               { id: 'categories', name: '📂 Categories', count: systemStats.totalCategories },
+              { id: 'articles', name: '📋 Articles Manager' },
               { id: 'pending-posts', name: '⏳ Pending', count: pendingPosts.length },
               { id: 'scheduled-posts', name: '⏰ Scheduled', count: scheduledPosts.length },
               { id: 'image-manager', name: '🖼️ Images' },
@@ -659,6 +661,12 @@ const SuperAdminDashboard: React.FC = () => {
                       </table>
                     </div>
                   )}
+                </div>
+              )}
+
+              {activeTab === 'articles' && (
+                <div className="p-6">
+                  <AdminArticles />
                 </div>
               )}
 
