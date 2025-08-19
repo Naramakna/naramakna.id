@@ -32,7 +32,8 @@ class ImageManagerController {
         { name: 'localhost:5000', pattern: 'localhost:5000' },
         { name: 'ngrok.app', pattern: '.ngrok.app' },
         { name: 'ngrok.io', pattern: '.ngrok.io' },
-        { name: 'relative paths', pattern: '/uploads/' }
+        { name: 'relative paths', pattern: '/uploads/' },
+        { name: '2025 paths', pattern: '2025/' }
       ];
 
       // Analyze posts table
@@ -40,19 +41,42 @@ class ImageManagerController {
       analysis.posts.total = postsTotal[0].count;
       
       for (const pattern of patterns) {
-        const [postsWithPattern] = await connection.query(`
-          SELECT COUNT(*) as count, 
-                 GROUP_CONCAT(DISTINCT SUBSTRING(post_title, 1, 50) SEPARATOR '; ') as sample_titles
-          FROM posts 
-          WHERE post_content LIKE ?
-        `, [`%${pattern.pattern}%`]);
+        // Search for both http:// and https:// versions for localhost/ngrok patterns
+        const searchPatterns = [];
         
-        if (postsWithPattern[0].count > 0) {
+        if (pattern.pattern.includes('localhost') || pattern.pattern.includes('ngrok')) {
+          searchPatterns.push(`http://${pattern.pattern}`);
+          searchPatterns.push(`https://${pattern.pattern}`);
+          searchPatterns.push(pattern.pattern); // Also check without protocol
+        } else {
+          searchPatterns.push(pattern.pattern);
+        }
+
+        let totalCount = 0;
+        const sampleTitles = new Set();
+
+        for (const searchPattern of searchPatterns) {
+          const [postsWithPattern] = await connection.query(`
+            SELECT COUNT(*) as count, 
+                   GROUP_CONCAT(DISTINCT SUBSTRING(post_title, 1, 50) SEPARATOR '; ') as sample_titles
+            FROM posts 
+            WHERE post_content LIKE ?
+          `, [`%${searchPattern}%`]);
+          
+          if (postsWithPattern[0].count > 0) {
+            totalCount += postsWithPattern[0].count;
+            if (postsWithPattern[0].sample_titles) {
+              postsWithPattern[0].sample_titles.split('; ').forEach(title => sampleTitles.add(title));
+            }
+          }
+        }
+        
+        if (totalCount > 0) {
           analysis.posts.patterns[pattern.name] = {
-            count: postsWithPattern[0].count,
-            samples: postsWithPattern[0].sample_titles
+            count: totalCount,
+            samples: Array.from(sampleTitles).join('; ')
           };
-          analysis.posts.needsUpdate += postsWithPattern[0].count;
+          analysis.posts.needsUpdate += totalCount;
         }
       }
 
@@ -61,19 +85,42 @@ class ImageManagerController {
       analysis.postmeta.total = postmetaTotal[0].count;
       
       for (const pattern of patterns) {
-        const [postmetaWithPattern] = await connection.query(`
-          SELECT COUNT(*) as count,
-                 GROUP_CONCAT(DISTINCT meta_key SEPARATOR '; ') as sample_keys
-          FROM postmeta 
-          WHERE meta_value LIKE ?
-        `, [`%${pattern.pattern}%`]);
+        // Search for both http:// and https:// versions for localhost/ngrok patterns
+        const searchPatterns = [];
         
-        if (postmetaWithPattern[0].count > 0) {
+        if (pattern.pattern.includes('localhost') || pattern.pattern.includes('ngrok')) {
+          searchPatterns.push(`http://${pattern.pattern}`);
+          searchPatterns.push(`https://${pattern.pattern}`);
+          searchPatterns.push(pattern.pattern); // Also check without protocol
+        } else {
+          searchPatterns.push(pattern.pattern);
+        }
+
+        let totalCount = 0;
+        const sampleKeys = new Set();
+
+        for (const searchPattern of searchPatterns) {
+          const [postmetaWithPattern] = await connection.query(`
+            SELECT COUNT(*) as count,
+                   GROUP_CONCAT(DISTINCT meta_key SEPARATOR '; ') as sample_keys
+            FROM postmeta 
+            WHERE meta_value LIKE ?
+          `, [`%${searchPattern}%`]);
+          
+          if (postmetaWithPattern[0].count > 0) {
+            totalCount += postmetaWithPattern[0].count;
+            if (postmetaWithPattern[0].sample_keys) {
+              postmetaWithPattern[0].sample_keys.split('; ').forEach(key => sampleKeys.add(key));
+            }
+          }
+        }
+        
+        if (totalCount > 0) {
           analysis.postmeta.patterns[pattern.name] = {
-            count: postmetaWithPattern[0].count,
-            samples: postmetaWithPattern[0].sample_keys
+            count: totalCount,
+            samples: Array.from(sampleKeys).join('; ')
           };
-          analysis.postmeta.needsUpdate += postmetaWithPattern[0].count;
+          analysis.postmeta.needsUpdate += totalCount;
         }
       }
 
@@ -149,6 +196,158 @@ class ImageManagerController {
   }
 
   /**
+   * Convert relative image paths to full URLs and store them
+   */
+  static async convertRelativeToFullUrls(req, res) {
+    try {
+      const { baseUrl = 'https://benarmak.naramakna.id/uploads', dryRun = false } = req.body;
+      const userId = req.user.ID;
+      
+      const connection = await mysql.createConnection(getDbConfig());
+      const results = {};
+
+      console.log(`🔄 ${dryRun ? 'DRY RUN - ' : ''}Converting relative paths to full URLs by user ${req.user.user_login}`);
+      console.log('📋 Base URL:', baseUrl);
+
+      // Find and convert WordPress attachment file paths
+      const [attachmentFiles] = await connection.query(`
+        SELECT meta_id, post_id, meta_value 
+        FROM postmeta 
+        WHERE meta_key = '_wp_attached_file' 
+        AND meta_value NOT LIKE 'http%'
+        AND meta_value LIKE '%.%'
+      `);
+
+      let convertedFiles = 0;
+      
+      if (!dryRun && attachmentFiles.length > 0) {
+        for (const file of attachmentFiles) {
+          const fullUrl = `${baseUrl}/${file.meta_value}`;
+          
+          await connection.query(
+            'UPDATE postmeta SET meta_value = ? WHERE meta_id = ?',
+            [fullUrl, file.meta_id]
+          );
+          
+          convertedFiles++;
+        }
+      }
+
+      results.wp_attached_files = { 
+        found: attachmentFiles.length, 
+        converted: convertedFiles 
+      };
+
+      // Find and convert other relative paths in postmeta
+      const [relativeMetaPaths] = await connection.query(`
+        SELECT meta_id, post_id, meta_key, meta_value 
+        FROM postmeta 
+        WHERE (meta_value LIKE '%2025/%' OR meta_value LIKE '%2024/%' OR meta_value LIKE '%uploads/%')
+        AND meta_value NOT LIKE 'http%'
+        AND meta_key != '_wp_attached_file'
+        AND LENGTH(meta_value) < 500
+      `);
+
+      let convertedMeta = 0;
+      
+      if (!dryRun && relativeMetaPaths.length > 0) {
+        for (const meta of relativeMetaPaths) {
+          let fullUrl = meta.meta_value;
+          
+          // Handle different relative path formats
+          if (fullUrl.startsWith('/uploads/')) {
+            fullUrl = baseUrl + fullUrl.substring(8); // Remove /uploads/ and use base
+          } else if (fullUrl.match(/^\d{4}\//)) { // Starts with year/
+            fullUrl = `${baseUrl}/${fullUrl}`;
+          } else if (fullUrl.includes('/uploads/') && !fullUrl.startsWith('http')) {
+            fullUrl = fullUrl.replace(/.*\/uploads\//, `${baseUrl}/`);
+          }
+          
+          if (fullUrl !== meta.meta_value) {
+            await connection.query(
+              'UPDATE postmeta SET meta_value = ? WHERE meta_id = ?',
+              [fullUrl, meta.meta_id]
+            );
+            
+            convertedMeta++;
+          }
+        }
+      }
+
+      results.relative_meta_paths = { 
+        found: relativeMetaPaths.length, 
+        converted: convertedMeta 
+      };
+
+      // Find and convert relative paths in post content
+      const [postsWithRelative] = await connection.query(`
+        SELECT ID, post_title, post_content
+        FROM posts 
+        WHERE (post_content LIKE '%src="/uploads/%' 
+        OR post_content LIKE '%src="2025/%'
+        OR post_content LIKE '%src="2024/%')
+        AND post_content NOT LIKE '%src="http%'
+      `);
+
+      let convertedPosts = 0;
+      
+      if (!dryRun && postsWithRelative.length > 0) {
+        for (const post of postsWithRelative) {
+          let updatedContent = post.post_content;
+          
+          // Replace relative src paths
+          updatedContent = updatedContent.replace(
+            /src="\/uploads\//g, 
+            `src="${baseUrl}/`
+          );
+          updatedContent = updatedContent.replace(
+            /src="(\d{4}\/[^"]+)"/g, 
+            `src="${baseUrl}/$1"`
+          );
+          
+          if (updatedContent !== post.post_content) {
+            await connection.query(
+              'UPDATE posts SET post_content = ? WHERE ID = ?',
+              [updatedContent, post.ID]
+            );
+            
+            convertedPosts++;
+          }
+        }
+      }
+
+      results.posts_content = { 
+        found: postsWithRelative.length, 
+        converted: convertedPosts 
+      };
+
+      await connection.end();
+
+      console.log(`${dryRun ? '🧪 DRY RUN - ' : '✅'}Relative paths conversion completed:`, results);
+
+      res.json({
+        success: true,
+        message: dryRun ? 'Dry run completed - relative paths analysis' : 'Relative paths converted to full URLs successfully',
+        data: {
+          results,
+          dryRun,
+          timestamp: new Date().toISOString(),
+          convertedBy: req.user.user_login,
+          baseUrl
+        }
+      });
+
+    } catch (error) {
+      console.error('Error converting relative paths:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to convert relative paths',
+        error: error.message
+      });
+    }
+  }
+
+  /**
    * Update image URLs based on selected tables and patterns
    */
   static async updateImageUrls(req, res) {
@@ -184,20 +383,58 @@ class ImageManagerController {
         let postsUpdated = 0;
         
         for (const pattern of patterns) {
-          const [postsToUpdate] = await connection.query(`
-            SELECT ID, post_title 
-            FROM posts 
-            WHERE post_content LIKE ?
-          `, [`%${pattern}%`]);
+          // Handle different URL formats for the same pattern
+          const searchPatterns = [];
+          
+          if (pattern.includes('localhost') || pattern.includes('ngrok')) {
+            // Add both http and https variants
+            searchPatterns.push(`http://${pattern}`);
+            searchPatterns.push(`https://${pattern}`);
+            searchPatterns.push(pattern); // Just in case there's no protocol
+          } else {
+            searchPatterns.push(pattern);
+          }
 
-          if (!dryRun && postsToUpdate.length > 0) {
-            const updateResult = await connection.query(`
-              UPDATE posts 
-              SET post_content = REPLACE(post_content, ?, ?)
+          for (const searchPattern of searchPatterns) {
+            const [postsToUpdate] = await connection.query(`
+              SELECT ID, post_title 
+              FROM posts 
               WHERE post_content LIKE ?
-            `, [pattern, `${currentUploadsUrl}/`, `%${pattern}%`]);
-            
-            postsUpdated += updateResult[0].affectedRows;
+            `, [`%${searchPattern}%`]);
+
+            if (!dryRun && postsToUpdate.length > 0) {
+              // Smart replacement based on pattern type
+              let replacementUrl;
+              
+              if (searchPattern.includes('/uploads/')) {
+                // This is an uploads URL, replace with uploads URL
+                replacementUrl = currentUploadsUrl;
+                if (!replacementUrl.endsWith('/')) {
+                  replacementUrl += '/';
+                }
+              } else if (searchPattern.includes('/wp-content/')) {
+                // This is a wp-content URL, replace with base URL + wp-content
+                replacementUrl = currentUploadsUrl.replace('/uploads', '/wp-content');
+                if (!replacementUrl.endsWith('/')) {
+                  replacementUrl += '/';
+                }
+              } else {
+                // General pattern replacement - replace with base site URL
+                const baseUrl = currentUploadsUrl.replace('/uploads', '');
+                replacementUrl = baseUrl;
+                if (!replacementUrl.endsWith('/')) {
+                  replacementUrl += '/';
+                }
+              }
+
+              const updateResult = await connection.query(`
+                UPDATE posts 
+                SET post_content = REPLACE(post_content, ?, ?)
+                WHERE post_content LIKE ?
+              `, [searchPattern, replacementUrl, `%${searchPattern}%`]);
+              
+              postsUpdated += updateResult[0].affectedRows;
+            }
           }
         }
         
@@ -209,20 +446,58 @@ class ImageManagerController {
         let postmetaUpdated = 0;
         
         for (const pattern of patterns) {
-          const [metaToUpdate] = await connection.query(`
-            SELECT meta_id, meta_key 
-            FROM postmeta 
-            WHERE meta_value LIKE ?
-          `, [`%${pattern}%`]);
+          // Handle different URL formats for the same pattern
+          const searchPatterns = [];
+          
+          if (pattern.includes('localhost') || pattern.includes('ngrok')) {
+            // Add both http and https variants
+            searchPatterns.push(`http://${pattern}`);
+            searchPatterns.push(`https://${pattern}`);
+            searchPatterns.push(pattern); // Just in case there's no protocol
+          } else {
+            searchPatterns.push(pattern);
+          }
 
-          if (!dryRun && metaToUpdate.length > 0) {
-            const updateResult = await connection.query(`
-              UPDATE postmeta 
-              SET meta_value = REPLACE(meta_value, ?, ?)
+          for (const searchPattern of searchPatterns) {
+            const [metaToUpdate] = await connection.query(`
+              SELECT meta_id, meta_key 
+              FROM postmeta 
               WHERE meta_value LIKE ?
-            `, [pattern, `${currentUploadsUrl}/`, `%${pattern}%`]);
-            
-            postmetaUpdated += updateResult[0].affectedRows;
+            `, [`%${searchPattern}%`]);
+
+            if (!dryRun && metaToUpdate.length > 0) {
+              // Smart replacement based on pattern type
+              let replacementUrl;
+              
+              if (searchPattern.includes('/uploads/')) {
+                // This is an uploads URL, replace with uploads URL
+                replacementUrl = currentUploadsUrl;
+                if (!replacementUrl.endsWith('/')) {
+                  replacementUrl += '/';
+                }
+              } else if (searchPattern.includes('/wp-content/')) {
+                // This is a wp-content URL, replace with base URL + wp-content
+                replacementUrl = currentUploadsUrl.replace('/uploads', '/wp-content');
+                if (!replacementUrl.endsWith('/')) {
+                  replacementUrl += '/';
+                }
+              } else {
+                // General pattern replacement - replace with base site URL
+                const baseUrl = currentUploadsUrl.replace('/uploads', '');
+                replacementUrl = baseUrl;
+                if (!replacementUrl.endsWith('/')) {
+                  replacementUrl += '/';
+                }
+              }
+
+              const updateResult = await connection.query(`
+                UPDATE postmeta 
+                SET meta_value = REPLACE(meta_value, ?, ?)
+                WHERE meta_value LIKE ?
+              `, [searchPattern, replacementUrl, `%${searchPattern}%`]);
+              
+              postmetaUpdated += updateResult[0].affectedRows;
+            }
           }
         }
         
