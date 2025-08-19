@@ -6,6 +6,7 @@ import { UserManagement } from '../../components/organisms/UserManagement';
 import { DataTable } from '../../components/organisms/DataTable';
 import { AdminPolling } from './AdminPolling';
 import { AdminAds } from './AdminAds';
+import { AdminArticles } from './AdminArticles';
 import { buildApiUrl } from '../../config/api';
 
 
@@ -166,6 +167,7 @@ const AdminDashboard: React.FC = () => {
                 { id: 'users', name: 'Users', count: users.length },
                 { id: 'pending-writers', name: 'Pending Writers', count: pendingWriters.length },
                 { id: 'pending-posts', name: 'Pending Posts', count: pendingPosts.length },
+                { id: 'articles', name: '📝 Articles Management' },
                 { id: 'polling', name: '📊 Polling Management' },
                 { id: 'ads', name: '🎯 Ads Management' },
               ]}
@@ -340,6 +342,12 @@ const AdminDashboard: React.FC = () => {
           {activeTab === 'polling' && (
             <div className="p-6">
               <AdminPolling />
+            </div>
+          )}
+
+          {activeTab === 'articles' && (
+            <div className="p-6">
+              <AdminArticles />
             </div>
           )}
 

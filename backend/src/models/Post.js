@@ -121,6 +121,11 @@ const Post = sequelize.define('Post', {
     allowNull: false,
     defaultValue: 0
   },
+  view_count: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    defaultValue: 0
+  },
   scheduled_by: {
     type: DataTypes.BIGINT,
     allowNull: true,

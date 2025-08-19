@@ -64,7 +64,7 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({
       timeAgo,
       imageSrc: article.metadata?.thumbnail_url || article.metadata?._thumbnail_url,
       href: `/artikel/${article.slug}`,
-      views: article.view_count || Math.floor(Math.random() * 2000) + 100 // Mock data for demo
+      views: article.view_count || 0
     };
   }, []);
 
@@ -84,7 +84,7 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({
       timeAgo,
       imageSrc: tiktokItem.metadata?.tiktok_cover_url,
       href: tiktokItem.metadata?.source_url || tiktokItem.guid,
-      views: tiktokItem.metadata?.tiktok_view_count || Math.floor(Math.random() * 10000) + 500 // Mock data for demo
+      views: tiktokItem.metadata?.tiktok_view_count || 0
     };
   }, []);
 

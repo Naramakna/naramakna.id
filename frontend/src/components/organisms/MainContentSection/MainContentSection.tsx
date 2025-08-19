@@ -49,7 +49,7 @@ export const MainContentSection: React.FC<MainContentSectionProps> = ({
       source: article.author?.display_name || 'naramaknaNEWS',
       timeAgo,
       imageSrc: article.metadata?.thumbnail_url || article.metadata?._thumbnail_url,
-      views: article.view_count || Math.floor(Math.random() * 5000) + 100, // Mock data for demo
+      views: article.view_count || 0,
       href: `/artikel/${articleSlug}`,
       isFeatured: index === 0 // First article is featured
     };
@@ -198,7 +198,7 @@ export const MainContentSection: React.FC<MainContentSectionProps> = ({
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
-                        <span className="text-sm text-gray-500">{(article.views || Math.floor(Math.random() * 3500) + 180).toLocaleString()}</span>
+                        <span className="text-sm text-gray-500">{(article.views || 0).toLocaleString()}</span>
                       </>
                     )}
                     <span className="text-sm text-gray-500">{article.timeAgo}</span>
@@ -256,7 +256,7 @@ export const MainContentSection: React.FC<MainContentSectionProps> = ({
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
-                          <span className="text-sm text-gray-500">{(article.views || Math.floor(Math.random() * 3500) + 180).toLocaleString()}</span>
+                          <span className="text-sm text-gray-500">{(article.views || 0).toLocaleString()}</span>
                         </>
                       )}
                       <span className="text-sm text-gray-500">{article.timeAgo}</span>

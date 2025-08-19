@@ -49,7 +49,7 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
       timeAgo,
       imageSrc: article.metadata?.thumbnail_url || article.metadata?._thumbnail_url,
       href: `/artikel/${article.slug}`,
-      views: article.view_count || Math.floor(Math.random() * 3000) + 50, // Mock data for demo
+      views: article.view_count || 0,
       isAd: false
     };
   };
@@ -187,7 +187,7 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
-              <span className="text-xs text-gray-500">{(item.views || Math.floor(Math.random() * 2800) + 160).toLocaleString()}</span>
+              <span className="text-xs text-gray-500">{(item.views || 0).toLocaleString()}</span>
             </>
           )}
           <span className="text-xs text-gray-500">{item.timeAgo}</span>
@@ -246,7 +246,7 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                       </svg>
-                      <span>{(displayNewsItems[0]?.views || Math.floor(Math.random() * 2800) + 160).toLocaleString()}</span>
+                      <span>{(displayNewsItems[0]?.views || 0).toLocaleString()}</span>
                     </>
                   )}
                   <span>{displayNewsItems[0]?.timeAgo || '2 jam'}</span>

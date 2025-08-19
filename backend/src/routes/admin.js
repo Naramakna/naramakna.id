@@ -20,6 +20,7 @@ router.patch('/users/:id/suspend', AdminController.suspendUser);
 
 // Article Management
 router.delete('/articles/:id', ContentController.adminDeleteArticle);
+router.post('/bulk-categorize', AdminController.bulkCategorizeArticles);
 
 // Comment Management  
 router.delete('/comments/:id', CommentController.adminDeleteComment);

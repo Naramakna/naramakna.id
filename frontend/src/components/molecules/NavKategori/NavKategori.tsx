@@ -8,15 +8,15 @@ interface NavKategoriProps {
 export const NavKategori: React.FC<NavKategoriProps> = ({ className = '' }) => {
   // Kategori utama dengan mapping name-to-slug yang benar
   const categories = [
-    { name: 'Narapandang', slug: 'narapandang' },
-    { name: 'Pelakon', slug: 'pelakon' }, 
-    { name: 'Laga & Gaya', slug: 'laga-gaya' },
-    { name: 'Wahana', slug: 'wahana' },
-    { name: 'Olah Bola', slug: 'olah-bola' },
-    { name: 'Cerita Rasa', slug: 'cerita-rasa' },
-    { name: 'Akal Budi', slug: 'akal-budi' },
-    { name: 'Horison', slug: 'horison' },
-    { name: 'Jagat Kita', slug: 'Jagat Kita' },
+      { name: 'Narapandang', slug: 'narapandang' },
+      { name: 'Pelakon', slug: 'pelakon' },
+      { name: 'Laga & Gaya', slug: 'laga-gaya' },
+      { name: 'Wahana', slug: 'wahana' },
+      { name: 'Olah Bola', slug: 'olah-bola' },
+      { name: 'Cerita Rasa', slug: 'cerita-rasa' },
+      { name: 'Akal Budi', slug: 'akal-budi' },
+      { name: 'Horison', slug: 'horison' },
+    { name: 'Jagat Kita', slug: 'dari-indonesia-ke-dunia' },
   ];
 
   // Data untuk dropdown "Lainnya"

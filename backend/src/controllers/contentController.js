@@ -131,9 +131,12 @@ class ContentController {
       // Main categories filter for homepage
       if (mainCategoriesOnly === 'true') {
         const mainCategorySlugs = [
-          'narapandang', 'pelakon', 'laga-gaya', 'wahana', 'olah-bola', 
-          'cerita-rasa', 'akal-budi', 'horison', 'dunia',
-          'pendidikan', 'budaya', 'teknologi' // Include sub-categories
+          'reputasi-dan-komunikasi', 'tokoh', 'lifestyle', 'otomotif', 'sport', 
+          'kuliner', 'pendidikan-budaya-iptek', 'opini', 'dari-indonesia-ke-dunia',
+          'budaya', 'pendidikan', 'teknologi', // Include sub-categories
+          // Frontend alias slugs
+          'narapandang', 'pelakon', 'laga-gaya', 'wahana', 'olah-bola',
+          'cerita-rasa', 'akal-budi', 'horison', 'jagat-kita'
         ];
         
         const mainCategorySubquery = `
@@ -928,9 +931,12 @@ class ContentController {
       // Special filter for main categories only
       if (req.query.mainCategoriesOnly === 'true') {
         const mainCategorySlugs = [
-          'narapandang', 'pelakon', 'laga-gaya', 'wahana', 'olah-bola', 
-          'cerita-rasa', 'akal-budi', 'horison', 'dunia',
-          'pendidikan', 'budaya', 'teknologi', 'uncategorized'
+          'reputasi-dan-komunikasi', 'tokoh', 'lifestyle', 'otomotif', 'sport', 
+          'kuliner', 'pendidikan-budaya-iptek', 'opini', 'dari-indonesia-ke-dunia',
+          'budaya', 'pendidikan', 'teknologi', 'uncategorized',
+          // Frontend alias slugs
+          'narapandang', 'pelakon', 'laga-gaya', 'wahana', 'olah-bola',
+          'cerita-rasa', 'akal-budi', 'horison', 'jagat-kita'
         ];
         whereClause = `tt.taxonomy = 'category' AND t.slug IN ('${mainCategorySlugs.join("', '")}') AND tt.count >= ${minCount}`;
       }

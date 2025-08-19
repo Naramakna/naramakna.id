@@ -819,6 +819,138 @@ class AdminController {
       });
     }
   }
+
+  /**
+   * Bulk categorize articles
+   * POST /api/admin/bulk-categorize
+   */
+  static async bulkCategorizeArticles(req, res) {
+    const transaction = await sequelize.transaction();
+    
+    try {
+      const { article_ids, category_slug } = req.body;
+
+      // Check if user is admin or superadmin
+      if (!req.user || (req.user.user_role !== 'admin' && req.user.user_role !== 'superadmin')) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. Admin privileges required.'
+        });
+      }
+
+      // Validate input
+      if (!article_ids || !Array.isArray(article_ids) || article_ids.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Article IDs array is required'
+        });
+      }
+
+      if (!category_slug) {
+        return res.status(400).json({
+          success: false,
+          message: 'Category slug is required'
+        });
+      }
+
+      // Find the category by slug
+      const categoryQuery = `
+        SELECT tt.term_taxonomy_id 
+        FROM terms t
+        JOIN term_taxonomy tt ON t.term_id = tt.term_id
+        WHERE t.slug = ? AND tt.taxonomy = 'category'
+        LIMIT 1
+      `;
+      
+      const categoryResult = await sequelize.query(categoryQuery, {
+        replacements: [category_slug],
+        type: sequelize.QueryTypes.SELECT,
+        transaction
+      });
+
+      if (!categoryResult || categoryResult.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: `Category with slug '${category_slug}' not found`
+        });
+      }
+
+      const categoryId = categoryResult[0].term_taxonomy_id;
+
+      // First, remove existing categories for these articles
+      const deleteQuery = `
+        DELETE FROM term_relationships 
+        WHERE object_id IN (${article_ids.map(() => '?').join(',')})
+        AND term_taxonomy_id IN (
+          SELECT term_taxonomy_id FROM term_taxonomy WHERE taxonomy = 'category'
+        )
+      `;
+
+      await sequelize.query(deleteQuery, {
+        replacements: article_ids,
+        type: sequelize.QueryTypes.DELETE,
+        transaction
+      });
+
+      // Add new category relationships
+      const insertData = article_ids.map(articleId => ({
+        object_id: articleId,
+        term_taxonomy_id: categoryId,
+        term_order: 0
+      }));
+
+      const insertQuery = `
+        INSERT INTO term_relationships (object_id, term_taxonomy_id, term_order)
+        VALUES ${insertData.map(() => '(?, ?, ?)').join(', ')}
+      `;
+
+      const insertReplacements = insertData.flatMap(item => [
+        item.object_id,
+        item.term_taxonomy_id,
+        item.term_order
+      ]);
+
+      await sequelize.query(insertQuery, {
+        replacements: insertReplacements,
+        type: sequelize.QueryTypes.INSERT,
+        transaction
+      });
+
+      // Update category count
+      const updateCountQuery = `
+        UPDATE term_taxonomy SET count = (
+          SELECT COUNT(*) FROM term_relationships 
+          WHERE term_taxonomy_id = ?
+        ) WHERE term_taxonomy_id = ?
+      `;
+
+      await sequelize.query(updateCountQuery, {
+        replacements: [categoryId, categoryId],
+        type: sequelize.QueryTypes.UPDATE,
+        transaction
+      });
+
+      await transaction.commit();
+
+      res.json({
+        success: true,
+        message: `Successfully categorized ${article_ids.length} articles`,
+        data: {
+          categorized_count: article_ids.length,
+          category_slug: category_slug
+        }
+      });
+
+    } catch (error) {
+      await transaction.rollback();
+      console.error('Bulk categorize articles error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to categorize articles',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
 }
 
 module.exports = AdminController;

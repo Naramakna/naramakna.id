@@ -63,6 +63,13 @@ class AnalyticsController {
 
       await Analytics.create(analyticsData);
 
+      // If this is a view event, also increment the view_count in the posts table
+      if (event_type === 'view') {
+        await Post.increment('view_count', {
+          where: { ID: content_id }
+        });
+      }
+
       res.json({
         success: true,
         message: 'Event tracked successfully'

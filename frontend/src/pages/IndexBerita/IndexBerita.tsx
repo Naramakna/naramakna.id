@@ -69,7 +69,7 @@ export const IndexBerita: React.FC = () => {
         author_id: post.author?.ID || 0,
         slug: post.slug || post.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'untitled',
         category_name: post.categories?.[0]?.name || 'Umum',
-        view_count: Math.floor(Math.random() * 3000) + 100
+        view_count: post.view_count || 0
       }));
 
       // Always replace data since we're using incremental limit instead of pagination
@@ -302,7 +302,7 @@ export const IndexBerita: React.FC = () => {
                 },
                 slug: article.slug || article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
                 category: article.category_name || 'Umum',
-                views: article.view_count || Math.floor(Math.random() * 3000) + 100
+                views: article.view_count || 0
               }))}
             />
           ) : (
