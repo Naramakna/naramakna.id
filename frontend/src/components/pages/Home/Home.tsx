@@ -34,13 +34,15 @@ export const Home: React.FC = () => {
       <Navbar />
 
       {/* Hero Banner - Above the fold, immediate load */}
-      <Suspense fallback={<div className="hero-banner-skeleton"></div>}>
-        <AdSection 
-          placement="hero-banner" 
-          size='header' 
-          rotationInterval={3000}
-        />
-      </Suspense>
+      <div className="pt-4">
+        <Suspense fallback={<div className="hero-banner-skeleton"></div>}>
+          <AdSection 
+            placement="hero-banner" 
+            size='header' 
+            rotationInterval={3000}
+          />
+        </Suspense>
+      </div>
 
       {/* Main Content Area */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
