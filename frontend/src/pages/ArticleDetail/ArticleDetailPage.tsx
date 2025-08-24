@@ -9,6 +9,7 @@ import { ArticleAnalyticsModal } from '../../components/organisms/ArticleAnalyti
 import { RelatedArticles } from '../../components/organisms/RelatedArticles';
 import { AdSection } from '../../components/organisms/AdSection';
 import { useSEO, generateDescription, extractKeywords, formatStructuredDataDate } from '../../hooks/useSEO';
+import { useAnalytics } from '../../hooks/useAnalytics';
 import { buildApiUrl } from '../../config/api';
 import 'quill/dist/quill.snow.css'; // Import Quill CSS for alignment classes
 
@@ -31,6 +32,7 @@ interface Article {
     id?: string | number;
     name: string;
     login?: string;
+    user_nicename?: string;
     isVerified: boolean;
     avatar?: string;
   };
@@ -54,6 +56,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
   const [error, setError] = useState('');
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
   const [viewTracked, setViewTracked] = useState(false);
+  const { trackArticleRead } = useAnalytics();
 
   // Extract article identifier from URL or props
   const currentArticleId = articleId || (articleSlug ? null : window.location.pathname.split('/').pop());
@@ -74,10 +77,21 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
   // Separate useEffect for tracking views to ensure it only happens once per article
   useEffect(() => {
     if (article && !viewTracked && article.id) {
+      // Track internal view (existing system)
       trackView(article.id);
+      
+      // Track Google Analytics article read
+      trackArticleRead({
+        title: article.title,
+        slug: currentArticleSlug || article.id,
+        category: article.category || 'Article',
+        author: article.author?.name || 'Unknown',
+        readTime: article.readTime
+      });
+      
       setViewTracked(true);
     }
-  }, [article, viewTracked]);
+  }, [article, viewTracked, trackArticleRead, currentArticleSlug]);
 
   const fetchArticleById = async (id: string) => {
     try {
@@ -103,6 +117,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
               id: result.data.author?.ID,
               name: result.data.author?.display_name || result.data.author?.user_login || 'Anonymous',
               login: result.data.author?.user_login,
+              user_nicename: result.data.author?.user_nicename,
               isVerified: result.data.author?.user_role === 'admin' || result.data.author?.user_role === 'writer',
               avatar: result.data.author?.profile_image || undefined
             },
@@ -146,7 +161,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
             content: result.data.post_content || result.data.content || '',
             excerpt: result.data.post_excerpt || result.data.excerpt || '',
             featuredImage: result.data.featured_image ? {
-              url: result.data.featured_image.url,
+              url: result.data.featured_image.url || result.data.featured_image,
               caption: result.data.featured_image.caption || result.data.featured_image.title || '',
               alt: result.data.post_title || 'Article image'
             } : undefined,
@@ -154,6 +169,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
               id: result.data.author?.ID,
               name: result.data.author?.display_name || result.data.author?.user_login || 'Anonymous',
               login: result.data.author?.user_login,
+              user_nicename: result.data.author?.user_nicename,
               isVerified: result.data.author?.user_role === 'admin' || result.data.author?.user_role === 'writer',
               avatar: result.data.author?.profile_image || undefined
             },
@@ -311,7 +327,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <div className="max-w-4xl mx-auto py-8 px-4">
+        <div className="max-w-6xl mx-auto py-8 px-4">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
             <div className="h-4 bg-gray-200 rounded w-1/2 mb-6"></div>
@@ -331,7 +347,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <div className="max-w-4xl mx-auto py-8 px-4 text-center">
+        <div className="max-w-6xl mx-auto py-8 px-4 text-center">
           <div className="bg-white rounded-lg shadow-lg p-8">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Article Not Found</h1>
             <p className="text-gray-600 mb-6">{error || 'The article you are looking for does not exist.'}</p>
@@ -358,7 +374,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
         rotationInterval={8000}
       />
       
-      <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="p-6 lg:p-8">
             {/* Article Header */}
