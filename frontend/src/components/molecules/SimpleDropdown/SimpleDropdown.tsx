@@ -57,7 +57,6 @@ export const SimpleDropdown: React.FC<SimpleDropdownProps> = ({
           className="cursor-pointer"
           onClick={() => setIsOpen(!isOpen)}
           onMouseEnter={() => setIsOpen(true)}
-          onMouseLeave={() => setIsOpen(false)}
         >
           {trigger}
         </div>
@@ -71,7 +70,6 @@ export const SimpleDropdown: React.FC<SimpleDropdownProps> = ({
             zIndex: 99999 
           }}
           ref={dropdownRef}
-          onMouseEnter={() => setIsOpen(true)}
           onMouseLeave={() => setIsOpen(false)}
         >
           <div className="py-2">

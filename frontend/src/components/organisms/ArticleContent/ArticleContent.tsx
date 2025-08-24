@@ -48,9 +48,9 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
     return () => document.removeEventListener('copy', handleCopy);
   }, []);
 
-  // Text alignment fix
+  // Text alignment and mobile image enhancement fix
   useEffect(() => {
-    // Inject CSS untuk text alignment - lebih spesifik
+    // Inject CSS untuk text alignment dan mobile image enhancement
     const style = document.createElement('style');
     style.id = 'article-text-alignment-fix';
     style.textContent = `
@@ -80,6 +80,53 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
       @media screen and (min-width: 640px) {
         .prose .article-content-mobile-fix p {
           text-align: justify !important;
+        }
+      }
+
+      /* Mobile Image Enhancement - Membuat gambar lebih besar di mobile */
+      @media screen and (max-width: 768px) {
+        .article-content figure {
+          margin-left: -1.5rem !important;
+          margin-right: -1.5rem !important;
+          width: calc(100% + 3rem) !important;
+        }
+        
+        .article-content figure img {
+          width: 100% !important;
+          height: auto !important;
+          border-radius: 0.5rem !important;
+        }
+        
+        .article-content figure figcaption {
+          margin-left: 1.5rem !important;
+          margin-right: 1.5rem !important;
+          padding-top: 0.75rem !important;
+        }
+
+        /* Featured image juga diperbesar */
+        .mobile-featured-image {
+          margin-left: -1.5rem !important;
+          margin-right: -1.5rem !important;
+          width: calc(100% + 3rem) !important;
+        }
+
+        .mobile-featured-image img {
+          border-radius: 0.5rem !important;
+        }
+      }
+
+      /* Tablet - sedikit lebih besar */
+      @media screen and (min-width: 768px) and (max-width: 1024px) {
+        .article-content figure {
+          margin-left: -2rem !important;
+          margin-right: -2rem !important;
+          width: calc(100% + 4rem) !important;
+        }
+        
+        .mobile-featured-image {
+          margin-left: -2rem !important;
+          margin-right: -2rem !important;
+          width: calc(100% + 4rem) !important;
         }
       }
     `;
@@ -165,7 +212,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
       );
 
     return (
-      <div className="prose prose-lg max-w-none">
+      <div className="prose prose-lg max-w-none article-content">
         <div 
           className="
             prose-headings:font-bold prose-headings:text-gray-900
@@ -231,7 +278,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
     <article className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
       {/* Featured Image - Kumparan Style */}
       {featuredImage && (
-        <div className="mb-8">
+        <div className="mb-8 mobile-featured-image">
           <div className="relative overflow-hidden rounded-lg">
             <img 
               src={featuredImage.url}
