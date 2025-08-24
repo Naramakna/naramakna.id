@@ -34,10 +34,12 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
   const [activeTab, setActiveTab] = useState('konten');
   const [userArticles, setUserArticles] = useState<any[]>([]);
   const [isLoadingArticles, setIsLoadingArticles] = useState(false);
-  const [stats] = useState({
+  const [stats, setStats] = useState({
     mengikuti: 0,
     pengikut: 0
   });
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
 
   const isOwnProfile = !username || (user?.user_login === username) || false;
 
@@ -48,34 +50,24 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
       
       const fetchUserProfile = async () => {
         try {
-          console.log('🔍 Fetching profile for username:', username);
+          console.log('🔍 Fetching profile for user_nicename:', username);
           
-          // First check if user exists
-          const checkResponse = await fetch(`/api/users/check/${encodeURIComponent(username)}`);
-          const checkData = await checkResponse.json();
+          // Fetch user profile by user_nicename
+          const profileResponse = await fetch(buildApiUrl(`profile/user/${encodeURIComponent(username)}`));
+          const profileData = await profileResponse.json();
           
-          if (!checkData.success || !checkData.data.exists) {
+          if (!profileData.success) {
             console.log('❌ User not found:', username);
             setProfileUser(null);
             setIsLoadingProfile(false);
             return;
           }
           
-          // User exists, fetch full profile
-          const userInfo = checkData.data.user;
-          setProfileUser({
-            ID: userInfo.id,
-            id: userInfo.id, 
-            display_name: userInfo.display_name,
-            user_login: userInfo.username,
-            user_email: null, // Privacy: don't expose email
-            user_role: 'user', // Default role for privacy
-            profile_image: null,
-            bio: null,
-            profile: null
-          });
+          // Set profile data
+          const userData = profileData.data.user;
+          setProfileUser(userData);
           
-          console.log('✅ Profile fetched successfully:', userInfo);
+          console.log('✅ Profile fetched successfully:', userData);
         } catch (error) {
           console.error('❌ Error fetching user profile:', error);
           setProfileUser(null);
@@ -406,7 +398,19 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
           />
 
           {/* Action Buttons */}
-          <ProfileActionButtons isOwnProfile={isOwnProfile} />
+          <ProfileActionButtons 
+            isOwnProfile={isOwnProfile}
+            userId={displayUser?.ID}
+            isFollowing={isFollowing}
+            onFollowChange={(newFollowState) => {
+              setIsFollowing(newFollowState);
+              // Update follower count
+              setStats(prev => ({
+                ...prev,
+                pengikut: prev.pengikut + (newFollowState ? 1 : -1)
+              }));
+            }}
+          />
         </div>
 
         {/* Tabs */}

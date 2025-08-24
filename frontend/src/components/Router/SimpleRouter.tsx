@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { trackPageView } from '../../utils/analytics';
 import { Home } from '../pages/Home/Home';
 import LoginPage from '../../pages/Login/LoginPage';
 import RegisterPage from '../../pages/Register/RegisterPage';
@@ -10,6 +11,7 @@ import AdminDashboard from '../../pages/Admin/AdminDashboard';
 import SuperAdminDashboard from '../../pages/Admin/SuperAdminDashboard';
 import { AdminTikTok } from '../../pages/Admin/AdminTikTok';
 import { AdminYouTube } from '../../pages/Admin/AdminYouTube';
+import { AdminGoogleAds } from '../../pages/Admin/AdminGoogleAds';
 import WriterDashboard from '../../pages/Writer/WriterDashboard';
 import UserDashboard from '../../pages/User/UserDashboard';
 import PostAnalytics from '../../pages/Admin/PostAnalytics';
@@ -93,6 +95,11 @@ const AsyncUsernameRoute: React.FC<{ username: string }> = ({ username }) => {
 const SimpleRouter: React.FC = () => {
   const path = window.location.pathname;
 
+  // Track page view when route changes
+  useEffect(() => {
+    trackPageView(path);
+  }, [path]);
+
   // Simple route matching
   switch (path) {
     case '/login':
@@ -122,6 +129,8 @@ const SimpleRouter: React.FC = () => {
       return <AdminTikTok />;
     case '/admin/youtube':
       return <AdminYouTube />;
+    case '/superadmin/dashboard/google-ads':
+      return <AdminGoogleAds />;
     case '/superadmin/dashboard':
     case '/superadmin':
       return <SuperAdminDashboard />;
@@ -180,7 +189,7 @@ const SimpleRouter: React.FC = () => {
         // Valid category slugs (only allow main categories)
         const validCategories = [
           'narapandang', 'pelakon', 'laga-gaya', 'wahana', 'olah-bola',
-          'cerita-rasa', 'akal-budi', 'horison', 'dunia',
+          'cerita-rasa', 'akal-budi', 'horison', 'jagat-kita',
           'budaya', 'pendidikan', 'teknologi'
         ];
         

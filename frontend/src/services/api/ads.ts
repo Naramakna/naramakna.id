@@ -9,7 +9,7 @@ export interface Advertisement {
   target_url?: string;
   ad_content?: string;
   google_ads_code?: string;
-  placement_type: 'header' | 'regular' | 'sidebar' | 'inline' | 'footer' | 'popup' | 'hero-banner' | 'mid-content' | 'bottom-content' | 'article-top' | 'article-mid' | 'article-bottom' | 'article-final' | 'content-ad' | 'breaking-pre' | 'breaking-post';
+  placement_type: 'header' | 'regular' | 'sidebar' | 'inline' | 'footer' | 'popup' | 'hero-banner' | 'mid-content' | 'bottom-content' | 'article-top' | 'article-mid' | 'article-bottom' | 'article-final' | 'content-ad' | 'content-middle' | 'breaking-pre' | 'breaking-post';
   advertiser?: string;
   start_date: string;
   end_date: string;
@@ -56,17 +56,17 @@ export interface CreateAdResponse {
 // Mapping function untuk menerjemahkan placement frontend ke backend
 const mapPlacementToBackend = (frontendPlacement: string): string => {
   const placementMap: { [key: string]: string } = {
-    'hero-banner': 'header',
-    'mid-content': 'regular', 
-    'bottom-content': 'regular',
-    'article-top': 'header',
-    'article-mid': 'inline',
-    'article-final': 'regular',
-    'article-bottom': 'regular',
-    'content-ad': 'inline',
-    'content-middle': 'inline',
-    'breaking-pre': 'header',
-    'breaking-post': 'regular',
+    'hero-banner': 'hero-banner',    // Fixed: Keep hero-banner as hero-banner
+    'mid-content': 'mid-content',    // Fixed: Keep mid-content as mid-content 
+    'bottom-content': 'bottom-content', // Fixed: Keep bottom-content as bottom-content
+    'article-top': 'article-top',    // Fixed: Keep article-top as article-top
+    'article-mid': 'article-mid',    // Fixed: Keep article-mid as article-mid
+    'article-final': 'article-final', // Fixed: Keep article-final as article-final
+    'article-bottom': 'article-bottom', // Fixed: Keep article-bottom as article-bottom
+    'content-ad': 'content-ad',      // Fixed: Keep content-ad as content-ad
+    'content-middle': 'content-middle', // Fixed: Keep content-middle as content-middle
+    'breaking-pre': 'breaking-pre',  // Fixed: Keep breaking-pre as breaking-pre
+    'breaking-post': 'breaking-post', // Fixed: Keep breaking-post as breaking-post
     'sidebar': 'sidebar',
     'header': 'header',
     'regular': 'regular',
@@ -197,6 +197,18 @@ export const adsAPI = {
         'Authorization': `Bearer ${token}`
       },
       body: formData
+    });
+    return response.json();
+  },
+
+  // Delete advertisement (admin only)
+  async deleteAd(adId: string): Promise<{ success: boolean; message?: string }> {
+    const token = localStorage.getItem('token');
+    const response = await fetch(buildApiUrl(`ads/${adId}`), {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
     return response.json();
   }

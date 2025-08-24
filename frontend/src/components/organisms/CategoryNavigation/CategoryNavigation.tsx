@@ -51,7 +51,7 @@ const CategoryNavigation: React.FC<CategoryNavigationProps> = ({
 
   return (
     <nav className={`bg-white border-b border-gray-200 ${className}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
         <div className="flex items-center justify-start">
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center space-x-0">

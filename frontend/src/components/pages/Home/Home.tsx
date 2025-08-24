@@ -1,38 +1,26 @@
 // Halaman utama/homepage dengan feed artikel dan video
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Navbar } from '../../organisms/Navbar';
-import { AdSection } from '../../organisms/AdSection/AdSection';
-import { VideoSection } from '../../organisms/VideoSection/VideoSection';
-import { PollingMain } from '../../organisms/PollingMain';
 import { useSEO } from '../../../hooks/useSEO';
-import { DynamicCategorySections } from '../../organisms/DynamicCategorySections/DynamicCategorySections';
-import { MainContentSection } from '../../organisms/MainContentSection/MainContentSection';
-import { PopupAd } from '../../organisms/PopupAd';
+
+// Lazy load SEMUA komponen untuk Speed Index optimization  
+const AdSection = lazy(() => import('../../organisms/AdSection/AdSection').then(module => ({ default: module.AdSection })));
+const MainContentSection = lazy(() => import('../../organisms/MainContentSection/MainContentSection').then(module => ({ default: module.MainContentSection })));
+const VideoSection = lazy(() => import('../../organisms/VideoSection/VideoSection').then(module => ({ default: module.VideoSection })));
+const PollingMain = lazy(() => import('../../organisms/PollingMain').then(module => ({ default: module.PollingMain })));
+const DynamicCategorySections = lazy(() => import('../../organisms/DynamicCategorySections/DynamicCategorySections').then(module => ({ default: module.DynamicCategorySections })));
+const PopupAd = lazy(() => import('../../organisms/PopupAd').then(module => ({ default: module.PopupAd })));
+const Footer = lazy(() => import('../../organisms/Footer').then(module => ({ default: module.Footer })));
 
 export const Home: React.FC = () => {
   // SEO for homepage
   useSEO({
-    title: 'Naramakna - Berita Terkini Indonesia & Dunia',
-    description: 'Portal berita terpercaya dengan informasi terkini dari Indonesia dan dunia. Dapatkan berita politik, ekonomi, olahraga, hiburan, teknologi, dan lifestyle terupdate setiap hari.',
+    title: 'Naramakna - Cerdas Memaknai',
+    description: 'Naramakna.id - Platform media digital yang menghadirkan informasi berkualitas dan perspektif mendalam untuk membantu Anda cerdas dalam memaknai berbagai peristiwa dan isu terkini.',
     keywords: [
-      'berita indonesia', 'berita terkini', 'portal berita', 'naramakna',
-      'berita politik', 'berita ekonomi', 'berita olahraga', 'berita hiburan',
-      'berita teknologi', 'berita dunia', 'breaking news', 'news indonesia'
-    ],
-    image: `${typeof window !== 'undefined' ? window.location.origin : ''}/LogoNaramakna.png`,
-    url: typeof window !== 'undefined' ? window.location.href : undefined,
-    type: 'website',
-    locale: 'id_ID'
-  });
-
-  // SEO for homepage
-  useSEO({
-    title: 'Naramakna - Berita Terkini Indonesia & Dunia',
-    description: 'Portal berita terpercaya dengan informasi terkini dari Indonesia dan dunia. Dapatkan berita politik, ekonomi, olahraga, hiburan, teknologi, dan lifestyle terupdate setiap hari.',
-    keywords: [
-      'berita indonesia', 'berita terkini', 'portal berita', 'naramakna',
-      'berita politik', 'berita ekonomi', 'berita olahraga', 'berita hiburan',
-      'berita teknologi', 'berita dunia', 'breaking news', 'news indonesia'
+      'naramakna', 'cerdas memaknai', 'media digital', 'informasi berkualitas',
+      'perspektif mendalam', 'analisis berita', 'wawasan', 'edukasi',
+      'pemahaman', 'insight', 'naramakna.id', 'platform media'
     ],
     image: `${typeof window !== 'undefined' ? window.location.origin : ''}/LogoNaramakna.png`,
     url: typeof window !== 'undefined' ? window.location.href : undefined,
@@ -45,47 +33,54 @@ export const Home: React.FC = () => {
       {/* Navbar Component */}
       <Navbar />
 
-      {/* Hero Banner - Fast rotation (3 seconds) */}
-      <AdSection 
-        placement="hero-banner" 
-        size='header' 
-        rotationInterval={3000}
-      />
+      {/* Hero Banner - Above the fold, immediate load */}
+      <Suspense fallback={<div className="hero-banner-skeleton"></div>}>
+        <AdSection 
+          placement="hero-banner" 
+          size='header' 
+          rotationInterval={3000}
+        />
+      </Suspense>
 
       {/* Main Content Area */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* MainContentSection  */}
-        <MainContentSection />
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* MainContentSection - Now lazy loaded for Speed Index */}
+        <Suspense fallback={<div className="category-skeleton bg-gray-100 animate-pulse rounded-lg"></div>}>
+          <MainContentSection />
+        </Suspense>
 
-        {/* Mid Content Banner - Normal rotation (5 seconds) */}
-        <AdSection 
-          placement="mid-content" 
-          size='header' 
-          rotationInterval={5000}
-        />
+        {/* Below the fold content - lazy loaded */}
+        <Suspense fallback={<div className="hero-banner-skeleton"></div>}>
+          <AdSection 
+            placement="mid-content" 
+            size='header' 
+            rotationInterval={5000}
+          />
+        </Suspense>
 
-        {/* Video Section */}
-        <VideoSection />
+        <Suspense fallback={<div className="video-section-skeleton bg-gray-100 animate-pulse rounded-lg"></div>}>
+          <VideoSection />
+        </Suspense>
         
-        {/* Polling Section */}
-        <PollingMain />
+        <Suspense fallback={<div className="polling-skeleton bg-gray-100 animate-pulse rounded-lg"></div>}>
+          <PollingMain />
+        </Suspense>
 
-        {/* Bottom Banner - Slow rotation (10 seconds) */}
-        <AdSection 
-          placement="bottom-content" 
-          size='regular' 
-          rotationInterval={10000}
-        />
-        
-        {/* Dynamic Category Sections */}
-        <DynamicCategorySections />
+        <Suspense fallback={<div className="category-skeleton bg-gray-100 animate-pulse rounded-lg"></div>}>
+          <DynamicCategorySections 
+            excludeCategories={['otomotif']} 
+          />
+        </Suspense>
       </div>
       
-      {/* Popup Ad - Only on homepage */}
-      <PopupAd />
-      
-      {/* Popup Ad - Only on homepage */}
-      <PopupAd />
+      <Suspense fallback={null}>
+        <PopupAd />
+        <PopupAd />
+      </Suspense>
+
+      <Suspense fallback={<div className="footer-skeleton"></div>}>
+        <Footer />
+      </Suspense>
     </div>
   );
 };

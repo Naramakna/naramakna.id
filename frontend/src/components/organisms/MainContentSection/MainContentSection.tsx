@@ -143,9 +143,9 @@ export const MainContentSection: React.FC<MainContentSectionProps> = ({
 
   return (
     <div className={`h-full flex flex-col ${className}`}>
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         {/* Main Content Area */}
-        <div className="lg:col-span-3">
+        <div className="md:col-span-3">
           {/* Featured Carousel */}
           <div className="mb-6">
             <Carousel articles={displayArticles.slice(0, 4)} />
@@ -269,7 +269,7 @@ export const MainContentSection: React.FC<MainContentSectionProps> = ({
         </div>
 
         {/* Trending Sidebar */}
-        <div className="lg:col-span-2">
+        <div className="md:col-span-2">
           <TrendingSection limit={10} includeTikTok={false} mixedContent={false} />
         </div>
       </div>

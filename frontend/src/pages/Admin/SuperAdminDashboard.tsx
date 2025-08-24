@@ -14,6 +14,7 @@ import { AdminSettings } from './AdminSettings';
 import ScheduledPosts from '../../components/organisms/ScheduledPosts/ScheduledPosts';
 import ImageManager from '../../components/organisms/ImageManager/ImageManager';
 import TikTokImageManager from '../../components/organisms/TikTokImageManager/TikTokImageManager';
+import { AdPlaceholderManager } from '../../components/organisms/AdPlaceholderManager';
 import { buildApiUrl } from '../../config/api';
 
 
@@ -100,6 +101,7 @@ const SuperAdminDashboard: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [pendingPosts, setPendingPosts] = useState<PendingPost[]>([]);
   const [scheduledPosts, setScheduledPosts] = useState<any[]>([]);
+  const [trashedPosts, setTrashedPosts] = useState<any[]>([]);
   const [systemStats, setSystemStats] = useState<SystemStats>({
     totalUsers: 0,
     totalAdmins: 0,
@@ -109,6 +111,26 @@ const SuperAdminDashboard: React.FC = () => {
     totalComments: 0
   });
   const [loading, setLoading] = useState(true);
+  
+  // Placeholder visibility state
+  const [placeholderSettings, setPlaceholderSettings] = useState<{[key: string]: boolean}>({
+    'hero-banner': true,
+    'header': true,
+    'mid-content': true,
+    'bottom-content': true,
+    'popup': true,
+    'regular': true,
+    'sidebar': true,
+    'article-top': true,
+    'article-mid': true,
+    'article-bottom': true,
+    'article-final': true,
+    'content-ad': true,
+    'breaking-pre': true,
+    'breaking-post': true
+  });
+  const [globalPlaceholder, setGlobalPlaceholder] = useState(true);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   
   // Filtering states
@@ -320,12 +342,56 @@ const SuperAdminDashboard: React.FC = () => {
     }));
   };
 
+  // Fetch trashed posts
+  const fetchTrashedPosts = useCallback(async () => {
+    try {
+      const response = await fetch(buildApiUrl('content/admin/articles/trash'), {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setTrashedPosts(data.data.articles);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching trashed posts:', error);
+    }
+  }, []);
+
+  // Load placeholder settings
+  const loadPlaceholderSettings = useCallback(async () => {
+    try {
+      const saved = localStorage.getItem('naramakna_placeholder_settings');
+      if (saved) {
+        const settings = JSON.parse(saved);
+        setPlaceholderSettings(settings.placements || placeholderSettings);
+        setGlobalPlaceholder(settings.global !== undefined ? settings.global : true);
+      }
+    } catch (err) {
+      console.error('Failed to load placeholder settings:', err);
+    }
+  }, []);
+
   // useEffect harus dipanggil sebelum early returns
   useEffect(() => {
     if (isAuthenticated && user?.user_role === 'superadmin') {
       fetchData();
+      loadPlaceholderSettings();
     }
-  }, [isAuthenticated, user?.user_role, fetchData]);
+  }, [isAuthenticated, user?.user_role, fetchData, loadPlaceholderSettings]);
+
+  // Load trashed posts when trash tab is accessed
+  useEffect(() => {
+    if (activeTab === 'trash' && isAuthenticated && user?.user_role === 'superadmin') {
+      fetchTrashedPosts();
+    }
+  }, [activeTab, isAuthenticated, user?.user_role, fetchTrashedPosts]);
 
   // Check access permission
   if (isLoading) {
@@ -470,26 +536,59 @@ const SuperAdminDashboard: React.FC = () => {
     }
   };
 
-  const deleteArticle = async (articleId: number) => {
+  const deleteArticle = async (articleId: number, permanent: boolean = false) => {
+    const action = permanent ? 'permanently delete' : 'move to trash';
+    const confirmed = window.confirm(`Are you sure you want to ${action} this article? ${permanent ? 'This action cannot be undone.' : 'You can restore it from trash later.'}`);
+    
+    if (!confirmed) return;
+
     try {
-      const response = await fetch(buildApiUrl(`content/admin/articles/${articleId}`), {
+      const url = permanent 
+        ? buildApiUrl(`content/admin/articles/${articleId}?force=true`)
+        : buildApiUrl(`content/admin/articles/${articleId}`);
+        
+      const response = await fetch(url, {
         method: 'DELETE',
         credentials: 'include'
       });
 
       if (response.ok) {
         const result = await response.json();
-        alert(result.message || 'Article deleted successfully!');
+        alert(result.message || `Article ${permanent ? 'permanently deleted' : 'moved to trash'} successfully!`);
         fetchData(); // Refresh data
+        if (activeTab === 'trash') fetchTrashedPosts(); // Refresh trash if viewing
       } else {
         const error = await response.json();
-        alert(error.message || 'Failed to delete article');
+        alert(error.message || `Failed to ${action} article`);
       }
     } catch (error) {
-      console.error('Error deleting article:', error);
-      alert('Error deleting article');
+      console.error(`Error ${action.replace(' ', 'ing')} article:`, error);
+      alert(`Error ${action.replace(' ', 'ing')} article`);
     }
   };
+
+  const restoreArticle = async (articleId: number) => {
+    try {
+      const response = await fetch(buildApiUrl(`content/admin/articles/${articleId}/restore`), {
+        method: 'POST',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(result.message || 'Article restored successfully!');
+        fetchData(); // Refresh data
+        fetchTrashedPosts(); // Refresh trash
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Failed to restore article');
+      }
+    } catch (error) {
+      console.error('Error restoring article:', error);
+      alert('Error restoring article');
+    }
+  };
+
 
 
 
@@ -526,9 +625,12 @@ const SuperAdminDashboard: React.FC = () => {
               { id: 'articles', name: '📋 Articles Manager' },
               { id: 'pending-posts', name: '⏳ Pending', count: pendingPosts.length },
               { id: 'scheduled-posts', name: '⏰ Scheduled', count: scheduledPosts.length },
+              { id: 'trash', name: '🗑️ Trash' },
               { id: 'image-manager', name: '🖼️ Images' },
               { id: 'polling', name: '📊 Polling' },
               { id: 'ads', name: '🎯 Ads' },
+              { id: 'ad-placeholders', name: '👁️ Ad Placeholders' },
+              { id: 'google-ads', name: '📢 Google Ads' },
               { id: 'youtube', name: '📺 YouTube' },
               { id: 'tiktok', name: '🎵 TikTok' },
               { id: 'analytics', name: '🚀 Boost' },
@@ -594,6 +696,7 @@ const SuperAdminDashboard: React.FC = () => {
                   filters={filters}
                   showFilters={showFilters}
                   pagination={pagination}
+                  users={users}
                   onFilterChange={handleFilterChange}
                   onResetFilters={resetFilters}
                   onToggleFilters={() => setShowFilters(!showFilters)}
@@ -737,6 +840,22 @@ const SuperAdminDashboard: React.FC = () => {
             </div>
           )}
 
+          {activeTab === 'google-ads' && (
+            <div className="p-6">
+              <div className="text-center">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Google Ads Management</h2>
+                <p className="text-gray-600 mb-6">Manage Google Ads integration, sync campaigns, and configure automatic ad placement</p>
+                <a
+                  href="/superadmin/dashboard/google-ads"
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <span className="mr-2">📢</span>
+                  Open Google Ads Dashboard
+                </a>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'youtube' && (
             <div className="p-6">
               <div className="text-center">
@@ -764,6 +883,122 @@ const SuperAdminDashboard: React.FC = () => {
               <AdminAnalytics />
             </div>
           )}
+          {activeTab === 'ad-placeholders' && (
+            <div className="p-6">
+              <AdPlaceholderManager 
+                placeholderSettings={placeholderSettings}
+                globalPlaceholder={globalPlaceholder}
+                savingSettings={savingSettings}
+                onTogglePlacement={(placement) => {
+                  setPlaceholderSettings(prev => ({
+                    ...prev,
+                    [placement]: !prev[placement]
+                  }));
+                }}
+                onToggleGlobal={() => {
+                  const newValue = !globalPlaceholder;
+                  setGlobalPlaceholder(newValue);
+                  const newSettings: {[key: string]: boolean} = {};
+                  Object.keys(placeholderSettings).forEach(key => {
+                    newSettings[key] = newValue;
+                  });
+                  setPlaceholderSettings(newSettings);
+                }}
+                onSaveSettings={async () => {
+                  try {
+                    setSavingSettings(true);
+                    const settings = {
+                      global: globalPlaceholder,
+                      placements: placeholderSettings
+                    };
+                    
+                    localStorage.setItem('naramakna_placeholder_settings', JSON.stringify(settings));
+                    window.dispatchEvent(new CustomEvent('placeholderSettingsChanged', { detail: settings }));
+                    
+                    console.log('✅ Placeholder settings saved:', settings);
+                    alert('Placeholder settings saved successfully!');
+                  } catch (err) {
+                    console.error('Failed to save placeholder settings:', err);
+                    alert('Failed to save placeholder settings');
+                  } finally {
+                    setSavingSettings(false);
+                  }
+                }}
+              />
+            </div>
+          )}
+          
+          {activeTab === 'trash' && (
+            <div className="p-6">
+              <div className="mb-6">
+                <h2 className="text-lg font-medium text-gray-900 mb-2">🗑️ Trash - Deleted Articles</h2>
+                <p className="text-gray-600">Articles that have been moved to trash. You can restore them or permanently delete them.</p>
+              </div>
+              
+              {trashedPosts.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-gray-500 text-lg mb-2">🗑️ Trash is empty</div>
+                  <p className="text-gray-400">No articles have been deleted.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deleted</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {trashedPosts.map((article: any) => (
+                        <tr key={article.ID} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-gray-900">{article.post_title}</div>
+                            <div className="text-sm text-gray-500">ID: {article.ID}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {article.author?.display_name || 'Unknown'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <div>{new Date(article.deleted_at).toLocaleDateString()}</div>
+                            <div className="text-xs">{new Date(article.deleted_at).toLocaleTimeString()}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                            <button
+                              onClick={() => restoreArticle(article.ID)}
+                              className="text-green-600 hover:text-green-900"
+                              title="Restore article"
+                            >
+                              ♻️ Restore
+                            </button>
+                            <button
+                              onClick={() => deleteArticle(article.ID, true)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Permanently delete article"
+                            >
+                              🗑️ Delete Forever
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={fetchTrashedPosts}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  🔄 Refresh Trash
+                </button>
+              </div>
+            </div>
+          )}
+          
           {activeTab === 'settings' && (
             <div className="p-6">
               <AdminSettings />

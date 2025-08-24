@@ -20,4 +20,5 @@ router.post('/articles/:id/submit', authenticate, requireWriter, canPost, Writer
 // Image upload endpoint
 router.post('/upload-image', authenticate, requireWriter, canPost, uploadPostImages, handleUploadError, WriterController.uploadImage);
 
+
 module.exports = router;

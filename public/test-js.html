@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JS Test</title>
+</head>
+<body>
+    <div id="root">Initial content</div>
+    
+    <!-- Inline script test -->
+    <script>
+        console.log('Inline script works');
+        document.getElementById('root').innerHTML = 'Inline JS works!';
+    </script>
+    
+    <!-- Module script test -->
+    <script type="module">
+        console.log('ES Module works');
+        document.getElementById('root').innerHTML += '<br>ES Module works!';
+    </script>
+</body>
+</html>

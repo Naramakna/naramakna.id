@@ -10,6 +10,44 @@ const sequelize = require('../config/database');
 class AnalyticsController {
 
   /**
+   * Test analytics API
+   * GET /api/analytics/test
+   */
+  static async test(req, res) {
+    try {
+      // Simple query to test connectivity
+      const count = await Analytics.count();
+      
+      // Get basic stats
+      const recentViews = await Analytics.count({
+        where: {
+          event_type: 'view',
+          timestamp: {
+            [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+          }
+        }
+      });
+
+      res.json({
+        success: true,
+        message: 'Analytics API is working',
+        data: {
+          total_records: count,
+          recent_views_24h: recentViews,
+          database_connected: true
+        }
+      });
+    } catch (error) {
+      console.error('❌ Analytics test error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Analytics API test failed',
+        error: error.message
+      });
+    }
+  }
+
+  /**
    * Track user interaction
    * POST /api/analytics/track
    */
@@ -269,10 +307,10 @@ class AnalyticsController {
         ],
         include: [{
           model: Post,
-          as: 'content',
+          as: 'post',
           attributes: ['post_title', 'post_type']
         }],
-        group: ['content_id'],
+        group: ['content_id', 'content_type'],
         order: [[sequelize.fn('COUNT', sequelize.col('Analytics.id')), 'DESC']],
         limit: 10,
         raw: true
@@ -317,7 +355,7 @@ class AnalyticsController {
           contentTypes: this.formatContentTypeMetrics(contentTypeMetrics),
           topContent: topContent.map(item => ({
             id: item.content_id,
-            title: item['content.post_title'],
+            title: item['post.post_title'],
             type: item.content_type,
             views: parseInt(item.views)
           })),
@@ -368,7 +406,7 @@ class AnalyticsController {
         },
         include: [{
           model: Post,
-          as: 'content',
+          as: 'post',
           attributes: ['post_title', 'post_type']
         }],
         order: [['timestamp', 'DESC']],
@@ -387,7 +425,7 @@ class AnalyticsController {
           recentEvents: recentEvents.map(event => ({
             id: event.id,
             contentId: event.content_id,
-            contentTitle: event.content?.post_title,
+            contentTitle: event.post?.post_title,
             contentType: event.content_type,
             eventType: event.event_type,
             timestamp: event.timestamp,

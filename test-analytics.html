@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Google Analytics - Naramakna.id</title>
+    <!-- GA4 Test -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-40CJJY40JM"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-40CJJY40JM');
+      
+      // Test custom event
+      setTimeout(() => {
+        gtag('event', 'test_event', {
+          event_category: 'Test',
+          event_label: 'Analytics Setup Test',
+          custom_parameter_1: 'New System Active'
+        });
+        console.log('✅ GA4 Test Event Sent');
+      }, 2000);
+    </script>
+</head>
+<body>
+    <h1>Google Analytics Test Page</h1>
+    <p>Testing GA4 integration for naramakna.id new system</p>
+    <p>Check Developer Tools Console & Network tab for GA requests</p>
+    
+    <button onclick="testCustomEvent()">Test Custom Event</button>
+    
+    <script>
+        function testCustomEvent() {
+            gtag('event', 'button_click', {
+                event_category: 'Interaction',
+                event_label: 'Test Button',
+                custom_parameter_1: 'Manual Test'
+            });
+            alert('Custom event sent! Check GA4 Real-time events.');
+        }
+    </script>
+</body>
+</html>

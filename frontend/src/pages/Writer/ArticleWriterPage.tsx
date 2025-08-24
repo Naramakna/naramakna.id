@@ -8,6 +8,7 @@ import ScheduleModal from '../../components/molecules/ScheduleModal';
 import { schedulerAPI } from '../../services/api/scheduler';
 import type { ScheduledPost, ScheduleRequest } from '../../services/api/scheduler';
 import { buildApiUrl } from '../../config/api';
+import { decodeHtmlEntities } from '../../utils/categorySlugMapping';
 
 interface ArticleData {
   title: string;
@@ -87,6 +88,7 @@ const ArticleWriterPage: React.FC = () => {
   const [categories, setCategories] = useState<Array<{id: number, name: string, slug: string, parent?: number}>>([]);
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
 
+
   const quillRef = useRef<ReactQuill>(null);
 
   // Fetch popular tags and categories on component mount
@@ -114,8 +116,42 @@ const ArticleWriterPage: React.FC = () => {
             cat.slug !== 'uncategorized'
           );
           
-          setCategories(filteredCategories);
-          console.log('📂 Loaded main categories:', filteredCategories);
+          // Remove duplicates based on category name (case-insensitive)
+          // Keep the one with highest count or prioritize intuitive slugs
+          const uniqueCategories = filteredCategories.reduce((acc: any[], current: any) => {
+            // Decode HTML entities for proper comparison
+            const currentName = current.name.replace(/&amp;/g, '&').toLowerCase();
+            
+            // Check if we already have this category name
+            const existingIndex = acc.findIndex(cat => 
+              cat.name.replace(/&amp;/g, '&').toLowerCase() === currentName
+            );
+            
+            if (existingIndex === -1) {
+              // New category, add it
+              acc.push(current);
+            } else {
+              // Duplicate found, keep the one with higher count or better slug
+              const existing = acc[existingIndex];
+              const preferredSlugs = ['narapandang', 'laga-gaya', 'cerita-rasa', 'horison', 'jagat-kita', 'wahana', 'olah-bola', 'akal-budi'];
+              
+              // Prefer categories with intuitive slugs or higher count
+              const shouldReplace = preferredSlugs.includes(current.slug) || 
+                                   (!preferredSlugs.includes(existing.slug) && current.count > existing.count);
+              
+              if (shouldReplace) {
+                acc[existingIndex] = current;
+              }
+            }
+            
+            return acc;
+          }, []);
+          
+          // Sort categories by name for better UX
+          uniqueCategories.sort((a, b) => a.name.localeCompare(b.name));
+          
+          setCategories(uniqueCategories);
+          console.log('📂 Loaded unique categories:', uniqueCategories);
         }
       } catch (error) {
         console.error('Error fetching categories:', error);
@@ -126,7 +162,8 @@ const ArticleWriterPage: React.FC = () => {
     fetchCategories();
   }, []);
 
-  // Custom image upload handler
+
+  // Custom image upload handler - langsung insert tanpa modal
   const imageHandler = useCallback(() => {
     const input = document.createElement('input');
     input.setAttribute('type', 'file');
@@ -152,6 +189,7 @@ const ArticleWriterPage: React.FC = () => {
               const quill = quillRef.current?.getEditor();
               if (quill) {
                 const range = quill.getSelection();
+                // Langsung insert gambar ke editor
                 quill.insertEmbed(range?.index || 0, 'image', result.data.url);
               }
             }
@@ -165,6 +203,8 @@ const ArticleWriterPage: React.FC = () => {
       }
     };
   }, []);
+
+
 
   // Featured image upload handler
   const handleFeaturedImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -203,7 +243,7 @@ const ArticleWriterPage: React.FC = () => {
       container: [
         [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
         ['bold', 'italic', 'underline', 'strike'],
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }, { 'indent': '-1'}, { 'indent': '+1' }],
         ['blockquote', 'code-block'],
         ['link', 'image'],
         [{ 'align': [] }],
@@ -633,7 +673,7 @@ const ArticleWriterPage: React.FC = () => {
       
       {/* Header */}
       <div className="border-b border-gray-200 bg-white sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
               <h1 className="text-xl font-semibold text-gray-900">
@@ -694,7 +734,7 @@ const ArticleWriterPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-3 space-y-6">
@@ -779,7 +819,7 @@ const ArticleWriterPage: React.FC = () => {
                       htmlFor={`category-${category.id}`}
                       className="ml-2 text-sm text-gray-700 cursor-pointer"
                     >
-                      {category.name}
+                      {decodeHtmlEntities(category.name)}
                     </label>
                   </div>
                 ))}
@@ -1016,6 +1056,7 @@ const ArticleWriterPage: React.FC = () => {
         mode="schedule"
         isLoading={false}
       />
+      
     </div>
   );
 };

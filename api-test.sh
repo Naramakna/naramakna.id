@@ -158,7 +158,7 @@ echo "==============="
 
 echo "🌐 10.1 CORS preflight test"
 run_test "CORS Preflight" "curl -s -X OPTIONS '$BASE_URL/auth/login' \
-  -H 'Origin: https://fenarmak.naramakna.id' \
+  -H 'Origin: https://naramakna.id' \
   -H 'Access-Control-Request-Method: POST' \
   -H 'Access-Control-Request-Headers: Content-Type' \
   -v 2>&1 | grep -E '(< HTTP|< Access-Control)'"

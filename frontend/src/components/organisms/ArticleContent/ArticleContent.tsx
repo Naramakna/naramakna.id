@@ -48,6 +48,59 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
     return () => document.removeEventListener('copy', handleCopy);
   }, []);
 
+  // Text alignment fix
+  useEffect(() => {
+    // Inject CSS untuk text alignment - lebih spesifik
+    const style = document.createElement('style');
+    style.id = 'article-text-alignment-fix';
+    style.textContent = `
+      /* Mobile first - rata kiri */
+      .article-content-mobile-fix p,
+      .article-content-mobile-fix blockquote,
+      .article-content-mobile-fix li,
+      .article-content-mobile-fix div {
+        text-align: left !important;
+      }
+      
+      /* Desktop - justify */
+      @media screen and (min-width: 640px) {
+        .article-content-mobile-fix p,
+        .article-content-mobile-fix blockquote,
+        .article-content-mobile-fix li,
+        .article-content-mobile-fix div {
+          text-align: justify !important;
+        }
+      }
+      
+      /* Override prose styles */
+      .prose .article-content-mobile-fix p {
+        text-align: left !important;
+      }
+      
+      @media screen and (min-width: 640px) {
+        .prose .article-content-mobile-fix p {
+          text-align: justify !important;
+        }
+      }
+    `;
+    
+    // Remove existing style if any
+    const existingStyle = document.getElementById('article-text-alignment-fix');
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+    
+    document.head.appendChild(style);
+    console.log('📱 CSS injected for text alignment');
+    
+    return () => {
+      const styleToRemove = document.getElementById('article-text-alignment-fix');
+      if (styleToRemove) {
+        styleToRemove.remove();
+      }
+    };
+  }, []);
+
   // Parse content and split for ad insertion
   const splitContentForAd = (rawContent: string) => {
     // Check if content is HTML or plain text
@@ -62,6 +115,15 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
         .filter(paragraph => paragraph.trim())
         .map(paragraph => `<p>${paragraph.trim().replace(/\n/g, '<br>')}</p>`)
         .join('\n');
+    }
+    
+    // If content is empty or very short, return it as one piece
+    if (!htmlContent || htmlContent.trim().length < 100) {
+      return { 
+        firstHalf: htmlContent, 
+        secondHalf: '', 
+        fullContent: htmlContent 
+      };
     }
     
     // Split content roughly in half for ad placement
@@ -109,13 +171,13 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
             prose-headings:font-bold prose-headings:text-gray-900
             prose-h2:text-2xl prose-h2:mt-12 prose-h2:mb-6
             prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-4
-            prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-6 prose-p:text-justify
+            prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-6
             prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
             prose-strong:text-gray-900 prose-strong:font-semibold
-            prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:pl-6 prose-blockquote:italic prose-blockquote:text-justify
-            prose-ul:space-y-2 prose-ol:space-y-2
-            prose-li:text-gray-700 prose-li:text-justify
-            text-justify
+            prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:pl-6 prose-blockquote:italic
+            prose-ul:space-y-2
+            prose-li:text-gray-700
+            article-content-mobile-fix
           "
           dangerouslySetInnerHTML={{ __html: processedContent }}
         />
@@ -166,7 +228,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
   };
 
   return (
-    <article className="max-w-4xl mx-auto">
+    <article className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
       {/* Featured Image - Kumparan Style */}
       {featuredImage && (
         <div className="mb-8">
@@ -197,40 +259,63 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
 
       {/* Article Content */}
       <div className="article-content">
-        {(() => {
-          const { firstHalf, secondHalf } = splitContentForAd(content);
-          
-          return (
-            <>
-              {/* First Half of Content */}
-              <div className="content-part-1">
-                {renderContentPart(firstHalf)}
-                {renderContentExtras(firstHalf)}
+        {!content || content.trim().length === 0 ? (
+          <div className="prose prose-lg max-w-none">
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-700">
+                    Konten artikel sedang dimuat atau tidak tersedia.
+                  </p>
+                </div>
               </div>
-              
-              {/* Middle Ad - Regular Size */}
-              <div className="my-8 flex justify-center">
-                <AdSection 
-                  placement="content-middle" 
-                  size="regular" 
-                  rotationInterval={5000}
-                />
-              </div>
-              
-              {/* Second Half of Content */}
-              <div className="content-part-2">
-                {renderContentPart(secondHalf)}
-                {renderContentExtras(secondHalf)}
-              </div>
-            </>
-          );
-        })()}
+            </div>
+          </div>
+        ) : (
+          (() => {
+            const { firstHalf, secondHalf } = splitContentForAd(content);
+            
+            return (
+              <>
+                {/* First Half of Content */}
+                <div className="content-part-1">
+                  {renderContentPart(firstHalf)}
+                  {renderContentExtras(firstHalf)}
+                </div>
+                
+                {/* Middle Ad - Regular Size - Only show if we have second half */}
+                {secondHalf && (
+                  <div className="my-8 flex justify-center">
+                    <AdSection 
+                      placement="content-middle" 
+                      size="regular" 
+                      rotationInterval={5000}
+                    />
+                  </div>
+                )}
+                
+                {/* Second Half of Content */}
+                {secondHalf && (
+                  <div className="content-part-2">
+                    {renderContentPart(secondHalf)}
+                    {renderContentExtras(secondHalf)}
+                  </div>
+                )}
+              </>
+            );
+          })()
+        )}
       </div>
 
       {/* Content Advertisement */}
       <div className="my-12">
         <AdSection 
-          placement="content-ad" 
+          placement="article-bottom" 
           size="header" 
           rotationInterval={7000}
         />
@@ -238,16 +323,17 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
 
 
       {/* Follow Us Section */}
-      <div className="my-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
+      <div className="my-6 sm:my-8 p-4 sm:p-6 bg-gray-50 rounded-lg border border-gray-200">
         <div className="text-center">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">
             Ikuti Naramakna.id di Media Sosial
           </h3>
-          <p className="text-gray-600 mb-6">
+          <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 px-2">
             Dapatkan update berita terbaru dan konten menarik lainnya
           </p>
-          <div className="flex justify-center">
-            <SocialMediaLinks showLabels={true} size="lg" />
+          <div className="flex flex-col items-center gap-2 sm:gap-3">
+            <SocialMediaLinks showLabels={true} size="sm" className="sm:hidden" />
+            <SocialMediaLinks showLabels={true} size="lg" className="hidden sm:flex" />
           </div>
         </div>
       </div>

@@ -1,0 +1,25 @@
+[Unit]
+Description=TikTok View Booster Service
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=naramakna
+WorkingDirectory=/var/www/naramakna.id
+Environment=PATH=/usr/bin:/usr/local/bin
+Environment=PYTHONPATH=/var/www/naramakna.id
+ExecStart=/var/www/naramakna.id/tiktok-booster-venv/bin/python /var/www/naramakna.id/tiktok-booster.py
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/naramakna.id
+
+[Install]
+WantedBy=multi-user.target

@@ -286,4 +286,47 @@ router.delete('/image', authenticate, async (req, res) => {
   }
 });
 
+/**
+ * @route   GET /api/profile/user/:user_nicename
+ * @desc    Get public user profile by user_nicename
+ * @access  Public
+ */
+router.get('/user/:user_nicename', async (req, res) => {
+  try {
+    const { user_nicename } = req.params;
+
+    // Find user by user_nicename
+    const user = await User.findOne({
+      where: { user_nicename: user_nicename },
+      include: [{
+        model: UserProfile,
+        as: 'profile',
+        required: false
+      }],
+      attributes: { exclude: ['user_pass', 'user_activation_key', 'user_email'] } // Hide sensitive fields
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        user: user
+      }
+    });
+  } catch (error) {
+    console.error('Get user profile error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get user profile',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

@@ -10,6 +10,9 @@ const AnalyticsController = require('../controllers/analyticsController');
 // Analytics tracking
 router.post('/track', AnalyticsController.track);
 
+// Analytics testing
+router.get('/test', AnalyticsController.test);
+
 // Analytics reporting
 router.get('/dashboard', AnalyticsController.getDashboard);
 router.get('/realtime', AnalyticsController.getRealtime);

@@ -7,10 +7,13 @@ interface AdsContextType {
   ads: { [placement: string]: Advertisement[] };
   loading: boolean;
   error: string | null;
+  placeholderVisible: boolean;
+  placeholderSettings: { [placement: string]: boolean };
   getAdsForPlacement: (placement: string) => Advertisement[];
   refreshAds: (placement?: string, forceRefresh?: boolean) => Promise<void>;
   forceRefreshAds: (placement?: string) => Promise<void>;
   trackClick: (adId: string) => Promise<void>;
+  isPlaceholderVisible: (placement: string) => boolean;
 }
 
 const AdsContext = createContext<AdsContextType | undefined>(undefined);
@@ -23,6 +26,10 @@ export const AdsProvider: React.FC<AdsProviderProps> = ({ children }) => {
   const [ads, setAds] = useState<{ [placement: string]: Advertisement[] }>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Placeholder visibility state
+  const [placeholderVisible, setPlaceholderVisible] = useState(true);
+  const [placeholderSettings, setPlaceholderSettings] = useState<{ [placement: string]: boolean }>({});
 
   // Cache duration in milliseconds (10 seconds for testing)
   const CACHE_DURATION = 10 * 1000;
@@ -30,6 +37,29 @@ export const AdsProvider: React.FC<AdsProviderProps> = ({ children }) => {
 
   const getAdsForPlacement = (placement: string): Advertisement[] => {
     return ads[placement] || [];
+  };
+
+  const isPlaceholderVisible = (placement: string): boolean => {
+    // If global placeholder is off, no placeholders are visible
+    if (!placeholderVisible) return false;
+    
+    // Check individual placement setting
+    return placeholderSettings[placement] !== false;
+  };
+
+  // Load placeholder settings from localStorage
+  const loadPlaceholderSettings = () => {
+    try {
+      const saved = localStorage.getItem('naramakna_placeholder_settings');
+      if (saved) {
+        const settings = JSON.parse(saved);
+        setPlaceholderVisible(settings.global !== undefined ? settings.global : true);
+        setPlaceholderSettings(settings.placements || {});
+        console.log('🎯 AdsContext: Loaded placeholder settings:', settings);
+      }
+    } catch (err) {
+      console.error('🎯 AdsContext: Failed to load placeholder settings:', err);
+    }
   };
 
   const shouldRefresh = (placement: string): boolean => {
@@ -109,6 +139,17 @@ export const AdsProvider: React.FC<AdsProviderProps> = ({ children }) => {
   // Initial load
   useEffect(() => {
     refreshAds();
+    loadPlaceholderSettings();
+    
+    // Listen for placeholder settings changes
+    const handlePlaceholderSettingsChange = (event: CustomEvent) => {
+      const settings = event.detail;
+      setPlaceholderVisible(settings.global !== undefined ? settings.global : true);
+      setPlaceholderSettings(settings.placements || {});
+      console.log('🎯 AdsContext: Placeholder settings updated:', settings);
+    };
+    
+    window.addEventListener('placeholderSettingsChanged', handlePlaceholderSettingsChange as EventListener);
     
     // Add global debug function
     if (typeof window !== 'undefined') {
@@ -122,9 +163,14 @@ export const AdsProvider: React.FC<AdsProviderProps> = ({ children }) => {
       (window as any).getAdsDebug = () => {
         console.log('🎯 Current ads state:', ads);
         console.log('🎯 Last fetch times:', lastFetch);
-        return { ads, lastFetch };
+        console.log('🎯 Placeholder settings:', { placeholderVisible, placeholderSettings });
+        return { ads, lastFetch, placeholderVisible, placeholderSettings };
       };
     }
+    
+    return () => {
+      window.removeEventListener('placeholderSettingsChanged', handlePlaceholderSettingsChange as EventListener);
+    };
   }, []);
 
   // Auto-refresh every 10 minutes
@@ -140,10 +186,13 @@ export const AdsProvider: React.FC<AdsProviderProps> = ({ children }) => {
     ads,
     loading,
     error,
+    placeholderVisible,
+    placeholderSettings,
     getAdsForPlacement,
     refreshAds,
     forceRefreshAds,
-    trackClick
+    trackClick,
+    isPlaceholderVisible
   };
 
   return (

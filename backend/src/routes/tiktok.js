@@ -59,15 +59,57 @@ router.post('/webhook', TikTokController.handleWebhook);
 // Connection status - Public (needed for frontend to check if connected)
 router.get('/connection-status', async (req, res) => {
   try {
-    // For development, always return not connected since we don't have proper user session
-    // In production, this would check actual user tokens
-    res.json({
-      success: true,
-      data: {
-        connected: false,
-        message: 'OAuth flow completed successfully, but no persistent session yet'
-      }
+    const mysql = require('mysql2/promise');
+    
+    const getDbConfig = () => ({
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      charset: 'utf8mb4'
     });
+
+    const connection = await mysql.createConnection(getDbConfig());
+    
+    // Check for valid active token
+    const [tokens] = await connection.query(`
+      SELECT user_id, tiktok_username, tiktok_display_name, tiktok_avatar_url, 
+             can_upload, can_read_profile, expires_at, last_used_at
+      FROM tiktok_tokens 
+      WHERE is_active = 1 AND expires_at > NOW() 
+      ORDER BY created_at DESC 
+      LIMIT 1
+    `);
+    
+    await connection.end();
+    
+    if (tokens.length > 0) {
+      const token = tokens[0];
+      res.json({
+        success: true,
+        data: {
+          connected: true,
+          account: {
+            tiktok_username: token.tiktok_username,
+            tiktok_display_name: token.tiktok_display_name,
+            tiktok_avatar_url: token.tiktok_avatar_url,
+            can_upload: Boolean(token.can_upload),
+            can_read_profile: Boolean(token.can_read_profile),
+            is_valid: new Date(token.expires_at) > new Date(),
+            expires_at: token.expires_at,
+            last_used_at: token.last_used_at
+          }
+        }
+      });
+    } else {
+      res.json({
+        success: true,
+        data: {
+          connected: false,
+          message: 'No valid TikTok token found'
+        }
+      });
+    }
   } catch (error) {
     console.error('Error checking TikTok connection:', error);
     res.status(500).json({
@@ -110,7 +152,7 @@ router.post('/cache-images', async (req, res) => {
       const TikTokController = require('../controllers/tiktokController');
       
       try {
-        const freshVideos = await TikTokController.fetchUserVideos(token.access_token, 20);
+        const freshVideos = await TikTokController.fetchUserVideos(token.access_token, 50);
         console.log(`📥 Fetched ${freshVideos.length} fresh videos from TikTok API`);
         
         // Update existing videos with fresh image URLs
@@ -148,7 +190,7 @@ router.post('/cache-images', async (req, res) => {
       WHERE cover_image_url LIKE 'https://p16-sign%'
       AND cover_image_url NOT LIKE '%benarmak.naramakna.id%'
       ORDER BY tiktok_created_at DESC
-      LIMIT 10
+      LIMIT 20
     `);
     
     console.log(`📥 Found ${videos.length} TikTok videos with external images to cache`);
@@ -187,7 +229,7 @@ router.post('/cache-images', async (req, res) => {
         const ext = '.jpg'; // TikTok covers are usually JPEG
         const filename = `tiktok-${video.tiktok_video_id}-${Date.now()}${ext}`;
         const localPath = path.join(cacheDir, filename);
-        const publicUrl = `${process.env.UPLOADS_URL || 'https://benarmak.naramakna.id/uploads'}/tiktok-cache/${filename}`;
+        const publicUrl = `${process.env.UPLOADS_URL || 'https://api.naramakna.id/uploads'}/tiktok-cache/${filename}`;
         
         // Download image with timeout
         console.log(`📥 Downloading: ${video.title?.substring(0, 50) || video.tiktok_video_id}`);
@@ -359,7 +401,7 @@ router.post('/refresh-images', async (req, res) => {
 // Auto-sync videos - Public for testing (will sync if token available)
 router.post('/auto-sync', async (req, res) => {
   try {
-    const { limit = 20 } = req.body;
+    const { limit = 50 } = req.body;
     
     const mysql = require('mysql2/promise');
     const getDbConfig = () => ({
@@ -482,7 +524,7 @@ router.post('/auto-sync', async (req, res) => {
 // Admin videos list - Public for now (frontend needs this)
 router.get('/admin/videos', async (req, res) => {
   try {
-    const { limit = 50, offset = 0, status, search } = req.query;
+    const { limit = 1000, offset = 0, status, search } = req.query;
     
     const mysql = require('mysql2/promise');
     const getDbConfig = () => ({

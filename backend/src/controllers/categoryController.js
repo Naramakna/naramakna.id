@@ -116,12 +116,25 @@ const categoryController = {
   // Get posts by category/term
   async getPostsByCategory(req, res) {
     try {
-      const { slug } = req.params;
+      let { slug } = req.params;
       const { limit = 20, offset = 0 } = req.query;
 
-      console.log(`🏷️ Getting posts for category: ${slug}`);
+      // Map frontend slugs to database slugs
+      const slugMapping = {
+        'olah-bola': 'sport',
+        'laga-gaya': 'laga-gaya',
+        'horison': 'horison', 
+        'cerita-rasa': 'cerita-rasa',
+        'narapandang': 'narapandang',
+        'wahana': 'wahana',
+        'akal-budi': 'akal-budi'
+      };
+      
+      // Use mapped slug if exists, otherwise use original slug
+      const databaseSlug = slugMapping[slug] || slug;
+      console.log(`🏷️ Getting posts for category: ${slug} -> ${databaseSlug}`);
 
-      // Query to get posts by term slug with metadata
+      // Query to get posts by term slug with metadata and view count
       const query = `
         SELECT DISTINCT 
           p.ID as id,
@@ -133,6 +146,7 @@ const categoryController = {
           p.post_modified as modified,
           u.display_name as author_name,
           u.ID as author_id,
+          COALESCE(p.view_count, 0) as view_count,
           thumbnail_meta.meta_value as thumbnail_id,
           thumbnail_post.guid as featured_image
         FROM posts p
@@ -150,9 +164,43 @@ const categoryController = {
       `;
 
       const posts = await sequelize.query(query, {
-        replacements: [slug, parseInt(limit), parseInt(offset)],
+        replacements: [databaseSlug, parseInt(limit), parseInt(offset)],
         type: QueryTypes.SELECT
       });
+
+      // Get analytics view counts for all posts (same as individual article API)
+      const { Analytics } = require('../models');
+      const postIds = posts.map(post => post.id);
+      
+      // Get view counts from analytics table for batch processing
+      const analyticsViewCounts = {};
+      if (postIds.length > 0) {
+        try {
+          const analyticsData = await Analytics.findAll({
+            attributes: [
+              'content_id',
+              [sequelize.fn('COUNT', sequelize.col('id')), 'view_count']
+            ],
+            where: {
+              content_id: postIds,
+              event_type: 'view'
+            },
+            group: ['content_id']
+          });
+
+          analyticsData.forEach(item => {
+            analyticsViewCounts[item.content_id] = parseInt(item.dataValues.view_count) || 0;
+          });
+        } catch (error) {
+          console.error('Error fetching analytics view counts:', error);
+        }
+      }
+
+      // Update posts with analytics view counts
+      const postsWithAnalytics = posts.map(post => ({
+        ...post,
+        view_count: analyticsViewCounts[post.id] || 0
+      }));
 
       // Get total count
       const countQuery = `
@@ -167,14 +215,14 @@ const categoryController = {
       `;
 
       const [{ total }] = await sequelize.query(countQuery, {
-        replacements: [slug],
+        replacements: [databaseSlug],
         type: QueryTypes.SELECT
       });
 
       res.json({
         success: true,
         data: {
-          posts,
+          posts: postsWithAnalytics,
           pagination: {
             total: parseInt(total),
             limit: parseInt(limit),

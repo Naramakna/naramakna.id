@@ -108,7 +108,7 @@ class TikTokController {
       // Optional: Basic state format validation
       if (!state || state.length < 10) {
         console.log('❌ State format invalid');
-        return res.redirect(`http://localhost:5173/admin/tiktok?error=invalid_state`);
+        return res.redirect(`${process.env.FRONTEND_URL}/superadmin/dashboard?tiktok_error=invalid_state`);
       }
       
       // Exchange code for access token
@@ -126,7 +126,7 @@ class TikTokController {
       
       if (!userId) {
         console.log('🚨 No user found in callback, redirecting to frontend with error');
-        return res.redirect(`http://localhost:5173/admin/tiktok?error=auth_required`);
+        return res.redirect(`${process.env.FRONTEND_URL}/superadmin/dashboard?tiktok_error=auth_required`);
       }
       
       // Insert or update token
@@ -164,13 +164,13 @@ class TikTokController {
       console.log('✅ TikTok account connected successfully:', userInfo.username);
       
       // Redirect to frontend with success
-      res.redirect(`http://localhost:5173/admin/tiktok?success=connected&username=${encodeURIComponent(userInfo.username || userInfo.display_name || 'TikTok User')}`);
+      res.redirect(`${process.env.FRONTEND_URL}/superadmin/dashboard?tiktok_success=connected&tiktok_username=${encodeURIComponent(userInfo.username || userInfo.display_name || 'TikTok User')}`);
       
     } catch (error) {
       console.error('Error handling TikTok callback:', error);
       
       // Redirect to frontend with error
-      res.redirect(`http://localhost:5173/admin/tiktok?error=connection_failed&message=${encodeURIComponent(error.message)}`);
+      res.redirect(`${process.env.FRONTEND_URL}/superadmin/dashboard?tiktok_error=connection_failed&tiktok_message=${encodeURIComponent(error.message)}`);
     }
   }
 
@@ -359,7 +359,7 @@ class TikTokController {
   static async syncVideos(req, res) {
     try {
       const userId = req.user?.id;
-      const { limit = 20 } = req.body;
+      const { limit = 100 } = req.body;
       
       if (!userId) {
         return res.status(401).json({
@@ -487,7 +487,7 @@ class TikTokController {
    */
   static async getVideos(req, res) {
     try {
-      const { limit = 20, offset = 0, category, search } = req.query;
+      const { limit = 1000, offset = 0, category, search } = req.query;
       
       const connection = await mysql.createConnection(getDbConfig());
       
@@ -750,29 +750,52 @@ class TikTokController {
   /**
    * Fetch user videos from TikTok
    */
-  static async fetchUserVideos(accessToken, limit = 20) {
+  static async fetchUserVideos(accessToken, limit = 100) {
     console.log('🔍 Fetching videos from TikTok with limit:', limit);
     
-    const response = await axios.post('https://open.tiktokapis.com/v2/video/list/?fields=id,create_time,cover_image_url,share_url,video_description,duration,title,like_count,comment_count,share_count,view_count', {
-      max_count: limit
-    }, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
+    let allVideos = [];
+    let cursor = null;
+    let hasMore = true;
+    
+    while (hasMore && allVideos.length < limit) {
+      const requestBody = {
+        max_count: Math.min(20, limit - allVideos.length) // TikTok max is 20 per request
+      };
+      
+      if (cursor) {
+        requestBody.cursor = cursor;
       }
-    });
-    
-    console.log('🔍 TikTok API response status:', response.status);
-    console.log('🔍 TikTok API response error:', response.data.error);
-    
-    if (response.data.error && response.data.error.code !== 'ok') {
-      throw new Error(`TikTok API error: ${response.data.error.message}`);
+      
+      const response = await axios.post('https://open.tiktokapis.com/v2/video/list/?fields=id,create_time,cover_image_url,share_url,video_description,duration,title,like_count,comment_count,share_count,view_count', requestBody, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('🔍 TikTok API response status:', response.status);
+      
+      if (response.data.error && response.data.error.code !== 'ok') {
+        throw new Error(`TikTok API error: ${response.data.error.message}`);
+      }
+      
+      const data = response.data.data || {};
+      const videos = data.videos || [];
+      
+      allVideos = allVideos.concat(videos);
+      cursor = data.cursor;
+      hasMore = data.has_more === true;
+      
+      console.log(`📥 Retrieved ${videos.length} videos, total: ${allVideos.length}, has_more: ${hasMore}`);
+      
+      // Prevent infinite loop
+      if (!cursor || videos.length === 0) {
+        hasMore = false;
+      }
     }
     
-    const videos = response.data.data?.videos || [];
-    console.log(`📥 Retrieved ${videos.length} videos from TikTok API`);
-    
-    return videos;
+    console.log(`📥 Total retrieved ${allVideos.length} videos from TikTok API`);
+    return allVideos;
   }
 
   /**

@@ -54,7 +54,7 @@ export const TikTokSection: React.FC<TikTokSectionProps> = ({
   if (loading && videos.length === 0) {
     return (
       <div className={`bg-gray-50 py-8 ${className}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
           {showTitle && (
             <div className="flex items-center mb-6">
               <div className="flex items-center space-x-2">
@@ -76,7 +76,7 @@ export const TikTokSection: React.FC<TikTokSectionProps> = ({
   if (error) {
     return (
       <div className={`bg-gray-50 py-8 ${className}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
           {showTitle && (
             <div className="flex items-center mb-6">
               <div className="flex items-center space-x-2">
@@ -103,7 +103,7 @@ export const TikTokSection: React.FC<TikTokSectionProps> = ({
   if (filteredVideos.length === 0) {
     return (
       <div className={`bg-gray-50 py-8 ${className}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
           {showTitle && (
             <div className="flex items-center mb-6">
               <div className="flex items-center space-x-2">
@@ -123,7 +123,7 @@ export const TikTokSection: React.FC<TikTokSectionProps> = ({
 
   return (
     <div className={`bg-gray-50 py-8 ${className}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
         {/* Header */}
         {showTitle && (
           <div className="flex items-center justify-between mb-6">

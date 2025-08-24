@@ -7,6 +7,7 @@ const { Post, PostMeta, User, Analytics, PostViews, Comment, sequelize } = requi
 // const { Term, TermTaxonomy, TermRelationship } = require('../models'); // TODO: Re-enable when taxonomy system is complete
 const ContentHelpers = require('../models/ContentHelpers');
 const { Op } = require('sequelize');
+const { optimizePostImages } = require('../utils/imageUtils');
 
 class ContentController {
   
@@ -30,7 +31,10 @@ class ContentController {
       } = req.query;
 
       const offset = (page - 1) * limit;
-      const whereClause = { post_status: status };
+      const whereClause = { 
+        post_status: status,
+        deleted_at: null // Exclude soft deleted posts
+      };
 
       // Filter by author ID
       if (author) {
@@ -104,7 +108,7 @@ class ContentController {
         {
           model: User,
           as: 'author',
-          attributes: ['ID', 'display_name', 'user_email']
+          attributes: ['ID', 'display_name', 'user_email', 'user_nicename']
         }
         // TODO: Re-enable categories when taxonomy system is complete
         // {
@@ -215,9 +219,37 @@ class ContentController {
         distinct: true
       });
 
+      // Get analytics view counts for all posts in batch
+      const postIds = result.rows.map(post => post.ID);
+      const { Analytics } = require('../models');
+      const viewCounts = {};
+      
+      if (postIds.length > 0) {
+        try {
+          const analyticsData = await Analytics.findAll({
+            attributes: [
+              'content_id',
+              [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+            ],
+            where: {
+              content_id: { [Op.in]: postIds },
+              event_type: 'view'
+            },
+            group: ['content_id']
+          });
+          
+          analyticsData.forEach(item => {
+            viewCounts[item.content_id] = parseInt(item.dataValues.count) || 0;
+          });
+        } catch (error) {
+          console.warn('Failed to get batch view counts:', error.message);
+        }
+      }
+
       // Format response with metadata
+      const userAgent = req.headers['user-agent'] || '';
       const formattedPosts = await Promise.all(
-        result.rows.map(post => ContentController.formatPostWithMeta(post))
+        result.rows.map(post => ContentController.formatPostWithMeta(post, viewCounts[post.ID] || 0, userAgent))
       );
 
       res.json({
@@ -345,7 +377,7 @@ class ContentController {
           {
             model: User,
             as: 'author',
-            attributes: ['ID', 'display_name', 'user_email', 'user_login']
+            attributes: ['ID', 'display_name', 'user_email', 'user_login', 'user_nicename']
           },
           {
             model: TermTaxonomy,
@@ -368,7 +400,8 @@ class ContentController {
       // Track view
       await ContentController.trackAnalytics(req, post.ID, post.post_type, 'view');
 
-      const formattedPost = await ContentController.formatPostWithMeta(post);
+      const userAgent = req.headers['user-agent'] || '';
+      const formattedPost = await ContentController.formatPostWithMeta(post, null, userAgent);
 
       res.json({
         success: true,
@@ -837,7 +870,7 @@ class ContentController {
           {
             model: User,
             as: 'author',
-            attributes: ['ID', 'display_name', 'user_email']
+            attributes: ['ID', 'display_name', 'user_email', 'user_nicename']
           }
           // TODO: Re-enable categories when taxonomy system is complete
           // {
@@ -884,6 +917,41 @@ class ContentController {
           viewCount: trendingItem.view_count
         } : null;
       }).filter(Boolean); // Remove any null entries
+
+      // If we have smart trending results, use them. Otherwise fallback to view-based
+      if (trendingPosts.length === 0) {
+        console.log('📊 No view-based trending found, trying smart trending algorithm...');
+        try {
+          const trendingController = require('./trendingController');
+          const smartTrending = await trendingController.getCachedTrendingTopics();
+          
+          if (smartTrending && smartTrending.length > 0) {
+            const limitedSmart = smartTrending.slice(0, parseInt(limit));
+            return res.json({
+              success: true,
+              data: {
+                posts: limitedSmart.map(article => ({
+                  id: article.ID,
+                  title: article.post_title,
+                  slug: article.post_name,
+                  excerpt: article.post_excerpt,
+                  date: article.post_date,
+                  author: {
+                    display_name: article.author_name
+                  },
+                  view_count: article.view_count || 0,
+                  trending_keyword: article.trending_keyword,
+                  relevance_score: article.relevance_score
+                })),
+                totalItems: limitedSmart.length,
+                criteria: 'smart_trending'
+              }
+            });
+          }
+        } catch (smartError) {
+          console.warn('Smart trending fallback failed:', smartError.message);
+        }
+      }
 
       res.json({
         success: true,
@@ -946,14 +1014,14 @@ class ContentController {
       const categoriesQuery = `
         SELECT 
           t.name,
-          t.slug,
+          ANY_VALUE(t.slug) as slug,
           MAX(tt.count) as count,
           MAX(tt.term_taxonomy_id) as id,
           GROUP_CONCAT(DISTINCT tt.taxonomy) as taxonomy
         FROM terms t
         JOIN term_taxonomy tt ON t.term_id = tt.term_id
         WHERE ${whereClause}
-        GROUP BY t.name, t.slug
+        GROUP BY t.name
         ORDER BY MAX(tt.count) DESC, t.name ASC
         LIMIT ${safeLimit} OFFSET ${offset}
       `;
@@ -1013,7 +1081,7 @@ class ContentController {
   /**
    * Helper: Format post with metadata
    */
-  static async formatPostWithMeta(post) {
+  static async formatPostWithMeta(post, viewCount = null, userAgent = '') {
     const postData = post.toJSON();
     
     // Convert meta array to object
@@ -1022,6 +1090,22 @@ class ContentController {
       postData.meta.forEach(meta => {
         metadata[meta.meta_key] = meta.meta_value;
       });
+    }
+
+    // Get analytics view count if not provided
+    if (viewCount === null) {
+      const { Analytics } = require('../models');
+      try {
+        viewCount = await Analytics.count({
+          where: {
+            content_id: postData.ID,
+            event_type: 'view'
+          }
+        });
+      } catch (error) {
+        console.warn(`Failed to get view count for post ${postData.ID}:`, error.message);
+        viewCount = 0;
+      }
     }
 
     // Resolve thumbnail URL from thumbnail ID
@@ -1073,7 +1157,8 @@ class ContentController {
       author: postData.author,
       categories: categories,
       metadata,
-      view_count: postData.views?.view_count || 0,
+      view_count: viewCount,
+      views: viewCount, // Alternative field name
       // Content type specific formatting
       ...(postData.post_type === 'youtube_video' && {
         youtube: {
@@ -1097,6 +1182,9 @@ class ContentController {
         }
       })
     };
+    
+    // Optimize images for WebP serving based on User-Agent
+    return optimizePostImages(postObject, userAgent);
   }
 
   /**
@@ -1114,7 +1202,7 @@ class ContentController {
   /**
    * Get posts with view counts and filtering support
    * GET /api/content/posts-with-views
-   * Query params: page, limit, author, status, year, month, minViews, maxViews, sortBy, sortOrder
+   * Query params: page, limit, search, author, status, year, month, minViews, maxViews, sortBy, sortOrder
    */
   static async getPostsWithViews(req, res) {
     try {
@@ -1128,15 +1216,22 @@ class ContentController {
         minViews, 
         maxViews, 
         sortBy = 'date', 
-        sortOrder = 'DESC' 
+        sortOrder = 'DESC',
+        search 
       } = req.query;
       
       const offset = (page - 1) * limit;
 
       // Build WHERE conditions
-      let whereConditions = ["p.post_type = 'post'"];
+      let whereConditions = ["p.post_type = 'post'", "p.deleted_at IS NULL"]; // Exclude soft deleted posts
       let havingConditions = [];
       let replacements = { limit: parseInt(limit), offset };
+
+      // Search filter (title and content)
+      if (search) {
+        whereConditions.push("(p.post_title LIKE :search OR p.post_content LIKE :search)");
+        replacements.search = `%${search}%`;
+      }
 
       // Author filter
       if (author) {
@@ -1356,9 +1451,23 @@ class ContentController {
         });
       }
 
+      // Get analytics view count from analytics table
+      const { Analytics } = require('../models');
+      const viewCount = await Analytics.count({
+        where: {
+          content_id: id,
+          event_type: 'view'
+        }
+      });
+
+      // Add view_count to the response
+      const postData = post.toJSON();
+      postData.view_count = viewCount;
+      postData.views = viewCount; // Alternative field name
+
       res.status(200).json({
         success: true,
-        data: post
+        data: postData
       });
     } catch (error) {
       console.error('Error fetching post by ID:', error);
@@ -1429,11 +1538,22 @@ class ContentController {
         }
       }
 
+      // Get analytics view count from analytics table
+      const { Analytics } = require('../models');
+      const viewCount = await Analytics.count({
+        where: {
+          content_id: post.ID,
+          event_type: 'view'
+        }
+      });
+
       // Prepare response with enhanced data
       const responseData = {
         ...post.toJSON(),
         metadata,
-        featured_image: featuredImage
+        featured_image: featuredImage,
+        view_count: viewCount,
+        views: viewCount // Alternative field name
       };
 
       res.status(200).json({
@@ -1520,7 +1640,7 @@ class ContentController {
           {
             model: User,
             as: 'author',
-            attributes: ['ID', 'display_name', 'user_email', 'user_login']
+            attributes: ['ID', 'display_name', 'user_email', 'user_login', 'user_nicename']
           }
         ],
         limit: parseInt(limit),
@@ -1543,7 +1663,8 @@ class ContentController {
           ID: post.author.ID,
           display_name: post.author.display_name,
           user_email: post.author.user_email,
-          user_login: post.author.user_login
+          user_login: post.author.user_login,
+          user_nicename: post.author.user_nicename
         }
       }));
 
@@ -1570,10 +1691,131 @@ class ContentController {
   }
 
   /**
-   * Admin: Delete any article
+   * Admin: Soft delete any article
    * DELETE /api/content/admin/articles/:id
    */
   static async adminDeleteArticle(req, res) {
+    const transaction = await sequelize.transaction();
+    
+    try {
+      const { id } = req.params;
+      const { force } = req.query; // ?force=true for permanent delete
+
+      // Check if user is admin or superadmin
+      if (!req.user || (req.user.user_role !== 'admin' && req.user.user_role !== 'superadmin')) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. Admin privileges required.'
+        });
+      }
+
+      // Find the article (include soft deleted if force delete)
+      const whereCondition = {
+        ID: id,
+        post_type: 'post'
+      };
+      
+      if (!force) {
+        // Only find non-deleted articles for soft delete
+        whereCondition.deleted_at = null;
+      }
+
+      const article = await Post.findOne({
+        where: whereCondition,
+        include: [
+          {
+            model: User,
+            as: 'author',
+            attributes: ['ID', 'display_name', 'user_login']
+          }
+        ]
+      });
+
+      if (!article) {
+        return res.status(404).json({
+          success: false,
+          message: force ? 'Article not found or already permanently deleted' : 'Article not found or already deleted'
+        });
+      }
+
+      if (force === 'true') {
+        // PERMANENT DELETE
+        // Delete related comments first
+        await Comment.destroy({
+          where: { comment_post_ID: id },
+          transaction
+        });
+
+        // Delete related metadata
+        await PostMeta.destroy({
+          where: { post_id: id },
+          transaction
+        });
+
+        // Delete analytics data
+        await Analytics.destroy({
+          where: { content_id: id },
+          transaction
+        });
+
+        // Permanently delete the article
+        await article.destroy({ transaction });
+
+        await transaction.commit();
+
+        res.json({
+          success: true,
+          message: `Article "${article.post_title}" by ${article.author.display_name} has been permanently deleted.`,
+          data: {
+            deletedArticle: {
+              id: article.ID,
+              title: article.post_title,
+              author: article.author.display_name,
+              deletionType: 'permanent'
+            }
+          }
+        });
+      } else {
+        // SOFT DELETE
+        await article.update({
+          deleted_at: new Date(),
+          deleted_by: req.user.ID,
+          post_status: 'deleted' // Change status to indicate deletion
+        }, { transaction });
+
+        await transaction.commit();
+
+        res.json({
+          success: true,
+          message: `Article "${article.post_title}" by ${article.author.display_name} has been moved to trash.`,
+          data: {
+            deletedArticle: {
+              id: article.ID,
+              title: article.post_title,
+              author: article.author.display_name,
+              deletionType: 'soft',
+              deleted_at: article.deleted_at,
+              deleted_by: req.user.display_name
+            }
+          }
+        });
+      }
+
+    } catch (error) {
+      await transaction.rollback();
+      console.error('Admin delete article error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete article'
+      });
+    }
+  }
+
+  /**
+   * Admin: Restore soft deleted article
+   * POST /api/content/admin/articles/:id/restore
+   */
+  static async restoreArticle(req, res) {
     const transaction = await sequelize.transaction();
     
     try {
@@ -1587,11 +1829,12 @@ class ContentController {
         });
       }
 
-      // Find the article
+      // Find soft deleted article
       const article = await Post.findOne({
         where: {
           ID: id,
-          post_type: 'post'
+          post_type: 'post',
+          deleted_at: { [require('sequelize').Op.ne]: null }
         },
         include: [
           {
@@ -1605,38 +1848,24 @@ class ContentController {
       if (!article) {
         return res.status(404).json({
           success: false,
-          message: 'Article not found'
+          message: 'Deleted article not found'
         });
       }
 
-      // Delete related comments first
-      await Comment.destroy({
-        where: { comment_post_ID: id },
-        transaction
-      });
-
-      // Delete related metadata
-      await PostMeta.destroy({
-        where: { post_id: id },
-        transaction
-      });
-
-      // Delete analytics data
-      await Analytics.destroy({
-        where: { content_id: id },
-        transaction
-      });
-
-      // Delete the article
-      await article.destroy({ transaction });
+      // Restore the article
+      await article.update({
+        deleted_at: null,
+        deleted_by: null,
+        post_status: 'publish' // Restore to published status
+      }, { transaction });
 
       await transaction.commit();
 
       res.json({
         success: true,
-        message: `Article "${article.post_title}" by ${article.author.display_name} has been deleted.`,
+        message: `Article "${article.post_title}" has been restored successfully.`,
         data: {
-          deletedArticle: {
+          restoredArticle: {
             id: article.ID,
             title: article.post_title,
             author: article.author.display_name
@@ -1646,10 +1875,73 @@ class ContentController {
 
     } catch (error) {
       await transaction.rollback();
-      console.error('Admin delete article error:', error);
+      console.error('Restore article error:', error);
       res.status(500).json({
         success: false,
-        message: 'Failed to delete article'
+        message: 'Failed to restore article'
+      });
+    }
+  }
+
+  /**
+   * Admin: Get deleted articles (trash)
+   * GET /api/content/admin/articles/trash
+   */
+  static async getDeletedArticles(req, res) {
+    try {
+      // Check if user is admin or superadmin
+      if (!req.user || (req.user.user_role !== 'admin' && req.user.user_role !== 'superadmin')) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. Admin privileges required.'
+        });
+      }
+
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const offset = (page - 1) * limit;
+
+      const { count, rows: deletedArticles } = await Post.findAndCountAll({
+        where: {
+          post_type: 'post',
+          deleted_at: { [require('sequelize').Op.ne]: null }
+        },
+        include: [
+          {
+            model: User,
+            as: 'author',
+            attributes: ['ID', 'display_name', 'user_login']
+          },
+          {
+            model: User,
+            as: 'deleter',
+            attributes: ['ID', 'display_name', 'user_login'],
+            foreignKey: 'deleted_by'
+          }
+        ],
+        order: [['deleted_at', 'DESC']],
+        limit,
+        offset
+      });
+
+      res.json({
+        success: true,
+        data: {
+          articles: deletedArticles,
+          pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(count / limit),
+            totalItems: count,
+            itemsPerPage: limit
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Get deleted articles error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch deleted articles'
       });
     }
   }

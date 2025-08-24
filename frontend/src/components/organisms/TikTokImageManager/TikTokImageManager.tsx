@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { buildApiUrl } from '../../../config/api';
+import { useTikTokConnection } from '../../../hooks/useTikTok';
 
 interface TikTokVideo {
   id: number;
@@ -16,6 +17,15 @@ interface CacheResult {
 }
 
 const TikTokImageManager: React.FC = () => {
+  const { 
+    status: connectionStatus, 
+    loading: connectionLoading, 
+    error: connectionError,
+    connect,
+    disconnect,
+    refresh: refreshConnection
+  } = useTikTokConnection();
+
   const [videos, setVideos] = useState<TikTokVideo[]>([]);
   const [loading, setLoading] = useState(false);
   const [caching, setCaching] = useState(false);
@@ -25,6 +35,30 @@ const TikTokImageManager: React.FC = () => {
     expired: 0,
     cached: 0
   });
+
+  // Handle URL parameters for TikTok OAuth success/error
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('tiktok_success');
+    const username = urlParams.get('tiktok_username');
+    const error = urlParams.get('tiktok_error');
+    const message = urlParams.get('tiktok_message');
+    
+    if (success === 'connected' && username) {
+      setSuccessMessage(`🎉 TikTok account @${username} connected successfully!`);
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+      // Refresh connection status
+      refreshConnection();
+      // Auto-hide message after 5 seconds
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } else if (error) {
+      setSuccessMessage(`❌ TikTok connection failed: ${message || error}`);
+      setTimeout(() => setSuccessMessage(null), 5000);
+    }
+  }, [refreshConnection]);
 
   useEffect(() => {
     loadVideos();
@@ -51,7 +85,7 @@ const TikTokImageManager: React.FC = () => {
           v.cover_image_url && v.cover_image_url.includes('x-expires=')
         ).length;
         const cached = videoList.filter((v: TikTokVideo) => 
-          v.cover_image_url && v.cover_image_url.includes('benarmak.naramakna.id')
+          v.cover_image_url && v.cover_image_url.includes('api.naramakna.id')
         ).length;
         
         setStats({ total, expired, cached });
@@ -138,7 +172,7 @@ const TikTokImageManager: React.FC = () => {
   };
 
   const isCached = (imageUrl: string) => {
-    return imageUrl && imageUrl.includes('benarmak.naramakna.id');
+    return imageUrl && imageUrl.includes('api.naramakna.id');
   };
 
   return (
@@ -171,6 +205,70 @@ const TikTokImageManager: React.FC = () => {
             {caching ? '💾 Caching...' : '💾 Cache Images'}
           </button>
         </div>
+      </div>
+
+      {/* TikTok Connection Status */}
+      <div className="mb-6 bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold mb-4">TikTok Account Connection</h3>
+        
+        {successMessage && (
+          <div className={`px-4 py-3 rounded mb-4 ${
+            successMessage.includes('successfully') 
+              ? 'bg-green-100 border border-green-400 text-green-700'
+              : 'bg-red-100 border border-red-400 text-red-700'
+          }`}>
+            {successMessage}
+          </div>
+        )}
+        
+        {connectionError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {connectionError}
+          </div>
+        )}
+        
+        {connectionStatus.connected ? (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              {connectionStatus.account?.tiktok_avatar_url && (
+                <img 
+                  src={connectionStatus.account.tiktok_avatar_url} 
+                  alt="TikTok Avatar"
+                  className="w-12 h-12 rounded-full"
+                />
+              )}
+              <div>
+                <p className="font-medium text-green-600">✅ Connected</p>
+                <p className="text-sm text-gray-600">
+                  @{connectionStatus.account?.tiktok_username} ({connectionStatus.account?.tiktok_display_name})
+                </p>
+                <div className="flex space-x-4 text-xs text-gray-500">
+                  <span>Upload: {connectionStatus.account?.can_upload ? '✅' : '❌'}</span>
+                  <span>Read Profile: {connectionStatus.account?.can_read_profile ? '✅' : '❌'}</span>
+                  <span>Valid: {connectionStatus.account?.is_valid ? '✅' : '❌'}</span>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={disconnect}
+              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+            >
+              Disconnect
+            </button>
+          </div>
+        ) : (
+          <div className="text-center py-4">
+            <p className="text-gray-600 mb-4">No TikTok account connected</p>
+            <p className="text-sm text-orange-600 mb-4">⚠️ TikTok connection required for syncing new videos</p>
+            <button
+              onClick={connect}
+              disabled={connectionLoading}
+              className="bg-black text-white px-6 py-2 rounded hover:bg-gray-800 disabled:opacity-50"
+            >
+              {connectionLoading ? 'Loading...' : 'Connect TikTok Account'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Stats */}

@@ -95,10 +95,10 @@ export const ProfileBadge: React.FC<ProfileBadgeProps> = ({ className = '' }) =>
       {/* Profile Badge Button */}
       <button
         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-        className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+        className="flex items-center space-x-1 p-1 rounded hover:bg-gray-100 transition-colors"
       >
         {/* Avatar */}
-        <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+        <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
           {user.profile_image ? (
             <img 
               src={getImageUrl(user.profile_image) || ''} 
@@ -116,7 +116,7 @@ export const ProfileBadge: React.FC<ProfileBadgeProps> = ({ className = '' }) =>
         
         {/* Name & Role */}
         <div className="hidden md:block text-left">
-          <div className="text-sm font-medium text-gray-900">
+          <div className="text-xs font-medium text-gray-900">
             {user.display_name}
           </div>
           <div className="text-xs text-gray-500">
@@ -202,7 +202,7 @@ export const ProfileBadge: React.FC<ProfileBadgeProps> = ({ className = '' }) =>
           {/* Menu Items */}
           <div className="py-2">
             <a
-              href={`/${user.user_login}`}
+              href={`/${user.user_nicename || user.user_login.replace(/\s+/g, '-').replace(/\./g, '-').toLowerCase()}`}
               onClick={() => setIsDropdownOpen(false)}
               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >

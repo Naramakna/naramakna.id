@@ -3,28 +3,40 @@ import { buildApiUrl } from '../../config/api';
 
 export const AdminSettings: React.FC = () => {
   const [showAnalyticsButton, setShowAnalyticsButton] = useState(true);
+  const [showViewsCount, setShowViewsCount] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  // Fetch current setting
+  // Fetch current settings
   useEffect(() => {
-    const fetchAnalyticsButtonSetting = async () => {
+    const fetchSettings = async () => {
       try {
-        const response = await fetch(buildApiUrl('admin/settings/analytics-button'), {
-          credentials: 'include'
-        });
-        const result = await response.json();
+        const [analyticsResponse, viewsResponse] = await Promise.all([
+          fetch(buildApiUrl('admin/settings/analytics-button'), {
+            credentials: 'include'
+          }),
+          fetch(buildApiUrl('settings/views-count'), {
+            credentials: 'include'
+          })
+        ]);
         
-        if (result.success) {
-          setShowAnalyticsButton(result.data.show_analytics_button);
+        const analyticsResult = await analyticsResponse.json();
+        const viewsResult = await viewsResponse.json();
+        
+        if (analyticsResult.success) {
+          setShowAnalyticsButton(analyticsResult.data.show_analytics_button);
+        }
+        
+        if (viewsResult.success) {
+          setShowViewsCount(viewsResult.data.views_count_enabled);
         }
       } catch (error) {
-        console.error('Error fetching analytics button setting:', error);
+        console.error('Error fetching settings:', error);
         setMessage('Error loading settings');
       }
     };
 
-    fetchAnalyticsButtonSetting();
+    fetchSettings();
   }, []);
 
   // Toggle analytics button setting
@@ -54,6 +66,39 @@ export const AdminSettings: React.FC = () => {
       }
     } catch (error) {
       console.error('Error toggling analytics button:', error);
+      setMessage('Error updating setting');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Toggle views count setting
+  const handleToggleViewsCount = async () => {
+    setIsLoading(true);
+    setMessage('');
+
+    try {
+      const response = await fetch(buildApiUrl('settings/toggle-views-count'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          enabled: !showViewsCount
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setShowViewsCount(result.data.views_count_enabled);
+        setMessage(`Views count ${result.data.views_count_enabled ? 'enabled' : 'disabled'} successfully`);
+      } else {
+        setMessage(`Error: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error toggling views count:', error);
       setMessage('Error updating setting');
     } finally {
       setIsLoading(false);
@@ -138,6 +183,56 @@ export const AdminSettings: React.FC = () => {
             Updating setting...
           </div>
         )}
+      </div>
+
+      {/* Views Count Setting */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Views Count Display</h3>
+            <p className="text-gray-600 mb-4">
+              Control whether view counts are displayed on articles across all pages.
+            </p>
+            
+            <div className="bg-gray-50 p-4 rounded-lg mb-4">
+              <h4 className="font-medium text-gray-900 mb-2">Current Behavior:</h4>
+              {showViewsCount ? (
+                <div className="flex items-center text-green-700">
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <span>Views count is visible to all users</span>
+                </div>
+              ) : (
+                <div className="flex items-center text-red-700">
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L9 9m.878.878l-.428.428M9 9l.878.878m7.242 7.242L15 15m2.12-2.12l-2.12 2.12M21 3L3 21" />
+                  </svg>
+                  <span>Views count is hidden from all users</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="ml-6 flex flex-col items-center space-y-4">
+            {/* Toggle Switch */}
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showViewsCount}
+                onChange={handleToggleViewsCount}
+                disabled={isLoading}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+            
+            <span className={`text-sm font-medium ${showViewsCount ? 'text-green-600' : 'text-gray-500'}`}>
+              {showViewsCount ? 'Enabled' : 'Disabled'}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Additional Settings can be added here */}

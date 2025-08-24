@@ -200,7 +200,7 @@ class ImageManagerController {
    */
   static async convertRelativeToFullUrls(req, res) {
     try {
-      const { baseUrl = 'https://benarmak.naramakna.id/uploads', dryRun = false } = req.body;
+      const { baseUrl = 'https://api.naramakna.id/uploads', dryRun = false } = req.body;
       const userId = req.user.ID;
       
       const connection = await mysql.createConnection(getDbConfig());

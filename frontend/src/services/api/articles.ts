@@ -152,6 +152,53 @@ export const articlesAPI = {
     if (params?.category) queryParams.append('category', params.category);
     if (params?.type) queryParams.append('type', params.type);
     
+    // Try smart trending first, fallback to old trending
+    try {
+      const smartUrl = buildApiUrl(`trending/articles?${queryParams}`);
+      console.log('🚀 articlesAPI.getTrending: Trying smart trending API first');
+      console.log('🌐 Smart trending URL:', smartUrl);
+      const smartResponse = await fetch(smartUrl);
+      console.log('📡 Smart trending response status:', smartResponse.status);
+      const smartResult = await smartResponse.json();
+      
+      console.log('🚀 Smart trending response:', { 
+        success: smartResult.success, 
+        postsCount: smartResult.data?.posts?.length || 0,
+        criteria: smartResult.data?.criteria 
+      });
+      
+      if (smartResult.success && smartResult.data.posts && smartResult.data.posts.length > 0) {
+        console.log('✅ Using smart trending data, first article:', smartResult.data.posts[0]);
+        // Convert smart trending format to expected format
+        return {
+          success: true,
+          data: {
+            posts: smartResult.data.posts.map((post: any) => ({
+              id: post.ID || post.id,
+              title: post.post_title || post.title,
+              slug: post.post_name || post.slug,
+              excerpt: post.post_excerpt || post.excerpt,
+              date: post.post_date || post.date,
+              author: {
+                display_name: post.author_name || post.author?.display_name
+              },
+              view_count: post.view_count || 0,
+              trending_keyword: post.trending_keyword,
+              relevance_score: post.relevance_score,
+              thumbnail_url: post.thumbnail_url // Add thumbnail_url to mapping
+            })),
+            totalItems: smartResult.data.totalItems,
+            criteria: smartResult.data.criteria
+          }
+        };
+      } else {
+        console.log('❌ Smart trending failed or no data, falling back to old trending');
+      }
+    } catch (smartError) {
+      console.warn('Smart trending fallback failed, using original trending:', smartError);
+    }
+    
+    // Fallback to original trending endpoint
     const response = await fetch(buildApiUrl(`content/trending?${queryParams}`));
     return response.json();
   }

@@ -176,7 +176,7 @@ export const useTikTokVideos = (isAdmin: boolean = false) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
-    limit: 20,
+    limit: 1000, // Set to high number to load all videos
     offset: 0,
     total: 0
   });

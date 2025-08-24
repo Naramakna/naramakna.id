@@ -35,23 +35,38 @@ export const AdBanner: React.FC<AdBannerProps> = ({
   const adTargetUrl = advertisement?.target_url || href;
   const adMediaType = advertisement?.media_type || 'image';
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('🔗 Ad clicked:', {
+      campaign: advertisement?.campaign_name,
+      targetUrl: adTargetUrl,
+      hasRealAd,
+      adId: advertisement?.id
+    });
+    
     if (hasRealAd && advertisement && onAdClick) {
       onAdClick(advertisement.id);
     }
     
-    if (adTargetUrl) {
-      window.open(adTargetUrl, '_blank');
+    if (adTargetUrl && adTargetUrl.trim()) {
+      console.log('🚀 Opening URL:', adTargetUrl);
+      window.open(adTargetUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      console.warn('⚠️ No target URL found for ad:', advertisement?.campaign_name);
+      // Show alert to inform user
+      alert(`Iklan "${advertisement?.campaign_name || 'Unknown'}" belum memiliki target URL. Silakan set target URL di admin panel.`);
     }
   };
 
   const getSizeClasses = () => {
     const baseClasses = showTransition 
-      ? 'transition-all duration-700 ease-in-out transform hover:scale-105 hover:shadow-lg' 
+      ? 'transition-all duration-700 ease-in-out hover:shadow-lg' 
       : '';
     const visibilityClasses = isVisible 
-      ? 'opacity-100 scale-100' 
-      : 'opacity-0 scale-95';
+      ? 'opacity-100' 
+      : 'opacity-0';
     
     switch (size) {
       case 'header':
@@ -71,8 +86,8 @@ export const AdBanner: React.FC<AdBannerProps> = ({
     switch (size) {
       case 'header':
         return {
-          mobile: '90% x 120px',
-          tablet: '95% x 180px',
+          mobile: '100% x 120px',
+          tablet: '100% x 180px',
           desktop: '970 x 250px'
         };
       case 'sidebar':
@@ -84,8 +99,8 @@ export const AdBanner: React.FC<AdBannerProps> = ({
       case 'regular':
       default:
         return {
-          mobile: '90% x 60px',
-          tablet: '95% x 80px',
+          mobile: '100% x 60px',
+          tablet: '100% x 80px',
           desktop: '728 x 90px'
         };
     }
@@ -127,8 +142,9 @@ export const AdBanner: React.FC<AdBannerProps> = ({
           <img 
             src={adMediaUrl} 
             alt={altText}
-            className="w-full h-full object-cover rounded-lg"
+            className="w-full h-full object-contain rounded-lg bg-gray-50"
             loading="lazy"
+            style={{ aspectRatio: size === 'header' ? '970/250' : size === 'sidebar' ? '300/250' : '728/90' }}
           />
         );
       
@@ -136,7 +152,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({
         return (
           <video 
             src={adMediaUrl}
-            className="w-full h-full object-cover rounded-lg"
+            className="w-full h-full object-contain rounded-lg bg-gray-50"
             autoPlay 
             muted 
             loop
@@ -153,12 +169,44 @@ export const AdBanner: React.FC<AdBannerProps> = ({
         );
       
       case 'google_ads':
-        return (
-          <div 
-            className="w-full h-full flex items-center justify-center rounded-lg overflow-hidden"
-            dangerouslySetInnerHTML={{ __html: advertisement?.google_ads_code || advertisement?.ad_content || '' }}
-          />
-        );
+        // Check if we have google_ads_code or ad_content or media_url as fallback
+        const googleAdsContent = advertisement?.google_ads_code || advertisement?.ad_content;
+        
+        if (googleAdsContent && googleAdsContent.trim()) {
+          return (
+            <div 
+              className="w-full h-full flex items-center justify-center rounded-lg overflow-hidden"
+              dangerouslySetInnerHTML={{ __html: googleAdsContent }}
+            />
+          );
+        } else if (adMediaUrl) {
+          // Fallback to image if google ads code is empty but media_url exists
+          return (
+            <img 
+              src={adMediaUrl} 
+              alt={altText}
+              className="w-full h-full object-contain rounded-lg bg-gray-50"
+              loading="lazy"
+              style={{ aspectRatio: size === 'header' ? '970/250' : size === 'sidebar' ? '300/250' : '728/90' }}
+            />
+          );
+        } else {
+          // Show placeholder with debug info
+          return (
+            <div className="w-full h-full bg-yellow-100 flex items-center justify-center text-yellow-800 rounded-lg border-2 border-yellow-300">
+              <div className="text-center p-4">
+                <div className="text-sm font-medium">Google Ads - No Content</div>
+                <div className="text-xs mt-1">Missing google_ads_code or ad_content</div>
+                {advertisement && (
+                  <div className="text-xs mt-2 opacity-75">
+                    Ad ID: {advertisement.id}<br/>
+                    Campaign: {advertisement.campaign_name}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
       
       default:
         return (
@@ -174,21 +222,20 @@ export const AdBanner: React.FC<AdBannerProps> = ({
 
   return (
     <div className={`${getSizeClasses()} relative rounded-lg overflow-hidden shadow-sm ${className}`}>
-      {adTargetUrl ? (
-        <a 
-          href={adTargetUrl} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          onClick={handleClick}
-          className="block w-full h-full cursor-pointer"
-        >
-          {renderMediaContent()}
-        </a>
-      ) : (
-        <div onClick={handleClick} className="w-full h-full cursor-pointer">
-          {renderMediaContent()}
-        </div>
-      )}
+      {/* Always use div with onClick for consistent behavior */}
+      <div 
+        onClick={handleClick} 
+        className="w-full h-full cursor-pointer hover:opacity-95 transition-opacity"
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            handleClick(e as any);
+          }
+        }}
+      >
+        {renderMediaContent()}
+      </div>
       
       {/* Ad attribution - Responsive positioning */}
       {hasRealAd && (

@@ -625,8 +625,11 @@ class WriterController {
    * POST /api/writer/upload-image
    */
   static async uploadImage(req, res) {
+    const transaction = await sequelize.transaction();
+    
     try {
       if (!req.files || !req.files.image) {
+        await transaction.rollback();
         return res.status(400).json({
           success: false,
           message: 'No image file provided'
@@ -642,18 +645,66 @@ class WriterController {
         imageFile.path
       );
       const imageUrl = `${baseUrl}/${relativePath.replace(/\\/g, '/')}`;
+      
+      // Get caption from request body (if provided)
+      const caption = req.body.caption || `Image attachment for article`;
+      
+      // Save image as attachment post in database
+      const attachmentPost = await Post.create({
+        post_author: req.user.ID,
+        post_date: new Date(),
+        post_date_gmt: new Date(),
+        post_content: '',
+        post_title: caption,
+        post_excerpt: caption,
+        post_status: 'inherit', // Standard WordPress attachment status
+        comment_status: 'closed',
+        ping_status: 'closed',
+        post_password: '',
+        post_name: imageFile.filename.split('.')[0], // Slug without extension
+        to_ping: '',
+        pinged: '',
+        post_modified: new Date(),
+        post_modified_gmt: new Date(),
+        post_content_filtered: '',
+        post_parent: 0,
+        guid: imageUrl,
+        menu_order: 0,
+        post_type: 'attachment',
+        post_mime_type: imageFile.mimetype,
+        comment_count: 0
+      }, { transaction });
+      
+      // Add metadata for the attachment
+      await PostMeta.create({
+        post_id: attachmentPost.ID,
+        meta_key: '_wp_attached_file',
+        meta_value: relativePath.replace(/\\/g, '/')
+      }, { transaction });
+      
+      await PostMeta.create({
+        post_id: attachmentPost.ID,
+        meta_key: '_wp_attachment_image_alt',
+        meta_value: caption
+      }, { transaction });
+      
+      await transaction.commit();
 
       res.status(200).json({
         success: true,
         message: 'Image uploaded successfully',
         data: {
+          id: attachmentPost.ID,
           url: imageUrl,
           filename: imageFile.filename,
           originalName: imageFile.originalname,
-          size: imageFile.size
+          size: imageFile.size,
+          caption: caption,
+          alt: caption
         }
       });
     } catch (error) {
+      await transaction.rollback();
       console.error('Error uploading image:', error);
       res.status(500).json({
         success: false,
@@ -661,6 +712,7 @@ class WriterController {
       });
     }
   }
+
 
   /**
    * Delete article
@@ -700,7 +752,15 @@ class WriterController {
 
       res.status(200).json({
         success: true,
-        message: 'Article deleted successfully'
+        message: 'Article moved to trash successfully',
+        data: {
+          deletedArticle: {
+            id: post.ID,
+            title: post.post_title,
+            deletionType: 'soft',
+            deleted_at: post.deleted_at
+          }
+        }
       });
     } catch (error) {
       await transaction.rollback();
@@ -708,6 +768,106 @@ class WriterController {
       res.status(500).json({
         success: false,
         message: 'Internal server error'
+      });
+    }
+  }
+
+  /**
+   * Get writer's deleted articles (trash)
+   * GET /api/writer/articles/trash
+   */
+  static async getDeletedArticles(req, res) {
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const offset = (page - 1) * limit;
+
+      const { count, rows: deletedArticles } = await Post.findAndCountAll({
+        where: {
+          post_author: req.user.ID,
+          post_type: 'post',
+          deleted_at: { [require('sequelize').Op.ne]: null }
+        },
+        order: [['deleted_at', 'DESC']],
+        limit,
+        offset
+      });
+
+      res.json({
+        success: true,
+        data: {
+          articles: deletedArticles,
+          pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(count / limit),
+            totalItems: count,
+            itemsPerPage: limit
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Get writer deleted articles error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch deleted articles'
+      });
+    }
+  }
+
+  /**
+   * Restore writer's deleted article
+   * POST /api/writer/articles/:id/restore
+   */
+  static async restoreArticle(req, res) {
+    const transaction = await sequelize.transaction();
+    
+    try {
+      const { id } = req.params;
+
+      // Find soft deleted article owned by the writer
+      const article = await Post.findOne({
+        where: {
+          ID: id,
+          post_author: req.user.ID,
+          post_type: 'post',
+          deleted_at: { [require('sequelize').Op.ne]: null }
+        }
+      });
+
+      if (!article) {
+        return res.status(404).json({
+          success: false,
+          message: 'Deleted article not found'
+        });
+      }
+
+      // Restore the article
+      await article.update({
+        deleted_at: null,
+        deleted_by: null,
+        post_status: 'draft' // Writers restore to draft for review
+      }, { transaction });
+
+      await transaction.commit();
+
+      res.json({
+        success: true,
+        message: `Article "${article.post_title}" has been restored to drafts.`,
+        data: {
+          restoredArticle: {
+            id: article.ID,
+            title: article.post_title
+          }
+        }
+      });
+
+    } catch (error) {
+      await transaction.rollback();
+      console.error('Restore article error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to restore article'
       });
     }
   }

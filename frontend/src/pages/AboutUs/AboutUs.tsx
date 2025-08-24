@@ -14,7 +14,7 @@ export const AboutUs: React.FC = () => {
       <AdSection />
       
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12 py-12">
         {/* Page Header */}
         <div className="text-center mb-16 relative">
           <div className="absolute inset-0 bg-gradient-to-r from-orange-100 to-transparent opacity-30 rounded-full blur-3xl"></div>

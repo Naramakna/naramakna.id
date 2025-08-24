@@ -40,11 +40,9 @@ export const useTrending = (params: UseTrendingParams = {}): UseTrendingResult =
         setData(result.data);
       } else {
         setError(result.message || 'Failed to fetch trending content');
-        console.warn('Trending API Error:', result.message);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
-      console.error('Trending fetch error:', err);
     } finally {
       setLoading(false);
     }

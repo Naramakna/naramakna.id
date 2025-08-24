@@ -231,7 +231,7 @@ export const SingleCategorySection: React.FC<SingleCategorySectionProps> = ({
   if (loading) {
     return (
       <div className={`bg-gray-50 py-8 ${className}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
             <p className="mt-4 text-gray-600">Memuat artikel kategori...</p>
@@ -244,7 +244,7 @@ export const SingleCategorySection: React.FC<SingleCategorySectionProps> = ({
   if (error) {
     return (
       <div className={`bg-gray-50 py-8 ${className}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
           <div className="text-center">
             <p className="text-red-600">Error: {error}</p>
             <p className="text-sm text-gray-500 mt-2">Category: {categorySlug}</p>
@@ -271,7 +271,7 @@ export const SingleCategorySection: React.FC<SingleCategorySectionProps> = ({
   if (posts.length === 0) {
     return (
       <div className={`bg-gray-50 py-8 ${className}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
           <div className="text-center">
             <p className="text-gray-600">Tidak ada artikel dalam kategori ini.</p>
             <p className="text-sm text-gray-500 mt-2">Category: {categorySlug}</p>
@@ -286,7 +286,7 @@ export const SingleCategorySection: React.FC<SingleCategorySectionProps> = ({
 
   return (
     <div className={`bg-gray-50 py-8 ${className}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
          {/* Grid Container */}
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
            {/* Left Column - Carousel */}

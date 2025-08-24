@@ -65,7 +65,7 @@ export const DynamicCategorySections: React.FC<DynamicCategorySectionsProps> = (
         {/* Loading skeleton */}
         {Array.from({ length: 3 }).map((_, index) => (
           <div key={index} className="bg-gray-50 py-8">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
               <div className="animate-pulse">
                 <div className="h-6 bg-gray-300 rounded w-48 mb-6"></div>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -109,16 +109,6 @@ export const DynamicCategorySections: React.FC<DynamicCategorySectionsProps> = (
           <span className="ml-3 text-gray-600">Memuat kategori lainnya...</span>
         </div>
       )}
-      
-      {/* End indicator when all categories are loaded */}
-      {!hasMoreCategories && eligibleCategories.length > 10 && (
-        <div className="text-center py-8">
-          <p className="text-gray-500">Semua kategori telah dimuat ({eligibleCategories.length} kategori)</p>
-        </div>
-      )}
-      
-      {/* Final ad section at the bottom */}
-      <AdSection position="bottom" size="header" />
     </div>
   );
 };

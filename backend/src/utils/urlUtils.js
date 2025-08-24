@@ -11,7 +11,7 @@
 function generateImageUrl(relativePath, baseUrl = null) {
   if (!relativePath) return null;
   
-  const uploadsUrl = baseUrl || process.env.UPLOADS_URL || 'https://benarmak.naramakna.id/uploads';
+  const uploadsUrl = baseUrl || process.env.UPLOADS_URL || 'https://api.naramakna.id/uploads';
   
   // If already a full URL, return as is (but fix double paths)
   if (relativePath.startsWith('http')) {
@@ -82,7 +82,7 @@ function isLocalUpload(url) {
 function convertToProductionUrl(imageUrl, newBaseUrl = null) {
   if (!imageUrl) return imageUrl;
   
-  const baseUrl = newBaseUrl || process.env.UPLOADS_URL || 'https://benarmak.naramakna.id/uploads';
+  const baseUrl = newBaseUrl || process.env.UPLOADS_URL || 'https://api.naramakna.id/uploads';
   
   // If it's already a proper production URL, just clean it
   if (imageUrl.startsWith(baseUrl)) {

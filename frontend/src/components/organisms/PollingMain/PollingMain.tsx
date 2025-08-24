@@ -163,7 +163,7 @@ export const PollingMain: React.FC<PollingMainProps> = ({
   if (loading) {
     return (
       <div className={`bg-gray-50 py-8 ${className}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
           <div className="flex items-center mb-6">
             <div className="flex items-center space-x-2">
               <div className="w-1 h-6 bg-naramakna-gold rounded-full"></div>
@@ -181,7 +181,7 @@ export const PollingMain: React.FC<PollingMainProps> = ({
   if (error && displayPolls.length === 0) {
     return (
       <div className={`bg-gray-50 py-8 ${className}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
           <div className="flex items-center mb-6">
             <div className="flex items-center space-x-2">
               <div className="w-1 h-6 bg-naramakna-gold rounded-full"></div>
@@ -198,7 +198,7 @@ export const PollingMain: React.FC<PollingMainProps> = ({
 
   return (
     <div className={`bg-gray-50 py-8 ${className}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
         {/* Header */}
         <div className="flex items-center mb-6">
           <div className="flex items-center space-x-2">

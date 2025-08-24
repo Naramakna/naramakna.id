@@ -37,7 +37,8 @@ const corsOptions = {
       'https://www.naramakna.id',
       // Cloudflare tunnel domains
       'https://fenarmak.naramakna.id',
-      'https://benarmak.naramakna.id'
+      'https://api.naramakna.id',
+      'https://ujife.naramakna.id'
     ];
 
     // If CORS_ORIGIN is set in environment, use it (for production flexibility)
@@ -93,7 +94,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/uploads', express.static(path.join(__dirname, '../../public/uploads')));
 
 // Serve ads directory for advertisement images
-app.use('/ads', express.static(path.join(__dirname, '../public/ads')));
+app.use('/ads', express.static(path.join(__dirname, '../../public/ads')));
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -107,6 +108,7 @@ const tiktokRoutes = require('./routes/tiktok');
 const youtubeRoutes = require('./routes/youtube');
 const seoRoutes = require('./routes/seo');
 const seoController = require('./controllers/seoController');
+const metaTagsController = require('./controllers/metaTagsController');
 const writerRoutes = require('./routes/writer');
 const likesRoutes = require('./routes/likes');
 const commentRoutes = require('./routes/comments');
@@ -116,12 +118,18 @@ const pollingRoutes = require('./routes/polling');
 const schedulerRoutes = require('./routes/scheduler');
 const settingsRoutes = require('./routes/settings');
 const imageManagerRoutes = require('./routes/imageManager');
+const sitemapRoutes = require('./routes/sitemap');
+const googleAdsRoutes = require('./routes/googleAds');
+const trendingRoutes = require('./routes/trending');
 // const taxonomyRoutes = require('./routes/taxonomy'); // TODO: Implement
 
 // Initialize scheduler for auto-publishing posts
 if (process.env.NODE_ENV !== 'test') {
   require('../cron/scheduler');
 }
+
+// Meta tags route for articles (must be before API routes)
+app.get('/artikel/:slug', metaTagsController.generateArticleHTML);
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -131,14 +139,16 @@ app.use('/api/content', contentRoutes);
 app.use('/api/approval', approvalRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/ads', adsRoutes);
+app.use('/api/google-ads', googleAdsRoutes);
 app.use('/api/tiktok', tiktokRoutes);
 app.use('/api/youtube', youtubeRoutes);
 app.use('/api/seo', seoRoutes);
 app.use('/api/likes', likesRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/trending', trendingRoutes);
 
 // SEO routes at root level
-app.get('/sitemap.xml', seoController.generateSitemap);
+app.use('/', sitemapRoutes);
 app.get('/robots.txt', seoController.generateRobotsTxt);
 app.use('/api/writer', writerRoutes);
 app.use('/api/comments', commentRoutes);

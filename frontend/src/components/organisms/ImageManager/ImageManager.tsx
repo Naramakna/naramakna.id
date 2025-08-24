@@ -58,7 +58,7 @@ const ImageManager: React.FC = () => {
 
   useEffect(() => {
     // Set default custom URL - use hardcoded production URL since we can't access backend env from frontend
-    setCustomUrl('https://benarmak.naramakna.id/uploads');
+    setCustomUrl('https://api.naramakna.id/uploads');
   }, []);
 
   const analyzeImages = async () => {
@@ -337,7 +337,7 @@ const ImageManager: React.FC = () => {
             type="url"
             value={customUrl}
             onChange={(e) => setCustomUrl(e.target.value)}
-            placeholder="https://benarmak.naramakna.id/uploads"
+            placeholder="https://api.naramakna.id/uploads"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           <p className="mt-1 text-xs text-gray-500">

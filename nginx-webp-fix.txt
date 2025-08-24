@@ -1,0 +1,25 @@
+# Update nginx config /uploads/ location dengan ini:
+
+    location /uploads/ {
+        root /var/www/naramakna.id/public;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        add_header Vary "Accept";
+        
+        # WebP serving dengan browser support detection
+        location ~* ^/uploads/(.+)\.(jpe?g|png)$ {
+            add_header Vary "Accept";
+            
+            # Coba serve WebP jika browser support
+            set $webp_suffix "";
+            if ($http_accept ~* "image/webp") {
+                set $webp_suffix ".webp";
+            }
+            
+            # Try WebP first, fallback ke original
+            try_files /uploads/$1.$2$webp_suffix /uploads/$1.$2 =404;
+            
+            expires 30d;
+            add_header Cache-Control "public, immutable";
+        }
+    }

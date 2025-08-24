@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import type { TikTokVideo } from '../../../services/api/tiktok';
+import { useAnalytics } from '../../../hooks/useAnalytics';
 import IconLogo from '../../../assets/icons/IconLogo.png';
 
 interface TikTokVideoModalProps {
@@ -13,6 +14,7 @@ export const TikTokVideoModal: React.FC<TikTokVideoModalProps> = ({
   onClose,
   video
 }) => {
+  const { trackVideoPlay } = useAnalytics();
   // Close modal on escape key
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -31,6 +33,18 @@ export const TikTokVideoModal: React.FC<TikTokVideoModalProps> = ({
       document.body.style.overflow = 'unset';
     };
   }, [isOpen, onClose]);
+
+  // Track video play when modal opens
+  useEffect(() => {
+    if (isOpen && video) {
+      trackVideoPlay({
+        title: video.title || video.description || 'TikTok Video',
+        videoId: video.tiktok_video_id || video.id,
+        platform: 'tiktok',
+        duration: video.duration
+      });
+    }
+  }, [isOpen, video, trackVideoPlay]);
 
   if (!isOpen || !video) return null;
 

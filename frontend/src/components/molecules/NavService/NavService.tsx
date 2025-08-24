@@ -17,7 +17,7 @@ export const NavService: React.FC<NavServiceProps> = ({ className = '' }) => {
 
   return (
     <div className={`bg-gray-50 border-b border-gray-200 ${className}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
         <div className="flex items-center space-x-6 h-10 overflow-x-auto scrollbar-hide">
           {services.map((service, index) => (
             <a

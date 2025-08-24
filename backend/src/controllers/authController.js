@@ -681,11 +681,12 @@ class AuthController {
         );
 
         // Set cookie
-        res.cookie('token', jwtToken, {
+        res.cookie('naramakna_auth', jwtToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          maxAge: 24 * 60 * 60 * 1000 // 24 hours
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+          maxAge: 24 * 60 * 60 * 1000, // 24 hours
+          domain: process.env.NODE_ENV === 'production' ? '.naramakna.id' : 'localhost'
         });
 
         // Redirect to frontend with success
@@ -711,11 +712,12 @@ class AuthController {
         );
 
         // Set cookie
-        res.cookie('token', jwtToken, {
+        res.cookie('naramakna_auth', jwtToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          maxAge: 24 * 60 * 60 * 1000 // 24 hours
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+          maxAge: 24 * 60 * 60 * 1000, // 24 hours
+          domain: process.env.NODE_ENV === 'production' ? '.naramakna.id' : 'localhost'
         });
 
         // Redirect to frontend with success

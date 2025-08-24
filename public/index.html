@@ -1,124 +1,146 @@
-<!DOCTYPE html>
-<html lang="id">
+<!doctype html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Naramakna Portal</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Naramakna - Cerdas Memaknai</title>
+    <meta name="description" content="Naramakna.id - Platform media digital yang menghadirkan informasi berkualitas dan perspektif mendalam untuk membantu Anda cerdas dalam memaknai berbagai peristiwa dan isu terkini." />
+    <meta name="keywords" content="naramakna, cerdas memaknai, media digital, informasi berkualitas, perspektif mendalam, analisis berita, wawasan, edukasi" />
+    
+    <!-- Critical resource preloading -->
+    <link rel="dns-prefetch" href="https://api.naramakna.id" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://api.naramakna.id" crossorigin />
+    <link rel="preload" as="style" href="/assets/index-BhbVzwlg.css" crossorigin="anonymous" />
+    <link rel="preload" as="script" href="/assets/vendor-DnhPgHd1.js" crossorigin="anonymous" />
+    <link rel="preload" as="script" href="/assets/index-qALP_gI3.js" crossorigin="anonymous" />
+    <link rel="preload" as="image" href="/LogoNaramakna.png" fetchpriority="high" />
+    <link rel="preload" href="/assets/LogoNaramakna-BOgxIwcv.png" as="image" type="image/png" fetchpriority="high" />
+    
+    <!-- Non-critical resources with proper attributes -->
+    <link rel="preconnect" href="https://api.naramakna.id" />
+    <link rel="icon" type="image/png" href="https://api.naramakna.id/uploads/2025/07/cropped-IKON-LOGO-180x180.png" />
+    <link rel="shortcut icon" href="https://api.naramakna.id/uploads/favico/favicon.ico" />
+    <link rel="apple-touch-icon" href="https://api.naramakna.id/uploads/2025/07/cropped-IKON-LOGO-180x180.png" />
+    
+    <!-- Critical CSS inline to prevent render blocking -->
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 20px;
-            background: #f5f5f5;
+        #root { min-height: 100vh; }
+        .loading-skeleton { 
+            background: #f0f0f0;
+            border-radius: 4px;
+            animation: skeleton-loading 1s infinite alternate;
         }
-        .container {
-            background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        @keyframes skeleton-loading {
+            0% { opacity: 1; }
+            100% { opacity: 0.4; }
         }
-        h1 { color: #2c3e50; margin-bottom: 10px; }
-        .subtitle { color: #7f8c8d; margin-bottom: 30px; }
-        .endpoint {
-            background: #ecf0f1;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 10px 0;
-            font-family: monospace;
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; }
+        
+        /* Ensure minimum touch target sizes for mobile */
+        @media (max-width: 768px) {
+            button, a[role="button"], input[type="button"], input[type="submit"] {
+                min-height: 44px;
+                min-width: 44px;
+            }
+            
+            /* Improve tap targets spacing */
+            button + button, a + button, button + a {
+                margin-left: 8px;
+            }
         }
-        .status {
-            display: inline-block;
-            padding: 3px 8px;
-            border-radius: 3px;
-            font-size: 12px;
-            font-weight: bold;
+        
+        /* Prevent layout shift and improve loading */
+        img {
+            height: auto;
+            max-width: 100%;
         }
-        .working { background: #2ecc71; color: white; }
-        .ready { background: #3498db; color: white; }
-        a { color: #3498db; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        .section {
-            margin-bottom: 30px;
-            padding: 20px;
-            border-left: 4px solid #3498db;
+        
+        /* Ensure stable layout during font loading */
+        * {
+            font-display: swap;
+        }
+        
+        /* Fixed dimensions untuk prevent CLS */
+        .hero-banner-skeleton {
+            height: 200px;
+            width: 100%;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        
+        /* Prevent CLS for ads containers */
+        [class*="ad-"], [class*="advertisement"] {
+            min-height: 250px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             background: #f8f9fa;
         }
+        
+        /* Responsive ads aspect ratios */
+        .ad-banner, .ad-header {
+            aspect-ratio: 970/250;
+            max-height: 250px;
+            min-height: 250px;
+        }
+        
+        .ad-sidebar {
+            aspect-ratio: 300/250;
+            max-height: 250px;
+            min-height: 250px;
+        }
+        
+        /* Prevent main content area shifts */
+        .max-w-7xl {
+            min-height: 800px;
+        }
+        
+        /* Card list stable sizing */
+        .md\\.col-span-3 {
+            min-height: 600px;
+        }
+        
+        .video-section-skeleton {
+            height: 400px;
+            width: 100%;
+        }
+        
+        .polling-skeleton {
+            height: 300px;
+            width: 100%;
+        }
+        
+        .category-skeleton {
+            height: 600px;
+            width: 100%;
+        }
+        
+        .footer-skeleton {
+            height: 250px;
+            width: 100%;
+            background: #1a1a1a;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        
+        /* Remove unnecessary transforms */
+        img, video {
+            contain: layout;
+        }
     </style>
+  <script type="module" crossorigin src="/assets/index-DEDBKzUx.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/charts-ClIlDbAZ.js">
+  <link rel="modulepreload" crossorigin href="/assets/vendor-DnhPgHd1.js">
+  <link rel="modulepreload" crossorigin href="/assets/tiktok-DLli_0FK.js">
+  <link rel="stylesheet" crossorigin href="/assets/index-CEURqSz_.css">
+  <link rel="stylesheet" crossorigin href="/assets/editor-BzY4kI8E.css">
 </head>
 <body>
-    <div class="container">
-        <h1>🚀 Naramakna Portal</h1>
-        <p class="subtitle">Universal Content Management System</p>
-        
-        <div class="section">
-            <h3>📡 Backend API Server:</h3>
-            <div class="endpoint">
-                <strong><a href="http://localhost:3001/api">GET /api</a></strong> 
-                <span class="status working">WORKING</span><br>
-                API information dan dokumentasi
-            </div>
-            
-            <div class="endpoint">
-                <strong><a href="http://localhost:3001/api/content/stats">GET /api/content/stats</a></strong> 
-                <span class="status working">WORKING</span><br>
-                Statistik konten (artikel, video, dll)
-            </div>
-            
-            <div class="endpoint">
-                <strong><a href="http://localhost:3001/api/content/feed?limit=5">GET /api/content/feed</a></strong> 
-                <span class="status working">WORKING</span><br>
-                Mixed content feed (artikel + YouTube + TikTok)
-            </div>
-        </div>
-        
-        <div class="section">
-            <h3>🎨 Frontend App:</h3>
-            <div class="endpoint">
-                <strong><a href="http://localhost:5173/">Frontend Development Server</a></strong> 
-                <span class="status working">WORKING</span><br>
-                React + Vite development server
-            </div>
-        </div>
-        
-        <div class="section">
-            <h3>🖼️ Shared Media Files:</h3>
-            <div class="endpoint">
-                <strong>/uploads/...</strong> 
-                <span class="status ready">READY</span><br>
-                WordPress media files (shared between backend & frontend)
-            </div>
-            
-            <p><strong>📁 Struktur:</strong></p>
-            <div class="endpoint">
-                naramakna.id/public/uploads/<br>
-                ├── 2023/<br>
-                ├── 2024/<br>
-                └── 2025/ ← WordPress uploads di sini
-            </div>
-        </div>
-        
-        <div class="section">
-            <h3>🔥 Features:</h3>
-            <ul>
-                <li>✅ Universal Content System (Articles, YouTube, TikTok)</li>
-                <li>✅ Advanced Analytics Tracking</li>
-                <li>✅ Advertisement Management</li>
-                <li>✅ Real-time Metrics</li>
-                <li>✅ Hybrid Database Architecture</li>
-                <li>✅ Shared Media Storage</li>
-                <li>✅ React Frontend Integration</li>
-            </ul>
-        </div>
-        
-        <hr style="margin: 30px 0; border: none; border-top: 1px solid #ecf0f1;">
-        <p style="color: #7f8c8d; font-size: 14px;">
-            <strong>Backend:</strong> Node.js + Express (Port 3001)<br>
-            <strong>Frontend:</strong> React + Vite (Port 5173)<br>
-            <strong>Database:</strong> MySQL (naramakna_clean)<br>
-            <strong>Uploads:</strong> Shared at project root<br>
-            <strong>Status:</strong> <span class="status working">PRODUCTION READY</span>
-        </p>
-    </div>
+<div id="root"></div>
 </body>
 </html>

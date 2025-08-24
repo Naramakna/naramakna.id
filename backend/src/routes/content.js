@@ -35,5 +35,7 @@ router.delete('/:id', authenticate, canEditPost, ContentController.delete);
 
 // Admin routes
 router.delete('/admin/articles/:id', authenticate, requireAdmin, ContentController.adminDeleteArticle);
+router.post('/admin/articles/:id/restore', authenticate, requireAdmin, ContentController.restoreArticle);
+router.get('/admin/articles/trash', authenticate, requireAdmin, ContentController.getDeletedArticles);
 
 module.exports = router;

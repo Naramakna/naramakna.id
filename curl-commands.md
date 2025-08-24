@@ -1,12 +1,12 @@
 # Naramakna API - cURL Test Commands
 
-Base URL: `https://benarmak.naramakna.id/api`
+Base URL: `https://api.naramakna.id/api`
 
 ## 🔐 Authentication
 
 ### Register New User
 ```bash
-curl -X POST "https://benarmak.naramakna.id/api/auth/register" \
+curl -X POST "https://api.naramakna.id/api/auth/register" \
   -H "Content-Type: application/json" \
   -c cookies.txt \
   -d '{
@@ -20,7 +20,7 @@ curl -X POST "https://benarmak.naramakna.id/api/auth/register" \
 
 ### Login User  
 ```bash
-curl -X POST "https://benarmak.naramakna.id/api/auth/login" \
+curl -X POST "https://api.naramakna.id/api/auth/login" \
   -H "Content-Type: application/json" \
   -c cookies.txt \
   -d '{
@@ -32,14 +32,14 @@ curl -X POST "https://benarmak.naramakna.id/api/auth/login" \
 
 ### Get User Profile (Protected)
 ```bash
-curl "https://benarmak.naramakna.id/api/auth/profile" \
+curl "https://api.naramakna.id/api/auth/profile" \
   -H "Content-Type: application/json" \
   -b cookies.txt | jq
 ```
 
 ### Update Profile  
 ```bash
-curl -X PUT "https://benarmak.naramakna.id/api/auth/profile" \
+curl -X PUT "https://api.naramakna.id/api/auth/profile" \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -50,7 +50,7 @@ curl -X PUT "https://benarmak.naramakna.id/api/auth/profile" \
 
 ### Logout
 ```bash
-curl -X POST "https://benarmak.naramakna.id/api/auth/logout" \
+curl -X POST "https://api.naramakna.id/api/auth/logout" \
   -H "Content-Type: application/json" \
   -b cookies.txt | jq
 ```
@@ -59,13 +59,13 @@ curl -X POST "https://benarmak.naramakna.id/api/auth/logout" \
 
 ### Get Content Feed
 ```bash
-curl "https://benarmak.naramakna.id/api/content/feed?limit=5&type=post" \
+curl "https://api.naramakna.id/api/content/feed?limit=5&type=post" \
   -b cookies.txt | jq
 ```
 
 ### Get Trending Content
 ```bash
-curl "https://benarmak.naramakna.id/api/content/trending?limit=5&type=post" \
+curl "https://api.naramakna.id/api/content/trending?limit=5&type=post" \
   -b cookies.txt | jq  
 ```
 
@@ -77,13 +77,13 @@ curl "https://benarmakna.naramakna.id/api/content/categories?limit=10&mainCatego
 
 ### Search Content
 ```bash
-curl "https://benarmak.naramakna.id/api/content/search?q=teknologi&limit=3" \
+curl "https://api.naramakna.id/api/content/search?q=teknologi&limit=3" \
   -b cookies.txt | jq
 ```
 
 ### Get Single Article
 ```bash
-curl "https://benarmak.naramakna.id/api/content/article/123" \
+curl "https://api.naramakna.id/api/content/article/123" \
   -b cookies.txt | jq
 ```
 
@@ -91,13 +91,13 @@ curl "https://benarmak.naramakna.id/api/content/article/123" \
 
 ### Get Ads by Placement
 ```bash
-curl "https://benarmak.naramakna.id/api/ads/serve?placement=regular&limit=3" \
+curl "https://api.naramakna.id/api/ads/serve?placement=regular&limit=3" \
   -b cookies.txt | jq
 ```
 
 ### Get Popup Ads
 ```bash  
-curl "https://benarmak.naramakna.id/api/ads/popup-active" \
+curl "https://api.naramakna.id/api/ads/popup-active" \
   -b cookies.txt | jq
 ```
 
@@ -105,13 +105,13 @@ curl "https://benarmak.naramakna.id/api/ads/popup-active" \
 
 ### Get Active Polls
 ```bash
-curl "https://benarmak.naramakna.id/api/polling/active?limit=5" \
+curl "https://api.naramakna.id/api/polling/active?limit=5" \
   -b cookies.txt | jq
 ```
 
 ### Vote on Poll
 ```bash
-curl -X POST "https://benarmak.naramakna.id/api/polling/vote" \
+curl -X POST "https://api.naramakna.id/api/polling/vote" \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -124,13 +124,13 @@ curl -X POST "https://benarmak.naramakna.id/api/polling/vote" \
 
 ### Get YouTube Videos  
 ```bash
-curl "https://benarmak.naramakna.id/api/youtube/public?limit=3" \
+curl "https://api.naramakna.id/api/youtube/public?limit=3" \
   -b cookies.txt | jq
 ```
 
 ### Get TikTok Videos
 ```bash
-curl "https://benarmak.naramakna.id/api/tiktok/videos?limit=3" \
+curl "https://api.naramakna.id/api/tiktok/videos?limit=3" \
   -b cookies.txt | jq  
 ```
 
@@ -138,7 +138,7 @@ curl "https://benarmak.naramakna.id/api/tiktok/videos?limit=3" \
 
 ### Track Page View
 ```bash
-curl -X POST "https://benarmak.naramakna.id/api/analytics/track" \
+curl -X POST "https://api.naramakna.id/api/analytics/track" \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -151,7 +151,7 @@ curl -X POST "https://benarmak.naramakna.id/api/analytics/track" \
 
 ### Get Dashboard Stats (Admin)
 ```bash
-curl "https://benarmak.naramakna.id/api/analytics/dashboard-stats" \
+curl "https://api.naramakna.id/api/analytics/dashboard-stats" \
   -b cookies.txt | jq
 ```
 
@@ -159,13 +159,13 @@ curl "https://benarmak.naramakna.id/api/analytics/dashboard-stats" \
 
 ### Get All Users (Admin)
 ```bash  
-curl "https://benarmak.naramakna.id/api/admin/users?limit=5" \
+curl "https://api.naramakna.id/api/admin/users?limit=5" \
   -b cookies.txt | jq
 ```
 
 ### Update User Role (Admin)
 ```bash
-curl -X PUT "https://benarmak.naramakna.id/api/admin/users/123" \
+curl -X PUT "https://api.naramakna.id/api/admin/users/123" \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -178,8 +178,8 @@ curl -X PUT "https://benarmak.naramakna.id/api/admin/users/123" \
 
 ### Test CORS Preflight
 ```bash
-curl -X OPTIONS "https://benarmak.naramakna.id/api/auth/login" \
-  -H "Origin: https://fenarmak.naramakna.id" \
+curl -X OPTIONS "https://api.naramakna.id/api/auth/login" \
+  -H "Origin: https://naramakna.id" \
   -H "Access-Control-Request-Method: POST" \
   -H "Access-Control-Request-Headers: Content-Type" \
   -v
@@ -187,25 +187,25 @@ curl -X OPTIONS "https://benarmak.naramakna.id/api/auth/login" \
 
 ### Test CORS with Origin Header
 ```bash  
-curl -H "Origin: https://fenarmak.naramakna.id" \
-  "https://benarmak.naramakna.id/api/content/feed" -v
+curl -H "Origin: https://naramakna.id" \
+  "https://api.naramakna.id/api/content/feed" -v
 ```
 
 ## 🔧 Debug Commands
 
 ### Check API Status
 ```bash
-curl "https://benarmak.naramakna.id/api" | jq
+curl "https://api.naramakna.id/api" | jq
 ```
 
 ### Check Headers Only
 ```bash
-curl -I "https://benarmak.naramakna.id/api/content/feed"
+curl -I "https://api.naramakna.id/api/content/feed"
 ```
 
 ### Verbose Output  
 ```bash
-curl "https://benarmak.naramakna.id/api/auth/profile" -b cookies.txt -v
+curl "https://api.naramakna.id/api/auth/profile" -b cookies.txt -v
 ```
 
 ---
@@ -216,22 +216,22 @@ curl "https://benarmak.naramakna.id/api/auth/profile" -b cookies.txt -v
 2. **JSON Output**: Add `| jq` for pretty JSON formatting  
 3. **Headers**: Use `-H "Content-Type: application/json"` for POST requests
 4. **Verbose**: Add `-v` flag to see full request/response headers
-5. **Origin Testing**: Add `-H "Origin: https://fenarmak.naramakna.id"` to test CORS
+5. **Origin Testing**: Add `-H "Origin: https://naramakna.id"` to test CORS
 
 ## 🚀 Quick Test Sequence
 
 ```bash
 # 1. Login and save cookies
-curl -X POST "https://benarmak.naramakna.id/api/auth/login" \
+curl -X POST "https://api.naramakna.id/api/auth/login" \
   -H "Content-Type: application/json" -c cookies.txt \
   -d '{"identifier":"admin@naramakna.id","user_pass":"admin123"}' | jq
 
 # 2. Test protected endpoint  
-curl "https://benarmak.naramakna.id/api/auth/profile" -b cookies.txt | jq
+curl "https://api.naramakna.id/api/auth/profile" -b cookies.txt | jq
 
 # 3. Get content
-curl "https://benarmak.naramakna.id/api/content/feed?limit=3" -b cookies.txt | jq
+curl "https://api.naramakna.id/api/content/feed?limit=3" -b cookies.txt | jq
 
 # 4. Logout
-curl -X POST "https://benarmak.naramakna.id/api/auth/logout" -b cookies.txt | jq
+curl -X POST "https://api.naramakna.id/api/auth/logout" -b cookies.txt | jq
 ```

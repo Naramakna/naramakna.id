@@ -20,7 +20,7 @@ const ServiceNavigation: React.FC<ServiceNavigationProps> = ({
 
   return (
     <nav className={`bg-gray-50 border-b border-gray-200 ${className}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
         <div className="flex items-center py-2">
           {/* Desktop Services */}
           <div className="hidden md:flex items-center space-x-0">

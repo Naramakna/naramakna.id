@@ -310,6 +310,29 @@ export const AdminAds: React.FC = () => {
     }
   };
 
+  // Delete advertisement
+  const deleteAd = async (adId: string, campaignName: string) => {
+    // Confirmation dialog
+    const confirmed = window.confirm(
+      `Are you sure you want to delete the ad campaign "${campaignName}"?\n\nThis action cannot be undone.`
+    );
+    
+    if (!confirmed) return;
+
+    try {
+      const response = await adsAPI.deleteAd(adId);
+      if (response.success) {
+        // Remove from local state
+        setAds(prevAds => prevAds.filter(ad => ad.id !== adId));
+        console.log(`✅ Ad ${adId} deleted successfully`);
+      } else {
+        setError(response.message || 'Failed to delete ad');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    }
+  };
+
   // Show loading while auth is loading
   if (authLoading || loading) {
     return (
@@ -378,6 +401,95 @@ export const AdminAds: React.FC = () => {
         </div>
       </div>
 
+      {/* Ad Rotation Settings */}
+      <div className="bg-white p-6 rounded-lg shadow-sm border">
+        <h3 className="text-lg font-semibold mb-4">⚙️ Ad Rotation Settings</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              🏠 Homepage Banner (hero-banner)
+            </label>
+            <div className="text-xs text-gray-500 mb-2">
+              Current: 3 seconds per rotation
+            </div>
+            <input
+              type="number"
+              min="1"
+              max="30"
+              defaultValue="3"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Seconds"
+            />
+            <div className="text-xs text-gray-500">
+              Multiple ads will rotate in hero-banner placement
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              📄 Header Banner (header)
+            </label>
+            <div className="text-xs text-gray-500 mb-2">
+              Current: 5 seconds per rotation
+            </div>
+            <input
+              type="number"
+              min="1"
+              max="30"
+              defaultValue="5"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Seconds"
+            />
+            <div className="text-xs text-gray-500">
+              Multiple ads will rotate in header placement
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              📱 Other Placements
+            </label>
+            <div className="text-xs text-gray-500 mb-2">
+              Current: 10 seconds per rotation
+            </div>
+            <input
+              type="number"
+              min="1"
+              max="60"
+              defaultValue="10"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Seconds"
+            />
+            <div className="text-xs text-gray-500">
+              Sidebar, article, and other ad placements
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+          <div className="flex items-start space-x-2">
+            <div className="text-blue-500 text-sm">💡</div>
+            <div className="text-sm text-blue-800">
+              <strong>How it works:</strong> When multiple ads are assigned to the same placement (e.g., multiple ads in "hero-banner"), 
+              they will automatically rotate at the specified interval. Each placement can have different rotation speeds.
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex justify-end mt-4">
+          <Button
+            onClick={() => {
+              // Here you would implement saving rotation settings
+              alert('Rotation settings updated! (Note: This is a demo - implement save functionality)');
+            }}
+            size="sm"
+            variant="primary"
+          >
+            💾 Save Rotation Settings
+          </Button>
+        </div>
+      </div>
+
       {/* Create Form */}
       {showCreateForm && (
         <div className="bg-white p-6 rounded-lg shadow-sm border">
@@ -412,12 +524,57 @@ export const AdminAds: React.FC = () => {
                 <option value="bottom-content">🏠 Homepage Bottom</option>
                 <option value="popup">🎯 Homepage Popup (Fullscreen)</option>
                 <option value="regular">📝 Content Pages (728x90)</option>
-                <option value="sidebar">📱 Sidebar Ads</option>
+                <option value="sidebar">📱 Sidebar Ads (300x250)</option>
                 <option value="article-top">📰 Article Page Top</option>
                 <option value="article-mid">📰 Article Page Middle</option>
                 <option value="article-bottom">📰 Article Page Bottom</option>
                 <option value="article-final">📰 Article Page End</option>
               </select>
+              
+              {/* URL Examples for each placement */}
+              <div className="mt-2 p-3 bg-gray-50 rounded-lg border">
+                <div className="text-xs font-medium text-gray-700 mb-1">📍 Where this ad will appear:</div>
+                <div className="text-xs text-gray-600">
+                  {(() => {
+                    const placementExamples = {
+                      'hero-banner': '• Homepage: https://naramakna.id/',
+                      'header': '• Homepage: https://naramakna.id/',
+                      'mid-content': '• Homepage: https://naramakna.id/',
+                      'bottom-content': '• Homepage: https://naramakna.id/',
+                      'popup': '• Homepage: https://naramakna.id/',
+                      'regular': '• All content pages: https://naramakna.id/artikel/judul-artikel\n• Video pages: https://naramakna.id/video-story\n• Index pages: https://naramakna.id/index-berita',
+                      'sidebar': '• All pages with sidebar content',
+                      'article-top': '• Article pages: https://naramakna.id/artikel/judul-artikel',
+                      'article-mid': '• Article pages: https://naramakna.id/artikel/judul-artikel',
+                      'article-bottom': '• Article pages: https://naramakna.id/artikel/judul-artikel',
+                      'article-final': '• Article pages: https://naramakna.id/artikel/judul-artikel'
+                    };
+                    return placementExamples[formData.placement_type as keyof typeof placementExamples] || 'Various pages';
+                  })()}
+                </div>
+                
+                {/* Additional context for specific placements */}
+                {formData.placement_type === 'regular' && (
+                  <div className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                    <strong>Also appears on:</strong><br/>
+                    • Category pages: https://naramakna.id/kategori/laga-gaya<br/>
+                    • Video story: https://naramakna.id/video-story<br/>
+                    • Index berita: https://naramakna.id/index-berita
+                  </div>
+                )}
+                
+                {(formData.placement_type === 'hero-banner' || formData.placement_type === 'header' || formData.placement_type === 'mid-content') && (
+                  <div className="mt-2 text-xs text-green-600 bg-green-50 p-2 rounded">
+                    <strong>High visibility:</strong> Homepage banners get the most traffic and engagement
+                  </div>
+                )}
+                
+                {formData.placement_type.startsWith('article-') && (
+                  <div className="mt-2 text-xs text-purple-600 bg-purple-50 p-2 rounded">
+                    <strong>Contextual:</strong> Appears on all article detail pages for better content relevance
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Media Type */}
@@ -609,12 +766,57 @@ export const AdminAds: React.FC = () => {
                 <option value="bottom-content">🏠 Homepage Bottom</option>
                 <option value="popup">🎯 Homepage Popup (Fullscreen)</option>
                 <option value="regular">📝 Content Pages (728x90)</option>
-                <option value="sidebar">📱 Sidebar Ads</option>
+                <option value="sidebar">📱 Sidebar Ads (300x250)</option>
                 <option value="article-top">📰 Article Page Top</option>
                 <option value="article-mid">📰 Article Page Middle</option>
                 <option value="article-bottom">📰 Article Page Bottom</option>
                 <option value="article-final">📰 Article Page End</option>
               </select>
+              
+              {/* URL Examples for each placement */}
+              <div className="mt-2 p-3 bg-gray-50 rounded-lg border">
+                <div className="text-xs font-medium text-gray-700 mb-1">📍 Where this ad will appear:</div>
+                <div className="text-xs text-gray-600">
+                  {(() => {
+                    const placementExamples = {
+                      'hero-banner': '• Homepage: https://naramakna.id/',
+                      'header': '• Homepage: https://naramakna.id/',
+                      'mid-content': '• Homepage: https://naramakna.id/',
+                      'bottom-content': '• Homepage: https://naramakna.id/',
+                      'popup': '• Homepage: https://naramakna.id/',
+                      'regular': '• All content pages: https://naramakna.id/artikel/judul-artikel\n• Video pages: https://naramakna.id/video-story\n• Index pages: https://naramakna.id/index-berita',
+                      'sidebar': '• All pages with sidebar content',
+                      'article-top': '• Article pages: https://naramakna.id/artikel/judul-artikel',
+                      'article-mid': '• Article pages: https://naramakna.id/artikel/judul-artikel',
+                      'article-bottom': '• Article pages: https://naramakna.id/artikel/judul-artikel',
+                      'article-final': '• Article pages: https://naramakna.id/artikel/judul-artikel'
+                    };
+                    return placementExamples[formData.placement_type as keyof typeof placementExamples] || 'Various pages';
+                  })()}
+                </div>
+                
+                {/* Additional context for specific placements */}
+                {formData.placement_type === 'regular' && (
+                  <div className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                    <strong>Also appears on:</strong><br/>
+                    • Category pages: https://naramakna.id/kategori/laga-gaya<br/>
+                    • Video story: https://naramakna.id/video-story<br/>
+                    • Index berita: https://naramakna.id/index-berita
+                  </div>
+                )}
+                
+                {(formData.placement_type === 'hero-banner' || formData.placement_type === 'header' || formData.placement_type === 'mid-content') && (
+                  <div className="mt-2 text-xs text-green-600 bg-green-50 p-2 rounded">
+                    <strong>High visibility:</strong> Homepage banners get the most traffic and engagement
+                  </div>
+                )}
+                
+                {formData.placement_type.startsWith('article-') && (
+                  <div className="mt-2 text-xs text-purple-600 bg-purple-50 p-2 rounded">
+                    <strong>Contextual:</strong> Appears on all article detail pages for better content relevance
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Media Type */}
@@ -867,6 +1069,13 @@ export const AdminAds: React.FC = () => {
                         </button>
                       </>
                     )}
+                    <button
+                      onClick={() => deleteAd(ad.id, ad.campaign_name)}
+                      className="text-red-600 hover:text-red-900 ml-2"
+                      title="Delete Advertisement"
+                    >
+                      🗑️ Delete
+                    </button>
                   </td>
                 </tr>
               ))}

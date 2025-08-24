@@ -1,6 +1,7 @@
 import React from 'react';
 import { useContent } from '../../../hooks/useContent';
 import type { Article } from '../../../services/api/articles';
+import { getCategorySlug, decodeHtmlEntities } from '../../../utils/categorySlugMapping';
 
 interface NewsItem {
   id: string;
@@ -47,7 +48,7 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
       title: article.title,
       source: article.author?.display_name || 'naramaknaNEWS',
       timeAgo,
-      imageSrc: article.metadata?.thumbnail_url || article.metadata?._thumbnail_url,
+      imageSrc: article.metadata?.thumbnail_url || article.metadata?._thumbnail_url || article.featured_media || article.image_url || article.thumbnail,
       href: `/artikel/${article.slug}`,
       views: article.view_count || 0,
       isAd: false
@@ -139,10 +140,11 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
     fallback: displayNewsItems === defaultNewsItems
   });
 
-  // Determine display name for category
-  const displayCategoryName = categoryDisplayName || 
+  // Determine display name for category and decode HTML entities
+  const rawDisplayName = categoryDisplayName || 
     (apiArticles[0]?.categories?.[0]?.name) || 
     category.charAt(0).toUpperCase() + category.slice(1);
+  const displayCategoryName = decodeHtmlEntities(rawDisplayName);
 
   const NewsItemComponent = ({ item }: { item: NewsItem }) => {
     const handleClick = () => {
@@ -197,9 +199,11 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
     );
   };
 
+  const primarySlug = getCategorySlug(category, categoryDisplayName);
+
   return (
     <div className={`bg-gray-50 py-8 ${className}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-2">
@@ -207,7 +211,7 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
             <h2 className="text-xl font-semibold text-gray-900">{displayCategoryName}</h2>
           </div>
           <a 
-            href={`/kategori/${category}`} 
+            href={`/kategori/${primarySlug}`} 
             className="text-sm text-blue-600 hover:text-blue-800 flex items-center space-x-1 transition-colors duration-200"
           >
             <span>Lihat lainnya</span>
@@ -220,15 +224,43 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Main News Column (Left) - Single Large Article */}
-          <div className="lg:col-span-1 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="lg:col-span-1 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-200" 
+               onClick={() => {
+                 if (displayNewsItems[0]?.href) {
+                   window.location.href = displayNewsItems[0].href;
+                 }
+               }}>
             <div className="relative h-64 lg:h-full">
               {/* Full Image Background - Extends to bottom */}
-              <div className="w-full h-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
-                <div className="text-center">
-                  <span className="text-white text-6xl font-bold">{displayCategoryName.charAt(0)}</span>
-                  <div className="text-white text-sm mt-2">{displayCategoryName}</div>
+              {displayNewsItems[0]?.imageSrc ? (
+                <img 
+                  src={displayNewsItems[0].imageSrc} 
+                  alt={displayNewsItems[0].title}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent) {
+                      parent.innerHTML = `
+                        <div class="w-full h-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
+                          <div class="text-center">
+                            <span class="text-white text-6xl font-bold">${displayCategoryName.charAt(0)}</span>
+                            <div class="text-white text-sm mt-2">${displayCategoryName}</div>
+                          </div>
+                        </div>
+                      `;
+                    }
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
+                  <div className="text-center">
+                    <span className="text-white text-6xl font-bold">{displayCategoryName.charAt(0)}</span>
+                    <div className="text-white text-sm mt-2">{displayCategoryName}</div>
+                  </div>
                 </div>
-              </div>
+              )}
               
               {/* Text Overlay */}
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/70 to-transparent p-6">

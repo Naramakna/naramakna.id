@@ -44,12 +44,20 @@ interface PaginationState {
   itemsPerPage: number;
 }
 
+interface User {
+  ID: number;
+  display_name: string;
+  user_login: string;
+  user_email?: string;
+}
+
 interface PostsManagementProps {
   posts: Post[];
   loading: boolean;
   filters: FilterState;
   showFilters: boolean;
   pagination: PaginationState;
+  users?: User[];
   onFilterChange: (key: string, value: string) => void;
   onResetFilters: () => void;
   onToggleFilters: () => void;
@@ -65,6 +73,7 @@ export const PostsManagement: React.FC<PostsManagementProps> = ({
   filters,
   showFilters,
   pagination,
+  users = [],
   onFilterChange,
   onResetFilters,
   onToggleFilters,
@@ -182,6 +191,7 @@ export const PostsManagement: React.FC<PostsManagementProps> = ({
 
       <FilterPanel
         filters={filters}
+        users={users}
         onFilterChange={onFilterChange}
         onResetFilters={onResetFilters}
         onClose={() => onToggleFilters()}

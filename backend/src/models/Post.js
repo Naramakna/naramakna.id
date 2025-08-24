@@ -146,6 +146,18 @@ const Post = sequelize.define('Post', {
   scheduling_notes: {
     type: DataTypes.TEXT,
     allowNull: true
+  },
+  deleted_at: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  deleted_by: {
+    type: DataTypes.BIGINT,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'ID'
+    }
   }
 }, {
   tableName: 'posts',

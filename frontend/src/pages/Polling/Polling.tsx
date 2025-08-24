@@ -14,7 +14,7 @@ export const Polling: React.FC = () => {
       <AdSection />
       
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12 py-8">
         {/* Page Title */}
         <div className="text-center mb-8">
           <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">

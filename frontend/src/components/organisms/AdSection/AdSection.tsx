@@ -11,7 +11,7 @@ interface AdSectionProps {
   href?: string;
   isPlaceholder?: boolean;
   size?: 'header' | 'regular' | 'sidebar';
-  placement?: string; // Override automatic placement detection
+  placement?: string | string[]; // Single placement or array for multi-placement rotation
   rotationInterval?: number; // Custom rotation timing in milliseconds (default: 5000)
 }
 
@@ -25,23 +25,40 @@ export const AdSection: React.FC<AdSectionProps> = ({
   placement,
   rotationInterval = 5000 // Default 5 seconds
 }) => {
-  const { getAdsForPlacement, trackClick, forceRefreshAds: _forceRefreshAds } = useAds();
+  const { getAdsForPlacement, trackClick, forceRefreshAds: _forceRefreshAds, isPlaceholderVisible } = useAds();
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  // Determine placement based on size if not explicitly provided
-  const adPlacement = placement || (size === 'header' ? 'header' : size === 'sidebar' ? 'sidebar' : 'regular');
-
-  // Get ads for this placement
-  const availableAds = useMemo(() => {
-    const ads = getAdsForPlacement(adPlacement);
-    // Only log when ads change
-    if (ads.length > 0) {
-      console.log(`🎯 AdSection: Available ads for ${adPlacement}:`, ads.length, 'ads');
+  // Determine placement(s) based on size if not explicitly provided
+  const adPlacements = useMemo(() => {
+    if (Array.isArray(placement)) {
+      return placement;
     }
-    return ads;
-  }, [getAdsForPlacement, adPlacement]);
+    const singlePlacement = placement || (size === 'header' ? 'header' : size === 'sidebar' ? 'sidebar' : 'regular');
+    return [singlePlacement];
+  }, [placement, size]);
+
+  // Get ads for all placements and combine them
+  const availableAds = useMemo(() => {
+    const allAds: Advertisement[] = [];
+    
+    adPlacements.forEach(placementName => {
+      const ads = getAdsForPlacement(placementName);
+      // Tag each ad with its original placement for tracking
+      const taggedAds = ads.map(ad => ({
+        ...ad,
+        _originalPlacement: placementName
+      }));
+      allAds.push(...taggedAds);
+    });
+    
+    // Only log when ads change
+    if (allAds.length > 0) {
+      console.log(`🎯 AdSection: Available ads for [${adPlacements.join(', ')}]:`, allAds.length, 'ads');
+    }
+    return allAds;
+  }, [getAdsForPlacement, adPlacements]);
 
   // Filter active ads
   const activeAds = useMemo(() => {
@@ -97,13 +114,23 @@ export const AdSection: React.FC<AdSectionProps> = ({
     if (activeAds.length === 0) return null;
     const ad = activeAds[currentAdIndex];
     if (ad) {
-      console.log(`🎯 AdSection: Showing ad ${currentAdIndex + 1}/${activeAds.length} for ${adPlacement}:`, ad.campaign_name);
+      const placementInfo = (ad as any)._originalPlacement || adPlacements.join(', ');
+      console.log(`🎯 AdSection: Showing ad ${currentAdIndex + 1}/${activeAds.length} for [${placementInfo}]:`, ad.campaign_name);
     }
     return ad;
-  }, [activeAds, currentAdIndex, adPlacement]);
+  }, [activeAds, currentAdIndex, adPlacements]);
 
   // Determine if we should show placeholder
   const shouldShowPlaceholder = isPlaceholder !== undefined ? isPlaceholder : !selectedAd;
+  
+  // Check if placeholder should be visible for this placement
+  const placementName = Array.isArray(placement) ? placement[0] : placement || (size === 'header' ? 'header' : size === 'sidebar' ? 'sidebar' : 'regular');
+  const placeholderAllowed = isPlaceholderVisible(placementName);
+  
+  // If placeholder is not allowed and no real ad, don't render anything
+  if (shouldShowPlaceholder && !placeholderAllowed) {
+    return null;
+  }
 
   const handleAdClick = (adId: string) => {
     trackClick(adId);
@@ -116,7 +143,7 @@ export const AdSection: React.FC<AdSectionProps> = ({
           imageSrc={imageSrc}
           altText={altText}
           href={href}
-          isPlaceholder={shouldShowPlaceholder}
+          isPlaceholder={shouldShowPlaceholder && placeholderAllowed}
           size={size}
           advertisement={selectedAd || undefined}
           onAdClick={handleAdClick}
@@ -156,7 +183,7 @@ export const AdSection: React.FC<AdSectionProps> = ({
             {/* Ads Counter */}
             <div className="text-center mt-1">
               <span className="text-xs text-gray-500">
-                {currentAdIndex + 1}/{activeAds.length} • {adPlacement}
+                {currentAdIndex + 1}/{activeAds.length} • {adPlacements.length > 1 ? `[${adPlacements.join(', ')}]` : adPlacements[0]}
               </span>
             </div>
           </div>

@@ -8,6 +8,7 @@ import { VideoSection } from '../../components/organisms/VideoSection';
 import { ArticleCardList } from '../../components/molecules/ArticleCardList';
 import { LoadingSpinner } from '../../components/atoms/LoadingSpinner/LoadingSpinner';
 import { buildApiUrl } from '../../config/api';
+import { useAds } from '../../contexts/AdsContext';
 
 interface CategoryPost {
   id: number;
@@ -45,6 +46,20 @@ const CategoryPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Hook for ads
+  const { getAdsForPlacement } = useAds();
+
+  // Helper function to check if there are active ads for a placement
+  const hasActiveAds = (placement: string): boolean => {
+    const ads = getAdsForPlacement(placement);
+    const now = new Date();
+    return ads.some(ad => {
+      const startDate = new Date(ad.start_date);
+      const endDate = new Date(ad.end_date);
+      return ad.status === 'active' && startDate <= now && endDate >= now;
+    });
+  };
 
   useEffect(() => {
     if (slug) {
@@ -152,8 +167,14 @@ const CategoryPage: React.FC = () => {
     <div className="min-h-screen bg-white">
       <Navbar />
       
-      {/* AdSection Header */}
-      <AdSection position="top" size="header" />
+      {/* AdSection Header - Only show if there are active ads */}
+      {hasActiveAds('hero-banner') && (
+        <AdSection 
+          placement="hero-banner" 
+          size='header' 
+          rotationInterval={3000}
+        />
+      )}
       
       {/* Page Header */}
       <div className="container mx-auto px-4 py-8">
@@ -179,8 +200,10 @@ const CategoryPage: React.FC = () => {
       {/* Video Story Section */}
       <VideoSection />
 
-      {/* AdSection Standar */}
-      <AdSection position="bottom" size="regular" />
+      {/* AdSection Standar - Only show if there are active ads */}
+      {hasActiveAds('regular') && (
+        <AdSection position="bottom" size="regular" />
+      )}
 
       {/* ArticleCardList dengan iklan 300x250 di sebelah kanan */}
       <div className="bg-gray-50 py-8">

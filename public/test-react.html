@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>React Test</title>
+</head>
+<body>
+    <div id="root">Loading...</div>
+    <script>
+        console.log('HTML loaded');
+        console.log('Root element:', document.getElementById('root'));
+        
+        // Test if React scripts are loading
+        setTimeout(() => {
+            console.log('After 2 seconds...');
+            console.log('Root content:', document.getElementById('root').innerHTML);
+        }, 2000);
+    </script>
+    
+    <!-- Load the same assets as main site -->
+    <script type="module" crossorigin src="/assets/index-BI0ELsmR.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CEURqSz_.css">
+</body>
+</html>

@@ -1,0 +1,249 @@
+/**
+ * Meta Tags Controller
+ * Handles HTML generation with Open Graph meta tags for social media sharing
+ */
+
+const { Post, PostMeta, User } = require('../models');
+const ContentController = require('./contentController');
+const path = require('path');
+const fs = require('fs');
+
+class MetaTagsController {
+  
+  /**
+   * Generate HTML with Open Graph meta tags for articles
+   * GET /artikel/:slug
+   */
+  static async generateArticleHTML(req, res) {
+    try {
+      const { slug } = req.params;
+      
+      // Fetch article data
+      const post = await Post.findOne({
+        where: { 
+          post_name: slug,
+          post_type: 'post',
+          post_status: 'publish'
+        },
+        include: [
+          {
+            model: User,
+            as: 'author',
+            attributes: ['ID', 'display_name', 'user_login']
+          },
+          {
+            model: PostMeta,
+            as: 'meta',
+            required: false
+          }
+        ]
+      });
+
+      if (!post) {
+        // If article not found, serve the default HTML
+        return MetaTagsController.serveDefaultHTML(res);
+      }
+
+      // Extract metadata from post meta
+      const metadata = {};
+      if (post.meta) {
+        post.meta.forEach(meta => {
+          metadata[meta.meta_key] = meta.meta_value;
+        });
+      }
+      
+      // Get featured image URL from thumbnail_id
+      let featuredImageUrl = 'https://naramakna.id/LogoNaramakna.png'; // default fallback
+      
+      if (metadata._thumbnail_id) {
+        try {
+          const thumbnailPost = await Post.findOne({
+            where: { ID: metadata._thumbnail_id },
+            attributes: ['ID', 'post_title', 'guid']
+          });
+          
+          if (thumbnailPost && thumbnailPost.guid) {
+            // Add cache-busting parameter to force social media refresh
+            const timestamp = new Date().getTime();
+            featuredImageUrl = `${thumbnailPost.guid}?v=${timestamp}`;
+          }
+        } catch (error) {
+          console.log('Error fetching thumbnail:', error.message);
+        }
+      }
+
+      // Extract meta data
+      const excerpt = metadata.excerpt;
+      const seoDescription = metadata._aioseo_description;
+      
+      // Prepare meta data
+      const title = `${post.post_title} - Naramakna`;
+      const description = seoDescription || excerpt || post.post_excerpt || post.post_content?.substring(0, 160) + '...' || 'Artikel terbaru dari Naramakna.id';
+      const articleUrl = `https://naramakna.id/artikel/${slug}`;
+      const authorName = post.author?.display_name || 'Naramakna';
+      const publishedTime = post.post_date;
+      const modifiedTime = post.post_modified;
+
+      // Read the base HTML template
+      const htmlTemplate = MetaTagsController.getHTMLTemplate();
+      
+      // Replace placeholders with actual data
+      const html = htmlTemplate
+        .replace(/{{TITLE}}/g, title)
+        .replace(/{{DESCRIPTION}}/g, description)
+        .replace(/{{IMAGE_URL}}/g, featuredImageUrl)
+        .replace(/{{ARTICLE_URL}}/g, articleUrl)
+        .replace(/{{AUTHOR_NAME}}/g, authorName)
+        .replace(/{{PUBLISHED_TIME}}/g, publishedTime)
+        .replace(/{{MODIFIED_TIME}}/g, modifiedTime)
+        .replace(/{{SLUG}}/g, slug);
+
+      res.setHeader('Content-Type', 'text/html');
+      res.send(html);
+
+    } catch (error) {
+      console.error('Error generating article HTML:', error);
+      MetaTagsController.serveDefaultHTML(res);
+    }
+  }
+
+  /**
+   * Serve default HTML when article not found or error occurs
+   */
+  static serveDefaultHTML(res) {
+    try {
+      const frontendIndexPath = path.join(__dirname, '../../../frontend/index.html');
+      
+      if (fs.existsSync(frontendIndexPath)) {
+        const html = fs.readFileSync(frontendIndexPath, 'utf8');
+        res.setHeader('Content-Type', 'text/html');
+        res.send(html);
+      } else {
+        // Fallback HTML
+        const fallbackHTML = `
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="https://api.naramakna.id/uploads/2025/07/cropped-IKON-LOGO-180x180.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Naramakna - Cerdas Memaknai</title>
+    <meta name="description" content="Naramakna.id - Platform media digital yang menghadirkan informasi berkualitas dan perspektif mendalam untuk membantu Anda cerdas dalam memaknai berbagai peristiwa dan isu terkini." />
+</head>
+<body>
+<div id="root"></div>
+<script>window.location.href = '/';</script>
+</body>
+</html>`;
+        res.setHeader('Content-Type', 'text/html');
+        res.send(fallbackHTML);
+      }
+    } catch (error) {
+      console.error('Error serving default HTML:', error);
+      res.status(500).send('Internal Server Error');
+    }
+  }
+
+  /**
+   * Get dynamic asset files from dist directory
+   */
+  static getAssetFiles() {
+    try {
+      const assetsPath = path.join(__dirname, '../../../frontend/dist/assets');
+      const files = fs.readdirSync(assetsPath);
+      
+      const jsFile = files.find(file => file.startsWith('index-') && file.endsWith('.js'));
+      const cssFile = files.find(file => file.startsWith('index-') && file.endsWith('.css'));
+      
+      return {
+        js: jsFile ? `/assets/${jsFile}` : '/assets/index.js',
+        css: cssFile ? `/assets/${cssFile}` : '/assets/index.css'
+      };
+    } catch (error) {
+      console.error('Error reading asset files:', error);
+      // Fallback to default paths
+      return {
+        js: '/assets/index.js',
+        css: '/assets/index.css'
+      };
+    }
+  }
+
+  /**
+   * Get HTML template with Open Graph meta tags
+   */
+  static getHTMLTemplate() {
+    const assets = MetaTagsController.getAssetFiles();
+    
+    return `<!doctype html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="https://api.naramakna.id/uploads/2025/07/cropped-IKON-LOGO-180x180.png" />
+    <link rel="shortcut icon" href="https://api.naramakna.id/uploads/favico/favicon.ico" />
+    <link rel="apple-touch-icon" href="https://api.naramakna.id/uploads/2025/07/cropped-IKON-LOGO-180x180.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Basic Meta Tags -->
+    <title>{{TITLE}}</title>
+    <meta name="description" content="{{DESCRIPTION}}" />
+    <meta name="keywords" content="naramakna, cerdas memaknai, media digital, berita, artikel" />
+    <meta name="author" content="{{AUTHOR_NAME}}" />
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="{{TITLE}}" />
+    <meta property="og:description" content="{{DESCRIPTION}}" />
+    <meta property="og:image" content="{{IMAGE_URL}}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:url" content="{{ARTICLE_URL}}" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Naramakna" />
+    <meta property="og:locale" content="id_ID" />
+    
+    <!-- Article specific Open Graph -->
+    <meta property="article:author" content="{{AUTHOR_NAME}}" />
+    <meta property="article:published_time" content="{{PUBLISHED_TIME}}" />
+    <meta property="article:modified_time" content="{{MODIFIED_TIME}}" />
+    <meta property="article:section" content="Berita" />
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{TITLE}}" />
+    <meta name="twitter:description" content="{{DESCRIPTION}}" />
+    <meta name="twitter:image" content="{{IMAGE_URL}}" />
+    <meta name="twitter:site" content="@naramakna" />
+    
+    <!-- Additional SEO Meta Tags -->
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="{{ARTICLE_URL}}" />
+    
+    <!-- Preload critical resources -->
+    <link rel="preconnect" href="https://api.naramakna.id">
+    <link rel="dns-prefetch" href="https://api.naramakna.id">
+    
+    <!-- Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-40CJJY40JM"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-40CJJY40JM');
+    </script>
+    
+    <!-- Accessibility Widget -->
+    <script src="https://website-widgets.pages.dev/dist/sienna.min.js" defer></script>
+    
+    <!-- Production built assets -->
+    <script type="module" crossorigin src="${assets.js}"></script>
+    <link rel="stylesheet" crossorigin href="${assets.css}">
+</head>
+<body>
+<div id="root"></div>
+</body>
+</html>`;
+  }
+}
+
+module.exports = MetaTagsController;

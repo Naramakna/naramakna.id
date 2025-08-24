@@ -70,4 +70,39 @@ router.post('/:id/approve-writer', authenticate, requireAdmin, UserController.ap
  */
 router.post('/bulk-action', authenticate, requireAdmin, UserController.bulkUserAction);
 
+/**
+ * @route   POST /api/users/:id/follow
+ * @desc    Follow a user
+ * @access  Private
+ */
+router.post('/:id/follow', authenticate, UserController.followUser);
+
+/**
+ * @route   DELETE /api/users/:id/follow
+ * @desc    Unfollow a user
+ * @access  Private
+ */
+router.delete('/:id/follow', authenticate, UserController.unfollowUser);
+
+/**
+ * @route   GET /api/users/:id/follow-status
+ * @desc    Check if current user follows the specified user
+ * @access  Private
+ */
+router.get('/:id/follow-status', authenticate, UserController.getFollowStatus);
+
+/**
+ * @route   GET /api/users/:id/followers
+ * @desc    Get user's followers
+ * @access  Public
+ */
+router.get('/:id/followers', UserController.getFollowers);
+
+/**
+ * @route   GET /api/users/:id/following
+ * @desc    Get users that this user follows
+ * @access  Public
+ */
+router.get('/:id/following', UserController.getFollowing);
+
 module.exports = router;

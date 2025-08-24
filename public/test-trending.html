@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Trending API</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .article { border: 1px solid #ddd; margin: 10px 0; padding: 10px; }
+        .error { color: red; }
+        .success { color: green; }
+        button { margin: 10px; padding: 10px 20px; }
+    </style>
+</head>
+<body>
+    <h1>Test Trending API</h1>
+    <button onclick="testSmartTrending()">Test Smart Trending API</button>
+    <button onclick="testOldTrending()">Test Old Trending API</button>
+    <div id="result"></div>
+
+    <script>
+        async function testSmartTrending() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing smart trending API...</p>';
+            
+            try {
+                console.log('🚀 Testing smart trending API...');
+                
+                // Try different URLs
+                const urls = [
+                    'http://localhost:3001/api/trending/articles?limit=3',
+                    '/api/trending/articles?limit=3',
+                    'https://api.naramakna.id/api/trending/articles?limit=3'
+                ];
+                
+                for (const url of urls) {
+                    try {
+                        console.log(`🔗 Trying URL: ${url}`);
+                        const response = await fetch(url);
+                        console.log(`📡 Response for ${url}:`, response.status, response.statusText);
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            console.log('📊 Response data:', data);
+                            
+                            if (data.success) {
+                                resultDiv.innerHTML = `<h2 class="success">Smart Trending API Working! (${url})</h2>`;
+                                resultDiv.innerHTML += `<p><strong>Total articles:</strong> ${data.data.posts.length}</p>`;
+                                resultDiv.innerHTML += `<p><strong>Criteria:</strong> ${data.data.criteria}</p>`;
+                                data.data.posts.forEach(post => {
+                                    resultDiv.innerHTML += `
+                                        <div class="article">
+                                            <h3>${post.post_title}</h3>
+                                            <p><strong>Views:</strong> ${post.view_count}</p>
+                                            <p><strong>Keyword:</strong> ${post.trending_keyword}</p>
+                                            <p><strong>Score:</strong> ${post.relevance_score}</p>
+                                            <p><strong>Author:</strong> ${post.author_name}</p>
+                                            <small>Date: ${post.post_date}</small>
+                                        </div>
+                                    `;
+                                });
+                                return; // Success, stop trying other URLs
+                            }
+                        }
+                    } catch (urlError) {
+                        console.error(`❌ Error with ${url}:`, urlError);
+                        continue; // Try next URL
+                    }
+                }
+                
+                resultDiv.innerHTML = '<p class="error">All URLs failed. Check console for details.</p>';
+                
+            } catch (error) {
+                console.error('🚨 Test error:', error);
+                resultDiv.innerHTML = `<p class="error">Fetch Error: ${error.message}</p>`;
+            }
+        }
+
+        async function testOldTrending() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing old trending API...</p>';
+            
+            try {
+                const response = await fetch('/api/content/trending?limit=3');
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = '<h2 class="success">Old Trending API Working!</h2>';
+                    data.data.posts.forEach(post => {
+                        resultDiv.innerHTML += `
+                            <div class="article">
+                                <h3>${post.title}</h3>
+                                <p>Views: ${post.view_count}</p>
+                                <small>Date: ${post.date}</small>
+                            </div>
+                        `;
+                    });
+                } else {
+                    resultDiv.innerHTML = `<p class="error">API Error: ${data.message}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">Fetch Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

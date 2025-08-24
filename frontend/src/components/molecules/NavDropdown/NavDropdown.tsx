@@ -135,28 +135,31 @@ export const NavDropdown: React.FC<NavDropdownProps> = ({
             ref={dropdownRef}
             onMouseLeave={() => setIsOpen(false)}
           >
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-              <div className="grid grid-cols-3 gap-8">
+            <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12 py-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
                 
                 {/* Left Column - Fitur Unggulan Grid 2x2 */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-4">Fitur Unggulan</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                <div className="md:col-span-1">
+                  <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center">
+                    <div className="w-1 h-6 bg-naramakna-gold rounded-full mr-3"></div>
+                    Fitur Unggulan
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3 lg:gap-4">
                     {featuredServices.map((service, index) => (
                       <a
                         key={index}
                         href={service.href}
-                        className="group p-2 sm:p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-all duration-200 border border-gray-100 hover:border-gray-200 hover:shadow-sm"
+                        className="group p-3 lg:p-4 rounded-xl hover:bg-gradient-to-br hover:from-gray-50 hover:to-gray-100 cursor-pointer transition-all duration-300 border border-gray-100 hover:border-naramakna-gold/30 hover:shadow-lg"
                       >
-                        <div className="flex flex-col items-center text-center space-y-1 sm:space-y-2">
-                          <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
+                        <div className="flex flex-col items-center text-center space-y-2 lg:space-y-3">
+                          <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-300 p-2 rounded-full bg-white group-hover:shadow-md">
                             {service.icon}
                           </div>
                           <div>
-                            <div className="text-xs font-medium text-gray-900 group-hover:text-yellow-500 transition-colors duration-200 leading-tight">
+                            <div className="text-sm lg:text-base font-semibold text-gray-900 group-hover:text-naramakna-gold transition-colors duration-300 leading-tight">
                               {service.name}
                             </div>
-                            <div className="text-xs text-gray-500 mt-1 leading-tight hidden sm:block">
+                            <div className="text-xs text-gray-500 mt-1 leading-tight">
                               {service.description}
                             </div>
                           </div>
@@ -167,34 +170,49 @@ export const NavDropdown: React.FC<NavDropdownProps> = ({
                 </div>
 
                 {/* Middle Column - Company/Information Links */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-4">Informasi</h3>
-                  <div className="space-y-2">
+                <div className="md:col-span-1">
+                  <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center">
+                    <div className="w-1 h-6 bg-naramakna-gold rounded-full mr-3"></div>
+                    Informasi
+                  </h3>
+                  <div className="space-y-3">
                     {companyLinks.map((link, index) => (
                       <a
                         key={index}
                         href={link.href}
-                        className="block text-sm text-gray-600 hover:text-yellow-500 transition-colors duration-200"
+                        className="group flex items-center text-gray-600 hover:text-naramakna-gold transition-colors duration-300 py-2 px-3 rounded-lg hover:bg-gray-50"
                       >
-                        {link.title}
+                        <div className="w-2 h-2 bg-gray-300 group-hover:bg-naramakna-gold rounded-full mr-3 transition-colors duration-300"></div>
+                        <span className="text-sm lg:text-base font-medium">
+                          {link.title}
+                        </span>
                       </a>
                     ))}
                   </div>
                 </div>
 
                 {/* Right Column - Social Media Links */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-4">Ikuti Kami</h3>
-                  <div className="space-y-2">
+                <div className="md:col-span-1">
+                  <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center">
+                    <div className="w-1 h-6 bg-naramakna-gold rounded-full mr-3"></div>
+                    Ikuti Kami
+                  </h3>
+                  <div className="space-y-3">
                     {socialMediaLinks.map((link, index) => (
                       <a
                         key={index}
                         href={link.href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block text-sm text-gray-600 hover:text-yellow-500 transition-colors duration-200"
+                        className="group flex items-center text-gray-600 hover:text-naramakna-gold transition-colors duration-300 py-2 px-3 rounded-lg hover:bg-gray-50"
                       >
-                        {link.name}
+                        <div className="w-2 h-2 bg-gray-300 group-hover:bg-naramakna-gold rounded-full mr-3 transition-colors duration-300"></div>
+                        <span className="text-sm lg:text-base font-medium">
+                          {link.name}
+                        </span>
+                        <svg className="w-4 h-4 ml-auto group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
                       </a>
                     ))}
                   </div>
