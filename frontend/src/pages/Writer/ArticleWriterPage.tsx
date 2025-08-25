@@ -88,6 +88,13 @@ const ArticleWriterPage: React.FC = () => {
   const [categories, setCategories] = useState<Array<{id: number, name: string, slug: string, parent?: number}>>([]);
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
 
+  // Responsive state for toolbar
+  const [windowWidth, setWindowWidth] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth;
+    }
+    return 1024; // Default to desktop
+  });
 
   const quillRef = useRef<ReactQuill>(null);
 
@@ -237,19 +244,71 @@ const ArticleWriterPage: React.FC = () => {
     }
   };
 
-  // Quill configuration
-  const modules = {
-    toolbar: {
-      container: [
+  // Window resize handler for responsive toolbar
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Full toolbar configuration for all devices
+  const getToolbarConfig = () => {
+    const isMobile = windowWidth < 640; // sm breakpoint
+    const isTablet = windowWidth < 1024; // lg breakpoint
+    
+    console.log('🔧 getToolbarConfig - windowWidth:', windowWidth, 'isMobile:', isMobile, 'isTablet:', isTablet);
+    
+    if (isMobile) {
+      // Mobile - full toolbar with better mobile layout
+      console.log('📱 Using mobile toolbar config (full features)');
+      return [
         [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
         ['bold', 'italic', 'underline', 'strike'],
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }, { 'indent': '-1'}, { 'indent': '+1' }],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'indent': '-1'}, { 'indent': '+1' }],
         ['blockquote', 'code-block'],
         ['link', 'image'],
         [{ 'align': [] }],
         [{ 'color': [] }, { 'background': [] }],
         ['clean']
-      ],
+      ];
+    } else if (isTablet) {
+      // Tablet - full toolbar same as desktop
+      console.log('📟 Using tablet toolbar config (full features)');
+      return [
+        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'indent': '-1'}, { 'indent': '+1' }],
+        ['blockquote', 'code-block'],
+        ['link', 'image'],
+        [{ 'align': [] }],
+        [{ 'color': [] }, { 'background': [] }],
+        ['clean']
+      ];
+    } else {
+      // Desktop - full toolbar
+      console.log('💻 Using desktop toolbar config (full features)');
+      return [
+        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'indent': '-1'}, { 'indent': '+1' }],
+        ['blockquote', 'code-block'],
+        ['link', 'image'],
+        [{ 'align': [] }],
+        [{ 'color': [] }, { 'background': [] }],
+        ['clean']
+      ];
+    }
+  };
+
+  const modules = React.useMemo(() => ({
+    toolbar: {
+      container: getToolbarConfig(),
       handlers: {
         image: imageHandler
       }
@@ -257,7 +316,7 @@ const ArticleWriterPage: React.FC = () => {
     clipboard: {
       matchVisual: false
     }
-  };
+  }), [windowWidth, imageHandler]);
 
   const formats = [
     'header', 'font', 'size',
@@ -669,6 +728,213 @@ const ArticleWriterPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Custom CSS for responsive editor */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          .prose-editor .ql-editor {
+            padding: 20px !important;
+            line-height: 1.6 !important;
+            font-size: 16px !important;
+          }
+          
+          .prose-editor .ql-editor.ql-blank::before {
+            left: 20px !important;
+            right: 20px !important;
+            color: #9ca3af !important;
+            font-style: italic !important;
+          }
+          
+          .prose-editor .ql-toolbar {
+            border-top: 1px solid #e5e7eb;
+            border-left: 1px solid #e5e7eb;
+            border-right: 1px solid #e5e7eb;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 8px 12px !important;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+          }
+          
+          .prose-editor .ql-container {
+            border-bottom: 1px solid #e5e7eb;
+            border-left: 1px solid #e5e7eb;
+            border-right: 1px solid #e5e7eb;
+            border-top: none;
+          }
+          
+          .prose-editor .ql-toolbar .ql-formats {
+            margin-right: 8px !important;
+            margin-bottom: 4px !important;
+            display: flex;
+            align-items: center;
+            flex-wrap: nowrap;
+          }
+          
+          .prose-editor .ql-toolbar button {
+            width: 32px !important;
+            height: 32px !important;
+            padding: 6px !important;
+            margin: 0 1px !important;
+            border-radius: 4px !important;
+          }
+          
+          .prose-editor .ql-toolbar button:hover {
+            background-color: #f3f4f6 !important;
+          }
+          
+          .prose-editor .ql-toolbar button.ql-active {
+            background-color: #dbeafe !important;
+            color: #2563eb !important;
+          }
+          
+          .prose-editor .ql-toolbar .ql-picker {
+            margin: 0 2px !important;
+          }
+          
+          .prose-editor .ql-toolbar .ql-picker-label {
+            padding: 6px 8px !important;
+            border-radius: 4px !important;
+            font-size: 14px !important;
+            min-width: auto !important;
+          }
+          
+          .prose-editor .ql-toolbar .ql-picker-label:hover {
+            background-color: #f3f4f6 !important;
+          }
+          
+          /* Mobile specific styles - full toolbar with compact layout */
+          @media (max-width: 639px) {
+            .prose-editor .ql-toolbar {
+              padding: 8px 6px !important;
+              gap: 3px;
+              flex-wrap: wrap;
+              justify-content: flex-start;
+            }
+            
+            .prose-editor .ql-toolbar .ql-formats {
+              margin-right: 4px !important;
+              margin-bottom: 4px !important;
+              flex-shrink: 0;
+            }
+            
+            .prose-editor .ql-toolbar button {
+              width: 26px !important;
+              height: 26px !important;
+              padding: 3px !important;
+              margin: 0 !important;
+              flex-shrink: 0;
+            }
+            
+            .prose-editor .ql-toolbar button svg {
+              width: 13px !important;
+              height: 13px !important;
+            }
+            
+            .prose-editor .ql-toolbar .ql-picker {
+              flex-shrink: 0;
+            }
+            
+            .prose-editor .ql-toolbar .ql-picker-label {
+              padding: 3px 5px !important;
+              font-size: 11px !important;
+              min-width: 30px !important;
+              text-align: center;
+            }
+            
+            .prose-editor .ql-toolbar .ql-picker-options {
+              font-size: 12px !important;
+            }
+            
+            .prose-editor .ql-editor {
+              padding: 15px !important;
+              font-size: 14px !important;
+            }
+            
+            /* Ensure toolbar wraps nicely on mobile */
+            .prose-editor .ql-toolbar .ql-formats:last-child {
+              margin-right: 0 !important;
+            }
+          }
+          
+          /* Tablet specific styles */
+          @media (min-width: 640px) and (max-width: 1023px) {
+            .prose-editor .ql-toolbar {
+              padding: 7px 10px !important;
+            }
+            
+            .prose-editor .ql-toolbar button {
+              width: 30px !important;
+              height: 30px !important;
+              padding: 5px !important;
+            }
+            
+            .prose-editor .ql-toolbar button svg {
+              width: 16px !important;
+              height: 16px !important;
+            }
+            
+            .prose-editor .ql-toolbar .ql-picker-label {
+              padding: 5px 7px !important;
+              font-size: 13px !important;
+            }
+            
+            .prose-editor .ql-editor {
+              padding: 18px !important;
+              font-size: 15px !important;
+            }
+          }
+          
+          /* Desktop styles */
+          @media (min-width: 1024px) {
+            .prose-editor .ql-toolbar button svg {
+              width: 18px !important;
+              height: 18px !important;
+            }
+          }
+          
+          /* Date & Location responsive styles */
+          input[type="datetime-local"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-color: white;
+            color: #374151;
+          }
+          
+          input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>');
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 16px 16px;
+            cursor: pointer;
+            opacity: 0.7;
+          }
+          
+          input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+          }
+          
+          @media (max-width: 639px) {
+            input[type="datetime-local"] {
+              font-size: 14px !important;
+              padding: 8px !important;
+              min-height: 40px !important;
+            }
+            
+            input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+              background-size: 14px 14px;
+            }
+          }
+          
+          @media (min-width: 640px) and (max-width: 1023px) {
+            input[type="datetime-local"] {
+              font-size: 14px !important;
+              padding: 10px !important;
+              min-height: 42px !important;
+            }
+          }
+        `
+      }} />
 
       <Navbar />
       
@@ -778,6 +1044,7 @@ const ArticleWriterPage: React.FC = () => {
             {/* Rich Text Editor */}
             <div className="prose-editor">
               <ReactQuill
+                key={`quill-${windowWidth < 640 ? 'mobile' : windowWidth < 1024 ? 'tablet' : 'desktop'}`}
                 ref={quillRef}
                 theme="snow"
                 value={article.content}
@@ -1038,19 +1305,35 @@ const ArticleWriterPage: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Date & Location
               </label>
-              <input
-                type="datetime-local"
-                value={article.publish_date}
-                onChange={(e) => setArticle(prev => ({ ...prev, publish_date: e.target.value }))}
-                className="w-full p-3 border border-gray-300 rounded-md text-sm mb-3"
-              />
-              <input
-                type="text"
-                placeholder="Lokasi..."
-                value={article.location}
-                onChange={(e) => setArticle(prev => ({ ...prev, location: e.target.value }))}
-                className="w-full p-3 border border-gray-300 rounded-md text-sm"
-              />
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Tanggal Publikasi</label>
+                  <input
+                    type="datetime-local"
+                    value={article.publish_date}
+                    onChange={(e) => setArticle(prev => ({ ...prev, publish_date: e.target.value }))}
+                    className="w-full p-2 sm:p-3 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    style={{
+                      fontSize: '14px',
+                      minHeight: '40px'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Lokasi</label>
+                  <input
+                    type="text"
+                    placeholder="Masukkan lokasi..."
+                    value={article.location}
+                    onChange={(e) => setArticle(prev => ({ ...prev, location: e.target.value }))}
+                    className="w-full p-2 sm:p-3 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    style={{
+                      fontSize: '14px',
+                      minHeight: '40px'
+                    }}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Mark As 18+ */}
