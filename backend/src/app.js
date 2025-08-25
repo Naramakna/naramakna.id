@@ -76,10 +76,12 @@ app.use(cookieParser());
 app.use((req, res, next) => {
   res.setTimeout(30000, () => {
     console.log('⏰ Request timeout');
-    res.status(408).json({
-      success: false,
-      message: 'Request timeout'
-    });
+    if (!res.headersSent) {
+      res.status(408).json({
+        success: false,
+        message: 'Request timeout'
+      });
+    }
   });
   next();
 });

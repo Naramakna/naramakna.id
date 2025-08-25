@@ -643,13 +643,13 @@ export const AdminAds: React.FC = () => {
                 </label>
                 
                 {/* File Upload Section */}
-                {formData.media_type === 'image' && (
+                {(formData.media_type === 'image' || formData.media_type === 'gif' || formData.media_type === 'video') && (
                   <div>
-                    <p className="text-sm text-gray-600 mb-2">Upload new image:</p>
+                    <p className="text-sm text-gray-600 mb-2">Upload new {formData.media_type}:</p>
                     <FileUpload
                       onFileSelect={handleFileSelect}
                       onUpload={handleFileUpload}
-                      accept="image/*"
+                      accept={formData.media_type === 'video' ? "video/*" : formData.media_type === 'image' || formData.media_type === 'gif' ? "image/*" : "image/*,video/*"}
                       preview={uploadedImageUrl || formData.media_url}
                       uploading={uploading}
                     />
@@ -662,7 +662,7 @@ export const AdminAds: React.FC = () => {
                   <Input
                     value={formData.media_url}
                     onChange={(e) => handleInputChange('media_url', e.target.value)}
-                    placeholder="https://example.com/image.jpg"
+                    placeholder={formData.media_type === 'video' ? "https://example.com/video.mp4" : "https://example.com/image.jpg"}
                   />
                 </div>
               </div>
@@ -844,13 +844,13 @@ export const AdminAds: React.FC = () => {
               </label>
               
               {/* File Upload Section */}
-              {formData.media_type === 'image' && (
+              {(formData.media_type === 'image' || formData.media_type === 'gif' || formData.media_type === 'video') && (
                 <div>
-                  <p className="text-sm text-gray-600 mb-2">Upload new image:</p>
+                  <p className="text-sm text-gray-600 mb-2">Upload new {formData.media_type}:</p>
                   <FileUpload
                     onFileSelect={handleFileSelect}
                     onUpload={handleFileUpload}
-                    accept="image/*"
+                    accept={formData.media_type === 'video' ? "video/*" : formData.media_type === 'image' || formData.media_type === 'gif' ? "image/*" : "image/*,video/*"}
                     preview={uploadedImageUrl || formData.media_url}
                     uploading={uploading}
                   />
@@ -863,7 +863,7 @@ export const AdminAds: React.FC = () => {
                 <Input
                   value={formData.media_url}
                   onChange={(e) => handleInputChange('media_url', e.target.value)}
-                  placeholder="Enter image/video URL"
+                  placeholder={formData.media_type === 'video' ? "https://example.com/video.mp4" : "Enter image/video URL"}
                 />
               </div>
             </div>
@@ -981,14 +981,25 @@ export const AdminAds: React.FC = () => {
                       {/* Ad Preview */}
                       {ad.media_url && (
                         <div className="flex-shrink-0">
-                          <img 
-                            src={ad.media_url} 
-                            alt={ad.campaign_name}
-                            className="w-16 h-10 object-cover rounded"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
+                          {ad.media_type === 'video' ? (
+                            <video 
+                              src={ad.media_url}
+                              className="w-16 h-10 object-cover rounded"
+                              muted
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <img 
+                              src={ad.media_url} 
+                              alt={ad.campaign_name}
+                              className="w-16 h-10 object-cover rounded"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          )}
                         </div>
                       )}
                       

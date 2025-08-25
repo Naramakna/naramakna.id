@@ -18,6 +18,22 @@ export const NavHeader: React.FC<NavHeaderProps> = ({ className = '' }) => {
     setIsSearchModalOpen(false);
   };
 
+  // Get appropriate dashboard URL based on user role
+  const getDashboardUrl = () => {
+    if (!user) return '/dashboard';
+    
+    switch (user.user_role) {
+      case 'superadmin':
+        return '/superadmin/dashboard';
+      case 'admin':
+        return '/admin/dashboard';
+      case 'writer':
+        return '/writer/dashboard';
+      default:
+        return '/dashboard';
+    }
+  };
+
   return (
     <>
       {/* Top Navbar - Reduced height */}
@@ -136,7 +152,7 @@ export const NavHeader: React.FC<NavHeaderProps> = ({ className = '' }) => {
                     <a href={user?.user_login ? `/${user.user_login}` : '/profile'} className="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-yellow-500 hover:bg-gray-100 rounded-md transition-colors duration-200">
                       Profil Saya
                     </a>
-                    <a href="/dashboard" className="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-yellow-500 hover:bg-gray-100 rounded-md transition-colors duration-200">
+                    <a href={getDashboardUrl()} className="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-yellow-500 hover:bg-gray-100 rounded-md transition-colors duration-200">
                       Dashboard
                     </a>
                   </>

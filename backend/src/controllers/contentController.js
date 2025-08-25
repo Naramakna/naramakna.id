@@ -1159,6 +1159,14 @@ class ContentController {
       metadata,
       view_count: viewCount,
       views: viewCount, // Alternative field name
+      // Featured image with caption
+      ...(metadata._thumbnail_url && {
+        featured_image: {
+          url: metadata._thumbnail_url,
+          caption: metadata._thumbnail_caption || '',
+          id: metadata._thumbnail_id
+        }
+      }),
       // Content type specific formatting
       ...(postData.post_type === 'youtube_video' && {
         youtube: {

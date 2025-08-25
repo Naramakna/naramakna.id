@@ -15,7 +15,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   onFileSelect,
   onUpload,
   accept = "image/*",
-  maxSize = 10 * 1024 * 1024, // 10MB default
+  maxSize = 50 * 1024 * 1024, // 50MB default
   preview,
   uploading = false,
   className = ""
@@ -34,6 +34,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     // Validate file type
     if (accept === "image/*" && !file.type.startsWith('image/')) {
       alert('Please select an image file');
+      return;
+    }
+    if (accept === "image/*,video/*" && !(file.type.startsWith('image/') || file.type.startsWith('video/'))) {
+      alert('Please select an image or video file');
       return;
     }
 
@@ -90,12 +94,20 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       >
         {preview ? (
           <div className="space-y-4">
-            <img 
-              src={preview} 
-              alt="Preview" 
-              className="max-w-full max-h-48 mx-auto rounded-lg"
-            />
-            <p className="text-sm text-gray-600">Current image</p>
+            {preview.match(/\.(mp4|webm|ogg|mov|avi)$/i) ? (
+              <video 
+                src={preview} 
+                controls
+                className="max-w-full max-h-48 mx-auto rounded-lg"
+              />
+            ) : (
+              <img 
+                src={preview} 
+                alt="Preview" 
+                className="max-w-full max-h-48 mx-auto rounded-lg"
+              />
+            )}
+            <p className="text-sm text-gray-600">Current media</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -116,7 +128,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             </div>
             <div>
               <p className="text-lg text-gray-700">
-                Drag and drop your image here, or{' '}
+                Drag and drop your media file here, or{' '}
                 <button
                   type="button"
                   className="text-blue-600 hover:text-blue-700 font-medium"
@@ -126,7 +138,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                 </button>
               </p>
               <p className="text-sm text-gray-500 mt-2">
-                Supports: JPG, PNG, GIF (Max: {Math.round(maxSize / 1024 / 1024)}MB)
+                Supports: {accept === "image/*,video/*" ? "Images (JPG, PNG, GIF) & Videos (MP4, WEBM, MOV)" : "JPG, PNG, GIF"} (Max: {Math.round(maxSize / 1024 / 1024)}MB)
               </p>
             </div>
           </div>

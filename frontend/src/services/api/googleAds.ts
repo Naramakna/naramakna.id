@@ -74,6 +74,20 @@ export interface GoogleAdsSyncResult {
   }>;
 }
 
+// Helper function to get auth headers
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return headers;
+};
+
 export const googleAdsAPI = {
   /**
    * Test Google Ads API connection
@@ -82,16 +96,17 @@ export const googleAdsAPI = {
     success: boolean;
     data: { account: GoogleAdsAccount | null; connected: boolean; error?: string };
   }> {
-    const response = await fetch(buildApiUrl('google-ads/test-connection'), {
+    const response = await fetch(buildApiUrl('auth/google-ads/test'), {
       method: 'GET',
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers: getAuthHeaders()
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      // Combine the main message with the detailed error from the nested data object
+      const detailedError = errorData.data?.error || errorData.message || `HTTP error! status: ${response.status}`;
+      throw new Error(detailedError);
     }
 
     return await response.json();
@@ -107,9 +122,7 @@ export const googleAdsAPI = {
     const response = await fetch(buildApiUrl('google-ads/config'), {
       method: 'GET',
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers: getAuthHeaders()
     });
 
     if (!response.ok) {
@@ -129,9 +142,7 @@ export const googleAdsAPI = {
     const response = await fetch(buildApiUrl('google-ads/status'), {
       method: 'GET',
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers: getAuthHeaders()
     });
 
     if (!response.ok) {
@@ -151,9 +162,7 @@ export const googleAdsAPI = {
     const response = await fetch(buildApiUrl('google-ads/campaigns'), {
       method: 'GET',
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers: getAuthHeaders()
     });
 
     if (!response.ok) {
@@ -178,9 +187,7 @@ export const googleAdsAPI = {
     const response = await fetch(url.toString(), {
       method: 'GET',
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers: getAuthHeaders()
     });
 
     if (!response.ok) {
@@ -201,9 +208,7 @@ export const googleAdsAPI = {
     const response = await fetch(buildApiUrl('google-ads/sync'), {
       method: 'POST',
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers: getAuthHeaders()
     });
 
     if (!response.ok) {
@@ -224,9 +229,7 @@ export const googleAdsAPI = {
     const response = await fetch(buildApiUrl('google-ads/schedule-sync'), {
       method: 'POST',
       credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ sync_token: syncToken })
     });
 

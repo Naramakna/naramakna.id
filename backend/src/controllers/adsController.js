@@ -111,6 +111,7 @@ class AdsController {
       } = req.query;
 
       const now = new Date();
+      console.log(`🎯 AdsController: Serving ads for placement "${placement}" at ${now.toISOString()}`);
 
       // Get active ads for the placement
       const ads = await Advertisement.findAll({
@@ -132,6 +133,27 @@ class AdsController {
           ['created_at', 'ASC']
         ]
       });
+
+      // Debug: Log all ads for this placement regardless of date/status
+      const allAdsForPlacement = await Advertisement.findAll({
+        where: {
+          placement_type: placement
+        },
+        attributes: ['id', 'campaign_name', 'status', 'start_date', 'end_date', 'placement_type', 'media_type']
+      });
+      
+      console.log(`🎯 AdsController: Found ${allAdsForPlacement.length} total ads for placement "${placement}":`, 
+        allAdsForPlacement.map(ad => ({
+          id: ad.id,
+          name: ad.campaign_name,
+          status: ad.status,
+          start: ad.start_date,
+          end: ad.end_date,
+          type: ad.media_type
+        }))
+      );
+      
+      console.log(`🎯 AdsController: After date/status filtering: ${ads.length} ads for "${placement}"`);
 
       // Increment impressions
       if (ads.length > 0) {
@@ -545,11 +567,11 @@ class AdsController {
       });
 
       const fileFilter = (req, file, cb) => {
-        // Allow only image files
-        if (file.mimetype.startsWith('image/')) {
+        // Allow image, gif and video files
+        if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
           cb(null, true);
         } else {
-          cb(new Error('Only image files are allowed'), false);
+          cb(new Error('Only image, gif and video files are allowed'), false);
         }
       };
 
@@ -557,16 +579,20 @@ class AdsController {
         storage: storage,
         fileFilter: fileFilter,
         limits: {
-          fileSize: 10 * 1024 * 1024 // 10MB limit
+          fileSize: 50 * 1024 * 1024 // 50MB limit
         }
       }).single('adImage');
 
       upload(req, res, function (err) {
         if (err) {
           console.error('📸 Upload error:', err);
+          let message = err.message || 'Upload failed';
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            message = 'File too large. Maximum size is 50MB';
+          }
           return res.status(400).json({
             success: false,
-            message: err.message || 'Upload failed'
+            message: message
           });
         }
 

@@ -25,13 +25,8 @@ export const useGoogleAdsConfig = () => {
       
       // Check if error is due to authentication
       if (errorMessage.includes('401') || errorMessage.includes('Access token required') || errorMessage.includes('Unauthorized')) {
-        errorMessage = 'Authentication required. Redirecting to login...';
+        errorMessage = 'Authentication required. Please login to access Google Ads configuration.';
         setError(errorMessage);
-        
-        // Redirect to login page after a short delay
-        setTimeout(() => {
-          window.location.href = '/login';
-        }, 2000);
         return;
       }
       
@@ -41,6 +36,7 @@ export const useGoogleAdsConfig = () => {
     }
   }, []);
 
+  // Auto-fetch config on mount
   useEffect(() => {
     fetchConfig();
   }, [fetchConfig]);
@@ -72,14 +68,9 @@ export const useGoogleAdsConnection = () => {
       
       // Check if error is due to authentication
       if (errorMessage.includes('401') || errorMessage.includes('Access token required') || errorMessage.includes('Unauthorized')) {
-        errorMessage = 'Authentication required. Redirecting to login...';
+        errorMessage = 'Authentication required. Please login to test Google Ads connection.';
         setError(errorMessage);
         setConnectionStatus({ connected: false, account: null, error: errorMessage });
-        
-        // Redirect to login page after a short delay
-        setTimeout(() => {
-          window.location.href = '/login';
-        }, 2000);
         return;
       }
       
@@ -119,6 +110,7 @@ export const useGoogleAdsSyncStatus = () => {
     }
   }, []);
 
+  // Auto-fetch status on mount
   useEffect(() => {
     fetchStatus();
   }, [fetchStatus]);

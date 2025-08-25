@@ -258,109 +258,45 @@ class AnalyticsController {
     try {
       const { period = 'month' } = req.query;
 
-      // Calculate date range
-      const endDate = new Date();
-      const startDate = new Date();
+      console.log('📊 Getting dashboard analytics...');
+
+      // Get simple totals first (faster queries)
+      const [totalViews, totalPosts, totalUsers] = await Promise.all([
+        Analytics.count({ where: { event_type: 'view' } }),
+        Post.count({ where: { post_type: 'post', post_status: 'publish' } }),
+        User.count()
+      ]);
+
+      console.log('📊 Basic totals:', { totalViews, totalPosts, totalUsers });
+
+      // Get posts with views count
+      const postsWithViews = await Analytics.count({
+        where: { event_type: 'view' },
+        distinct: true,
+        col: 'content_id'
+      });
       
-      switch (period) {
-        case 'week':
-          startDate.setDate(endDate.getDate() - 7);
-          break;
-        case 'month':
-          startDate.setMonth(endDate.getMonth() - 1);
-          break;
-        case 'year':
-          startDate.setFullYear(endDate.getFullYear() - 1);
-          break;
-        default:
-          startDate.setMonth(endDate.getMonth() - 1);
-      }
+      const avgViewsPerPost = postsWithViews > 0 ? Math.round(totalViews / postsWithViews) : 0;
 
-      // Get content type performance
-      const contentTypeMetrics = await Analytics.findAll({
-        where: {
-          timestamp: {
-            [Op.between]: [startDate, endDate]
-          }
-        },
-        attributes: [
-          'content_type',
-          'event_type',
-          [sequelize.fn('COUNT', sequelize.col('id')), 'count']
-        ],
-        group: ['content_type', 'event_type'],
-        raw: true
-      });
+      // Get regional breakdown from the custom report table
+      const [regionalStats, metadata] = await sequelize.query("SELECT city, region, views FROM top_regions_report ORDER BY views DESC");
 
-      // Get top performing content
-      const topContent = await Analytics.findAll({
-        where: {
-          event_type: 'view',
-          timestamp: {
-            [Op.between]: [startDate, endDate]
-          }
-        },
-        attributes: [
-          'content_id',
-          'content_type',
-          [sequelize.fn('COUNT', sequelize.col('Analytics.id')), 'views']
-        ],
-        include: [{
-          model: Post,
-          as: 'post',
-          attributes: ['post_title', 'post_type']
-        }],
-        group: ['content_id', 'content_type'],
-        order: [[sequelize.fn('COUNT', sequelize.col('Analytics.id')), 'DESC']],
-        limit: 10,
-        raw: true
-      });
-
-      // Get daily activity
-      const dailyActivity = await Analytics.findAll({
-        where: {
-          timestamp: {
-            [Op.between]: [startDate, endDate]
-          }
-        },
-        attributes: [
-          [sequelize.fn('DATE', sequelize.col('timestamp')), 'date'],
-          [sequelize.fn('COUNT', sequelize.col('id')), 'total_events']
-        ],
-        group: [sequelize.fn('DATE', sequelize.col('timestamp'))],
-        order: [[sequelize.fn('DATE', sequelize.col('timestamp')), 'ASC']],
-        raw: true
-      });
-
-      // Get user engagement metrics
-      const engagementMetrics = await Analytics.findAll({
-        where: {
-          timestamp: {
-            [Op.between]: [startDate, endDate]
-          }
-        },
-        attributes: [
-          'event_type',
-          [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
-          [sequelize.fn('COUNT', sequelize.fn('DISTINCT', sequelize.col('user_ip'))), 'unique_users']
-        ],
-        group: ['event_type'],
-        raw: true
-      });
+      console.log('📊 Regional stats:', regionalStats.slice(0, 5));
 
       res.json({
         success: true,
         data: {
           period,
-          contentTypes: this.formatContentTypeMetrics(contentTypeMetrics),
-          topContent: topContent.map(item => ({
-            id: item.content_id,
-            title: item['post.post_title'],
-            type: item.content_type,
-            views: parseInt(item.views)
-          })),
-          dailyActivity,
-          engagement: engagementMetrics
+          totalViews,
+          totalPosts,
+          totalUsers,
+          postsWithViews,
+          avgViewsPerPost,
+          regionalStats,
+          contentTypes: {},
+          topContent: [],
+          dailyActivity: [],
+          engagement: []
         }
       });
 

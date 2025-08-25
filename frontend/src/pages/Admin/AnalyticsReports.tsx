@@ -10,6 +10,7 @@ interface AnalyticsData {
   usersByGender: { [key: string]: number };
   postsByMonth: { [key: string]: number };
   topAuthors: Array<{ name: string; posts: number }>;
+  regionalStats?: Array<{ region: string; city: string; views: number }>;
 }
 
 export const AnalyticsReports: React.FC = () => {
@@ -33,13 +34,26 @@ export const AnalyticsReports: React.FC = () => {
     try {
       setLoading(true);
       
-      // Mock data untuk demo - nanti diganti dengan API call
-      setTimeout(() => {
+      // Fetch real analytics data from boost
+      const response = await fetch('/api/analytics/dashboard', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch analytics');
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
         setAnalyticsData({
-          totalPosts: 336,
-          totalUsers: 16,
-          totalViews: 12450,
-          totalComments: 89,
+          totalPosts: result.data.totalPosts || 0,
+          totalUsers: result.data.totalUsers || 0,
+          totalViews: result.data.totalViews || 0,
+          totalComments: 0, // Will add later
           postsByCategory: {
             'Narapandang': 85,
             'Dunia': 72,
@@ -69,10 +83,14 @@ export const AnalyticsReports: React.FC = () => {
             { name: 'JuaraSatu', posts: 89 },
             { name: 'Anaphygon', posts: 67 },
             { name: 'Admin Writer', posts: 35 }
-          ]
+          ],
+          regionalStats: result.data.regionalStats || []
         });
-        setLoading(false);
-      }, 1000);
+      } else {
+        throw new Error('API returned error');
+      }
+      
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching analytics data:', error);
       setLoading(false);
@@ -145,6 +163,18 @@ export const AnalyticsReports: React.FC = () => {
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* Regional Analytics Chart */}
+        <AnalyticsChart
+          title="📍 Top Regions by Views"
+          data={(analyticsData.regionalStats || []).slice(0, 8).map(item => ({ 
+            label: `${item.city} (${item.region})`, 
+            value: item.views 
+          }))}
+          type="bar"
+          color="#10B981"
+          loading={loading}
+        />
+
         {/* Posts by Category Chart */}
         <AnalyticsChart
           title="📈 Posts by Category"
@@ -212,25 +242,51 @@ export const AnalyticsReports: React.FC = () => {
         />
       </div>
 
-      {/* Top Authors Ranking */}
-      <div className="bg-white p-6 rounded-lg border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">🏆 Top Authors Ranking</h3>
-        <div className="space-y-3">
-          {analyticsData.topAuthors.map((author, index) => (
-            <div key={author.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${
-                  index === 0 ? 'bg-yellow-500' : 
-                  index === 1 ? 'bg-gray-400' : 
-                  index === 2 ? 'bg-orange-600' : 'bg-blue-500'
-                }`}>
-                  {index + 1}
+      {/* Rankings Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        {/* Top Regions Ranking */}
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">📍 Top Regions by Views</h3>
+          <div className="space-y-3">
+            {(analyticsData.regionalStats || []).slice(0, 10).map((region, index) => (
+              <div key={`${region.city}-${region.region}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${
+                    index === 0 ? 'bg-green-500' : 
+                    index === 1 ? 'bg-blue-400' : 
+                    index === 2 ? 'bg-purple-600' : 'bg-gray-500'
+                  }`}>
+                    {index + 1}
+                  </div>
+                  <span className="ml-3 font-medium text-gray-900">{region.city}</span>
+                  <span className="ml-2 text-sm text-gray-500">({region.region})</span>
                 </div>
-                <span className="ml-3 font-medium text-gray-900">{author.name}</span>
+                <span className="text-gray-600 font-medium">{region.views.toLocaleString()} views</span>
               </div>
-              <span className="text-gray-600 font-medium">{author.posts} posts</span>
-            </div>
-          ))}
+            ))}
+          </div>
+        </div>
+
+        {/* Top Authors Ranking */}
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">🏆 Top Authors Ranking</h3>
+          <div className="space-y-3">
+            {analyticsData.topAuthors.map((author, index) => (
+              <div key={author.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${
+                    index === 0 ? 'bg-yellow-500' : 
+                    index === 1 ? 'bg-gray-400' : 
+                    index === 2 ? 'bg-orange-600' : 'bg-blue-500'
+                  }`}>
+                    {index + 1}
+                  </div>
+                  <span className="ml-3 font-medium text-gray-900">{author.name}</span>
+                </div>
+                <span className="text-gray-600 font-medium">{author.posts} posts</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

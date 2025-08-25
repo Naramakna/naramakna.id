@@ -157,6 +157,12 @@ export const AdBanner: React.FC<AdBannerProps> = ({
             muted 
             loop
             playsInline
+            onError={(e) => {
+              console.error('Video ad failed to load:', adMediaUrl, e);
+            }}
+            onLoadStart={() => {
+              console.log('Video ad loading:', adMediaUrl);
+            }}
           />
         );
       

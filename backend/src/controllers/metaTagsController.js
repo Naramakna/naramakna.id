@@ -152,12 +152,28 @@ class MetaTagsController {
       const assetsPath = path.join(__dirname, '../../../frontend/dist/assets');
       const files = fs.readdirSync(assetsPath);
       
-      const jsFile = files.find(file => file.startsWith('index-') && file.endsWith('.js'));
+      // Find all index JS files and pick the largest one (main entry point)
+      const jsFiles = files.filter(file => file.startsWith('index-') && file.endsWith('.js'));
+      let jsFile = null;
+      
+      if (jsFiles.length > 0) {
+        // If multiple index files, pick the one with largest size (main bundle)
+        let largestSize = 0;
+        jsFiles.forEach(file => {
+          const filePath = path.join(assetsPath, file);
+          const stats = fs.statSync(filePath);
+          if (stats.size > largestSize) {
+            largestSize = stats.size;
+            jsFile = file;
+          }
+        });
+      }
+      
       const cssFile = files.find(file => file.startsWith('index-') && file.endsWith('.css'));
       
       return {
-        js: jsFile ? `/assets/${jsFile}` : '/assets/index.js',
-        css: cssFile ? `/assets/${cssFile}` : '/assets/index.css'
+        js: jsFile ? `/assets/${jsFile}?v=2025082511` : '/assets/index.js',
+        css: cssFile ? `/assets/${cssFile}?v=2025082511` : '/assets/index.css'
       };
     } catch (error) {
       console.error('Error reading asset files:', error);

@@ -205,6 +205,7 @@ export const AdsProvider: React.FC<AdsProviderProps> = ({ children }) => {
 export const useAds = (): AdsContextType => {
   const context = useContext(AdsContext);
   if (!context) {
+    console.error('useAds called outside AdsProvider! Stack trace:', new Error().stack);
     throw new Error('useAds must be used within an AdsProvider');
   }
   return context;

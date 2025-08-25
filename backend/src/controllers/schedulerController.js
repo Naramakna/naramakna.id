@@ -1,4 +1,4 @@
-const { Post, User } = require('../models');
+const { Post, User, PostMeta } = require('../models');
 const sequelize = require('../config/database');
 const { QueryTypes, Op } = require('sequelize');
 
@@ -102,11 +102,11 @@ class SchedulerController {
         });
       }
 
-      // Only admin/superadmin can schedule posts
+      // Allow admin and superadmin to schedule posts
       if (!['admin', 'superadmin'].includes(req.user.user_role)) {
         return res.status(403).json({
           success: false,
-          message: 'Only admin and superadmin can schedule posts'
+          message: 'Permission denied. Only admin and superadmin can schedule posts'
         });
       }
 
@@ -381,10 +381,22 @@ class SchedulerController {
       // Find posts that should be published now
       const postsToPublish = await Post.findAll({
         where: {
-          post_status: 'scheduled',
-          scheduled_publish_date: {
-            [Op.lte]: now
-          }
+          [Op.or]: [
+            // Legacy scheduled posts system
+            {
+              post_status: 'scheduled',
+              scheduled_publish_date: {
+                [Op.lte]: now
+              }
+            },
+            // New future posts system (scheduled via publish_date)
+            {
+              post_status: 'future',
+              post_date: {
+                [Op.lte]: now
+              }
+            }
+          ]
         }
       });
 
@@ -392,14 +404,36 @@ class SchedulerController {
 
       for (const post of postsToPublish) {
         try {
-          // Update post status to published
-          await post.update({
-            post_status: 'publish',
-            post_date: now,
-            post_date_gmt: now,
-            scheduled_publish_date: null,
-            original_status: null
+          // Check if post has featured image metadata before publishing
+          const featuredImageMeta = await PostMeta.findOne({
+            where: {
+              post_id: post.ID,
+              meta_key: '_thumbnail_id'
+            }
           });
+
+          // Update post status to published
+          const updateData = {
+            post_status: 'publish',
+            post_modified: now,
+            post_modified_gmt: now
+          };
+          
+          // For legacy scheduled posts, clear scheduled fields and update post_date
+          if (post.post_status === 'scheduled') {
+            updateData.post_date = now;
+            updateData.post_date_gmt = now;
+            updateData.scheduled_publish_date = null;
+            updateData.original_status = null;
+          }
+          // For future posts, post_date is already set correctly, just clear status
+          
+          await post.update(updateData);
+
+          // Ensure featured image metadata is preserved
+          if (featuredImageMeta) {
+            console.log(`  🖼️ Featured image preserved for post ${post.ID}: ${featuredImageMeta.meta_value}`);
+          }
 
           // Log the publishing
           await sequelize.query(
@@ -497,6 +531,14 @@ class SchedulerController {
 
       const now = new Date();
 
+      // Check if post has featured image metadata before force publishing
+      const featuredImageMeta = await PostMeta.findOne({
+        where: {
+          post_id: postId,
+          meta_key: '_thumbnail_id'
+        }
+      });
+
       // Update post status to published
       await post.update({
         post_status: 'publish',
@@ -505,6 +547,11 @@ class SchedulerController {
         scheduled_publish_date: null,
         original_status: null
       });
+
+      // Log featured image preservation if exists
+      if (featuredImageMeta) {
+        console.log(`🖼️ Featured image preserved for force published post ${postId}: ${featuredImageMeta.meta_value}`);
+      }
 
       // Log the force publishing action
       await sequelize.query(

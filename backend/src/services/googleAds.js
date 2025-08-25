@@ -54,53 +54,106 @@ class GoogleAdsService {
   }
 
   /**
-   * Test connection to Google Ads API
+   * Test connection to Google Ads API using HTTP requests (fallback method)
    */
   async testConnection() {
     try {
-      await this.initialize();
+      console.log('🔍 Testing Google Ads API connection using HTTP fallback...');
       
-      const customer = this.client.Customer({
-        customer_id: this.customerId,
-        refresh_token: process.env.GOOGLE_ADS_REFRESH_TOKEN,
-      });
+      // Get fresh access token
+      const tokenResponse = await this.getAccessToken();
+      if (!tokenResponse.success) {
+        throw new Error(`Failed to get access token: ${tokenResponse.error}`);
+      }
 
-      // Try to get basic account info using simpler query
-      const query = `
-        SELECT 
-          customer.id,
-          customer.descriptive_name,
-          customer.currency_code,
-          customer.time_zone
-        FROM customer 
-        LIMIT 1
-      `;
+      const accessToken = tokenResponse.access_token;
+      const customerId = process.env.GOOGLE_ADS_CUSTOMER_ID;
+      
+      console.log(`📡 Testing with Customer ID: ${customerId}`);
 
-      console.log('📡 Executing query:', query);
-      const response = await customer.query(query);
+      // Test with direct HTTP API call
+      const axios = require('axios');
+      const response = await axios.post(
+        `https://googleads.googleapis.com/v21/customers/${customerId}/googleAds:search`,
+        {
+          query: "SELECT customer.id, customer.descriptive_name, customer.currency_code, customer.time_zone FROM customer LIMIT 1"
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
 
-      if (response && response.length > 0) {
-        const accountInfo = response[0].customer;
-        console.log('✅ Google Ads connection successful:', {
+      if (response.data && response.data.results && response.data.results.length > 0) {
+        const accountInfo = response.data.results[0].customer;
+        console.log('✅ Google Ads HTTP connection successful:', {
           id: accountInfo.id,
-          name: accountInfo.descriptive_name,
-          currency: accountInfo.currency_code,
-          timezone: accountInfo.time_zone
+          name: accountInfo.descriptiveName,
+          currency: accountInfo.currencyCode,
+          timezone: accountInfo.timeZone
         });
+        
         return {
           success: true,
-          account: accountInfo
+          account: {
+            id: accountInfo.id,
+            descriptive_name: accountInfo.descriptiveName,
+            currency_code: accountInfo.currencyCode,
+            time_zone: accountInfo.timeZone
+          }
         };
       } else {
-        throw new Error('No account data returned from query');
+        throw new Error('No account data returned from HTTP API');
       }
     } catch (error) {
-      console.error('❌ Google Ads connection test failed:', error.message);
-      console.error('Error details:', error);
+      console.error('❌ Google Ads HTTP connection test failed:', error.message);
+      if (error.response) {
+        console.error('HTTP Status:', error.response.status);
+        console.error('HTTP Headers:', error.response.headers);
+        console.error('HTTP Error Response:', JSON.stringify(error.response.data, null, 2));
+      }
+      console.error('Request config:', error.config);
       return {
         success: false,
         error: error.message,
-        details: error.stack
+        details: error.response ? JSON.stringify(error.response.data) : JSON.stringify(error, Object.getOwnPropertyNames(error))
+      };
+    }
+  }
+
+  /**
+   * Get fresh access token from refresh token
+   */
+  async getAccessToken() {
+    try {
+      const axios = require('axios');
+      const response = await axios.post('https://oauth2.googleapis.com/token', 
+        new URLSearchParams({
+          client_id: process.env.GOOGLE_ADS_CLIENT_ID,
+          client_secret: process.env.GOOGLE_ADS_CLIENT_SECRET,
+          refresh_token: process.env.GOOGLE_ADS_REFRESH_TOKEN,
+          grant_type: 'refresh_token'
+        }),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        }
+      );
+
+      return {
+        success: true,
+        access_token: response.data.access_token,
+        expires_in: response.data.expires_in
+      };
+    } catch (error) {
+      console.error('❌ Failed to get access token:', error.message);
+      return {
+        success: false,
+        error: error.message
       };
     }
   }

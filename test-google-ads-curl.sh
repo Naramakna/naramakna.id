@@ -1,85 +1,53 @@
 #!/bin/bash
 
-# Test Google Ads API with direct HTTP requests
-# This helps us understand if the issue is with the Node.js library or the API itself
+# Test script untuk Google Ads authentication dan connection test
+# Usage: ./test-google-ads-curl.sh
 
-source backend/.env
+echo "🚀 Testing Google Ads Authentication Flow for Naramakna Admin"
+echo "============================================================"
 
-echo "🔍 Testing Google Ads API with direct HTTP requests..."
-echo "Customer ID: $GOOGLE_ADS_CUSTOMER_ID"
-echo "Developer Token: $GOOGLE_ADS_DEVELOPER_TOKEN"
+BASE_URL="https://naramakna.id/api"
+# BASE_URL="http://localhost:5000/api"  # Uncomment for local testing
 
-# First, get fresh access token from refresh token
-echo -e "\n🔄 Getting fresh access token..."
+echo ""
+echo "1. Getting Google Admin Auth URL..."
+echo "curl -X GET $BASE_URL/auth/google/admin"
 
-ACCESS_TOKEN_RESPONSE=$(curl -s -X POST \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "client_id=$GOOGLE_ADS_CLIENT_ID" \
-  -d "client_secret=$GOOGLE_ADS_CLIENT_SECRET" \
-  -d "refresh_token=$GOOGLE_ADS_REFRESH_TOKEN" \
-  -d "grant_type=refresh_token" \
-  https://oauth2.googleapis.com/token)
+RESPONSE=$(curl -s -X GET "$BASE_URL/auth/google/admin")
+echo "Response: $RESPONSE"
 
-echo "Token response: $ACCESS_TOKEN_RESPONSE"
+# Extract auth_url from JSON response
+AUTH_URL=$(echo $RESPONSE | grep -o '"auth_url":"[^"]*' | cut -d'"' -f4)
 
-# Extract access token using jq (or basic grep if jq not available)
-if command -v jq &> /dev/null; then
-    ACCESS_TOKEN=$(echo $ACCESS_TOKEN_RESPONSE | jq -r '.access_token')
+if [ ! -z "$AUTH_URL" ]; then
+    echo ""
+    echo "✅ Google Admin Auth URL generated successfully!"
+    echo ""
+    echo "🔗 Open this URL in your browser to authorize Google Ads access:"
+    echo "$AUTH_URL"
+    echo ""
+    echo "📝 After authorization, you'll be redirected to the admin dashboard."
+    echo "    The JWT token will be automatically stored in your browser cookies."
+    echo ""
+    echo "2. After authorization, you can test the connection with:"
+    echo "   curl -X GET $BASE_URL/auth/google-ads/test \\"
+    echo "        -H 'Cookie: naramakna_auth=YOUR_JWT_TOKEN'"
+    echo ""
+    echo "   Or simply visit: https://naramakna.id/admin/dashboard"
+    echo "   and check if Google Ads status shows as 'Connected'"
 else
-    ACCESS_TOKEN=$(echo $ACCESS_TOKEN_RESPONSE | sed -n 's/.*"access_token": *"\([^"]*\)".*/\1/p')
+    echo ""
+    echo "❌ Failed to get Google Admin Auth URL"
+    echo "Response: $RESPONSE"
 fi
 
-echo "Access token: ${ACCESS_TOKEN:0:50}..."
-
-if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" = "null" ]; then
-    echo "❌ Failed to get access token"
-    echo "Response was: $ACCESS_TOKEN_RESPONSE"
-    exit 1
-fi
-
-echo -e "\n🔍 Testing Google Ads API query..."
-
-# First, let's try to list accessible customers
-echo "🔍 Listing accessible customers..."
-CUSTOMERS_RESPONSE=$(curl -s -X GET \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "developer-token: $GOOGLE_ADS_DEVELOPER_TOKEN" \
-  -H "Content-Type: application/json" \
-  "https://googleads.googleapis.com/v21/customers:listAccessibleCustomers")
-
-echo "Accessible Customers:"
-echo "$CUSTOMERS_RESPONSE"
-
-# Try with correct customer IDs from accessible customers
-CUSTOMER_ID_1="4713804246"
-CUSTOMER_ID_2="2413041593"
-
-echo -e "\n🔍 Testing with correct Customer ID 1: $CUSTOMER_ID_1"
-
-RESPONSE1=$(curl -s -X POST \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "developer-token: $GOOGLE_ADS_DEVELOPER_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "SELECT customer.id, customer.descriptive_name, customer.currency_code, customer.time_zone FROM customer LIMIT 1"
-  }' \
-  "https://googleads.googleapis.com/v21/customers/$CUSTOMER_ID_1/googleAds:search")
-
-echo "Customer ID 1 Response:"
-echo "$RESPONSE1"
-
-echo -e "\n🔍 Testing with correct Customer ID 2: $CUSTOMER_ID_2"
-
-RESPONSE2=$(curl -s -X POST \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "developer-token: $GOOGLE_ADS_DEVELOPER_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "SELECT customer.id, customer.descriptive_name, customer.currency_code, customer.time_zone FROM customer LIMIT 1"
-  }' \
-  "https://googleads.googleapis.com/v21/customers/$CUSTOMER_ID_2/googleAds:search")
-
-echo "Customer ID 2 Response:"
-echo "$RESPONSE2"
-
-echo -e "\n✅ Direct API test completed"
+echo ""
+echo "💡 Tips:"
+echo "   - Make sure you have admin/superadmin account in the system"
+echo "   - Your Google account should have access to Google Ads"
+echo "   - Environment variables should be properly set:"
+echo "     * GOOGLE_ADS_CLIENT_ID"
+echo "     * GOOGLE_ADS_CLIENT_SECRET" 
+echo "     * GOOGLE_ADS_DEVELOPER_TOKEN"
+echo "     * GOOGLE_ADS_CUSTOMER_ID"
+echo "     * GOOGLE_ADS_REFRESH_TOKEN"

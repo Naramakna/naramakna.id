@@ -23,6 +23,7 @@ interface ArticleData {
   mark_as_18_plus: boolean;
   status: 'draft' | 'published' | 'pending';
   featured_image?: string;
+  featured_image_caption?: string;
 }
 
 const ArticleWriterPage: React.FC = () => {
@@ -52,7 +53,8 @@ const ArticleWriterPage: React.FC = () => {
     location: '',
     mark_as_18_plus: false,
     status: 'draft',
-    featured_image: ''
+    featured_image: '',
+    featured_image_caption: ''
   });
 
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
@@ -549,7 +551,8 @@ const ArticleWriterPage: React.FC = () => {
             location: '',
             mark_as_18_plus: false,
             status: 'draft',
-            featured_image: ''
+            featured_image: '',
+            featured_image_caption: ''
           });
           setFeaturedImagePreview('');
         }
@@ -669,7 +672,8 @@ const ArticleWriterPage: React.FC = () => {
               location: articleData.location || '',
               mark_as_18_plus: articleData.mark_as_18_plus || false,
               status: (articleData.status === 'publish' ? 'published' : articleData.status === 'pending' ? 'pending' : 'draft') as 'draft' | 'published' | 'pending',
-              featured_image: articleData.featured_image || ''
+              featured_image: articleData.featured_image || '',
+              featured_image_caption: articleData.featured_image_caption || ''
             };
             
             // Set featured image preview if exists
@@ -1162,12 +1166,31 @@ const ArticleWriterPage: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setFeaturedImagePreview('');
-                      setArticle(prev => ({ ...prev, featured_image: '' }));
+                      setArticle(prev => ({ ...prev, featured_image: '', featured_image_caption: '' }));
                     }}
                     className="mt-1 text-xs text-red-600 hover:text-red-800"
                   >
                     Hapus gambar
                   </button>
+                </div>
+              )}
+              
+              {/* Featured Image Caption */}
+              {featuredImagePreview && (
+                <div className="mt-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Caption Gambar
+                  </label>
+                  <input
+                    type="text"
+                    value={article.featured_image_caption || ''}
+                    onChange={(e) => {
+                      setArticle(prev => ({ ...prev, featured_image_caption: e.target.value }));
+                      setSaveStatus('unsaved');
+                    }}
+                    placeholder="Masukkan caption untuk featured image..."
+                    className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
                 </div>
               )}
             </div>

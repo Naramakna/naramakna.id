@@ -27,7 +27,8 @@ class WriterController {
         location,
         mark_as_18_plus,
         status = 'draft',
-        featured_image
+        featured_image,
+        featured_image_caption
       } = req.body;
 
 
@@ -106,6 +107,23 @@ class WriterController {
           if (featured_image) {
             await updatePostMeta(existingDraft.ID, '_thumbnail_id', featured_image);
           }
+          if (featured_image_caption !== undefined) {
+            await updatePostMeta(existingDraft.ID, '_thumbnail_caption', featured_image_caption || '');
+            
+            // Also update attachment post if exists
+            if (featured_image) {
+              const existingAttachment = await Post.findOne({
+                where: { guid: featured_image, post_type: 'attachment' }
+              });
+              
+              if (existingAttachment && featured_image_caption) {
+                await existingAttachment.update({
+                  post_title: featured_image_caption,
+                  post_excerpt: featured_image_caption
+                });
+              }
+            }
+          }
 
           return res.status(200).json({
             success: true,
@@ -120,6 +138,13 @@ class WriterController {
         }
       }
 
+      // Debug: Check publish_date
+      console.log('📅 WriterController: Creating article with publish_date:', {
+        publish_date_raw: publish_date,
+        publish_date_parsed: publish_date ? new Date(publish_date) : 'using current date',
+        current_time: new Date()
+      });
+
       // Create post
       const post = await Post.create({
         post_author: req.user.ID,
@@ -129,13 +154,24 @@ class WriterController {
         post_title: title,
         post_excerpt: description,
         post_status: (() => {
+          // Check if this is scheduled for future
+          const publishDate = publish_date ? new Date(publish_date) : new Date();
+          const now = new Date();
+          const isFuturePost = publishDate > now;
+          
           // Admin and SuperAdmin can publish directly
           if (req.user.user_role === 'admin' || req.user.user_role === 'superadmin') {
-            return status === 'published' ? 'publish' : 'draft';
+            if (status === 'published') {
+              return isFuturePost ? 'future' : 'publish';
+            }
+            return 'draft';
           }
           // Writers need approval for publishing
-          return status === 'published' ? 'pending' : 'draft';
-        })(), // Role-based publishing
+          if (status === 'published') {
+            return isFuturePost ? 'future' : 'pending';
+          }
+          return 'draft';
+        })(), // Role-based publishing with scheduling
         comment_status: 'closed',
         ping_status: 'closed',
         post_name: slug,
@@ -160,6 +196,14 @@ class WriterController {
 
           if (existingAttachment) {
             thumbnailId = existingAttachment.ID;
+            
+            // Update existing attachment with caption if provided
+            if (featured_image_caption) {
+              await existingAttachment.update({
+                post_title: featured_image_caption,
+                post_excerpt: featured_image_caption
+              }, { transaction });
+            }
           } else {
             // Create new attachment post
             const attachmentPost = await Post.create({
@@ -167,8 +211,8 @@ class WriterController {
               post_date: new Date(),
               post_date_gmt: new Date(),
               post_content: '',
-              post_title: `Attachment for ${title}`,
-              post_excerpt: '',
+              post_title: featured_image_caption || `Featured image for ${title}`,
+              post_excerpt: featured_image_caption || '',
               post_status: 'inherit',
               comment_status: 'closed',
               ping_status: 'closed',
@@ -206,6 +250,11 @@ class WriterController {
       // Add thumbnail ID if we have featured image
       if (thumbnailId) {
         metaData.push({ post_id: post.ID, meta_key: '_thumbnail_id', meta_value: thumbnailId.toString() });
+      }
+      
+      // Add thumbnail caption if provided
+      if (featured_image_caption !== undefined) {
+        metaData.push({ post_id: post.ID, meta_key: '_thumbnail_caption', meta_value: featured_image_caption || '' });
       }
 
       await PostMeta.bulkCreate(metaData, { transaction });
@@ -300,19 +349,25 @@ class WriterController {
 
       // Determine new status based on user role and current post status
       let newStatus;
+      
+      // Check if this is scheduled for future
+      const publishDate = publish_date ? new Date(publish_date) : post.post_date;
+      const now = new Date();
+      const isFuturePost = publishDate > now;
+      
       if (req.user.user_role === 'writer') {
         // Writer logic: published posts go back to pending when edited
         if (post.post_status === 'publish') {
           newStatus = 'pending'; // Published posts edited by writer need re-approval
         } else if (status === 'published') {
-          newStatus = 'pending'; // Writers can't publish directly, goes to pending
+          newStatus = isFuturePost ? 'future' : 'pending'; // Writers can't publish directly, goes to pending or future
         } else {
           newStatus = post.post_status; // Keep current status (draft, pending)
         }
       } else {
         // Admin/SuperAdmin can publish directly
         if (status === 'published') {
-          newStatus = 'publish';
+          newStatus = isFuturePost ? 'future' : 'publish';
         } else if (status === 'draft') {
           newStatus = 'draft';
         } else if (status === 'pending') {
@@ -322,6 +377,13 @@ class WriterController {
           newStatus = post.post_status;
         }
       }
+
+      // Debug: Check publish_date for update
+      console.log('📅 WriterController: Updating article with publish_date:', {
+        publish_date_raw: publish_date,
+        publish_date_parsed: publish_date ? new Date(publish_date) : 'keeping existing date',
+        existing_post_date: post.post_date
+      });
 
       // Update post
       await post.update({

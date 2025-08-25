@@ -22,7 +22,19 @@ export const DynamicCategorySections: React.FC<DynamicCategorySectionsProps> = (
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Filter and sort categories - safe to compute even if categories is empty
-  const eligibleCategories = categories
+  // De-duplicate categories based on slug, preferring the more descriptive name.
+  const uniqueCategories = Object.values(
+    categories.reduce((acc, category) => {
+      const existing = acc[category.slug];
+      // If it doesn't exist, or if the new one has a "better" name (not identical to slug)
+      if (!existing || (category.name !== category.slug && existing.name === existing.slug)) {
+        acc[category.slug] = category;
+      }
+      return acc;
+    }, {} as Record<string, typeof categories[0]>)
+  );
+
+  const eligibleCategories = uniqueCategories
     .filter(cat => 
       cat.count >= minPostCount && 
       !excludeCategories.includes(cat.slug)

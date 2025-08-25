@@ -7,6 +7,7 @@ import { DataTable } from '../../components/organisms/DataTable';
 import { AdminPolling } from './AdminPolling';
 import { AdminAds } from './AdminAds';
 import { AdminArticles } from './AdminArticles';
+import ScheduledPosts from '../../components/organisms/ScheduledPosts/ScheduledPosts';
 import { buildApiUrl } from '../../config/api';
 
 
@@ -38,6 +39,7 @@ const AdminDashboard: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [pendingPosts, setPendingPosts] = useState<Post[]>([]);
   const [pendingWriters, setPendingWriters] = useState<User[]>([]);
+  const [scheduledPosts, setScheduledPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -50,7 +52,7 @@ const AdminDashboard: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const [usersRes, pendingPostsRes, pendingWritersRes] = await Promise.all([
+      const [usersRes, pendingPostsRes, pendingWritersRes, scheduledPostsRes] = await Promise.all([
         fetch(buildApiUrl('users'), {
           headers: { 'Authorization': `Bearer ${token}` },
           credentials: 'include'
@@ -62,16 +64,22 @@ const AdminDashboard: React.FC = () => {
         fetch(buildApiUrl('users/pending-writers'), {
           headers: { 'Authorization': `Bearer ${token}` },
           credentials: 'include'
+        }),
+        fetch(buildApiUrl('scheduler/scheduled'), {
+          headers: { 'Authorization': `Bearer ${token}` },
+          credentials: 'include'
         })
       ]);
 
       const usersData = await usersRes.json();
       const pendingPostsData = await pendingPostsRes.json();
       const pendingWritersData = await pendingWritersRes.json();
+      const scheduledPostsData = await scheduledPostsRes.json();
 
       if (usersData.success) setUsers(usersData.data.users);
       if (pendingPostsData.success) setPendingPosts(pendingPostsData.data.pending_posts);
       if (pendingWritersData.success) setPendingWriters(pendingWritersData.data.pending_writers);
+      if (scheduledPostsData.success) setScheduledPosts(scheduledPostsData.data.posts || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -167,6 +175,7 @@ const AdminDashboard: React.FC = () => {
                 { id: 'users', name: 'Users', count: users.length },
                 { id: 'pending-writers', name: 'Pending Writers', count: pendingWriters.length },
                 { id: 'pending-posts', name: 'Pending Posts', count: pendingPosts.length },
+                { id: 'scheduled-posts', name: '⏰ Scheduled Posts', count: scheduledPosts.length },
                 { id: 'articles', name: '📝 Articles Management' },
                 { id: 'polling', name: '📊 Polling Management' },
                 { id: 'ads', name: '🎯 Ads Management' },
@@ -337,6 +346,15 @@ const AdminDashboard: React.FC = () => {
                 emptyMessage="No posts pending review."
               />
                         </div>
+          )}
+
+          {activeTab === 'scheduled-posts' && (
+            <div className="p-6">
+              <ScheduledPosts 
+                posts={scheduledPosts}
+                onRefresh={fetchData}
+              />
+            </div>
           )}
 
           {activeTab === 'polling' && (

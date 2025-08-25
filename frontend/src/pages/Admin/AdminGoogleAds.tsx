@@ -15,9 +15,10 @@ import {
 } from '../../hooks/useGoogleAds';
 
 export const AdminGoogleAds: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<'overview' | 'campaigns' | 'ads' | 'config'>('overview');
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
+  const [googleAuthUrl, setGoogleAuthUrl] = useState<string | null>(null);
 
   // Hooks
   const { config, loading: configLoading } = useGoogleAdsConfig();
@@ -33,6 +34,43 @@ export const AdminGoogleAds: React.FC = () => {
       testConnection();
     }
   }, [config, connectionStatus, testConnection]);
+
+  // Check URL parameters for success/error messages
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const connected = urlParams.get('connected');
+    const error = urlParams.get('error');
+    
+    if (connected === 'true') {
+      // Show success message and test connection
+      alert('✅ Google Ads authorization successful! Testing connection...');
+      testConnection();
+      // Clean up URL
+      window.history.replaceState({}, '', '/superadmin/dashboard/google-ads');
+    } else if (error === 'auth_failed') {
+      alert('❌ Google Ads authorization failed. Please try again.');
+      // Clean up URL
+      window.history.replaceState({}, '', '/superadmin/dashboard/google-ads');
+    }
+  }, [testConnection]);
+
+  // Fetch Google Admin Auth URL
+  const fetchGoogleAuthUrl = async () => {
+    try {
+      const response = await fetch('https://naramakna.id/api/auth/google/admin');
+      const data = await response.json();
+      if (data.success && data.data.auth_url) {
+        setGoogleAuthUrl(data.data.auth_url);
+        // Open in new tab
+        window.open(data.data.auth_url, '_blank');
+      } else {
+        alert('Failed to get Google Admin auth URL');
+      }
+    } catch (error) {
+      console.error('Error fetching Google auth URL:', error);
+      alert('Failed to get Google Admin auth URL');
+    }
+  };
 
   // Handle sync
   const handleSync = async () => {
@@ -69,7 +107,44 @@ export const AdminGoogleAds: React.FC = () => {
     }
   };
 
-  // Loading state
+  // Auth loading state
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2">Loading...</span>
+      </div>
+    );
+  }
+
+  // Auth check - show message instead of redirect
+  if (!isAuthenticated) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-yellow-800 mb-2">Authentication Required</h2>
+          <p className="text-yellow-700 mb-4">Please login to access Google Ads integration.</p>
+          <a href="/login" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+            Login
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // Role check - show message instead of redirect  
+  if (user?.user_role !== 'superadmin') {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-red-800 mb-2">Access Denied</h2>
+          <p className="text-red-700">You don't have permission to access Google Ads integration. SuperAdmin role required.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading state for config
   if (configLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -121,13 +196,21 @@ export const AdminGoogleAds: React.FC = () => {
                 </svg>
                 <span className="font-medium text-green-800">Google Ads API Configured</span>
               </div>
-              <button
-                onClick={testConnection}
-                disabled={connectionLoading}
-                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
-              >
-                {connectionLoading ? 'Testing...' : 'Test Connection'}
-              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={testConnection}
+                  disabled={connectionLoading}
+                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+                >
+                  {connectionLoading ? 'Testing...' : 'Test Connection'}
+                </button>
+                <button
+                  onClick={fetchGoogleAuthUrl}
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                >
+                  Authorize Google Ads
+                </button>
+              </div>
             </div>
             {connectionStatus && (
               <div className="mt-3">
@@ -138,7 +221,14 @@ export const AdminGoogleAds: React.FC = () => {
                     <p className="text-sm">Currency: {connectionStatus.account?.currency_code}</p>
                   </div>
                 ) : (
-                  <p className="text-red-700">❌ Connection failed: {connectionStatus.error}</p>
+                  <div className="text-red-700">
+                    <p className="font-medium">❌ Connection failed: {connectionStatus.error}</p>
+                    {connectionStatus.error?.includes('Authentication required') && (
+                      <div className="mt-2 text-sm">
+                        <p>To fix this, click "Authorize Google Ads" button above to authenticate with Google Ads API.</p>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}

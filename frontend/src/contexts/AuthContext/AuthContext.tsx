@@ -239,8 +239,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (!checkProfileCompletion()) {
       // Store the intended destination 
       const currentPath = window.location.pathname;
-      // Don't redirect if already on profile pages, login, register, or auth pages
-      const allowedPaths = ['/profile', '/profile/edit', '/login', '/register', '/auth/success', '/auth/error'];
+      // Don't redirect if already on profile pages, login, register, auth pages, or admin pages
+      const allowedPaths = ['/profile', '/profile/edit', '/login', '/register', '/auth/success', '/auth/error', '/admin', '/superadmin'];
       const isAllowedPath = allowedPaths.some(path => currentPath.startsWith(path));
       
       if (!isAllowedPath) {

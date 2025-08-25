@@ -90,4 +90,25 @@ router.get('/google', AuthController.getGoogleAuthUrl);
  */
 router.get('/google/callback', AuthController.handleGoogleCallback);
 
+/**
+ * @route   GET /api/auth/google/admin
+ * @desc    Get Google OAuth URL for admin with Google Ads access
+ * @access  Public
+ */
+router.get('/google/admin', AuthController.getGoogleAdminAuthUrl);
+
+/**
+ * @route   GET /api/auth/google/admin/callback
+ * @desc    Handle Google OAuth admin callback for Google Ads
+ * @access  Public
+ */
+router.get('/google/admin/callback', AuthController.handleGoogleAdminCallback);
+
+/**
+ * @route   GET /api/auth/google-ads/test
+ * @desc    Test Google Ads connection
+ * @access  Private (Admin only)
+ */
+router.get('/google-ads/test', authenticate, AuthController.testGoogleAdsConnection);
+
 module.exports = router;

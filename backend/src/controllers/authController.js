@@ -643,6 +643,44 @@ class AuthController {
     }
   }
 
+  // Get Google Admin OAuth URL for Google Ads access
+  static async getGoogleAdminAuthUrl(req, res) {
+    try {
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.GOOGLE_ADS_CLIENT_ID,
+        process.env.GOOGLE_ADS_CLIENT_SECRET,
+        `https://naramakna.id/api/auth/google/admin/callback`
+      );
+
+      const scopes = [
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/userinfo.profile',
+        'https://www.googleapis.com/auth/adwords'
+      ];
+
+      const authUrl = oauth2Client.generateAuthUrl({
+        access_type: 'offline',
+        scope: scopes,
+        prompt: 'consent',
+        state: 'admin_login'
+      });
+
+      res.json({
+        success: true,
+        data: {
+          auth_url: authUrl
+        }
+      });
+
+    } catch (error) {
+      console.error('Google admin auth URL error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to generate Google admin auth URL'
+      });
+    }
+  }
+
   // Handle Google OAuth callback
   static async handleGoogleCallback(req, res) {
     try {
@@ -727,6 +765,175 @@ class AuthController {
     } catch (error) {
       console.error('Google callback error:', error);
       res.redirect(`${process.env.FRONTEND_URL}/auth/error?message=Google authentication failed`);
+    }
+  }
+
+  // Handle Google Admin OAuth callback for Google Ads access
+  static async handleGoogleAdminCallback(req, res) {
+    try {
+      console.log('🔍 Google Admin Callback - Query params:', req.query);
+      const { code, state } = req.query;
+
+      if (!code) {
+        return res.status(400).json({
+          success: false,
+          message: 'Authorization code not provided'
+        });
+      }
+
+      if (state !== 'admin_login') {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid state parameter'
+        });
+      }
+
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.GOOGLE_ADS_CLIENT_ID,
+        process.env.GOOGLE_ADS_CLIENT_SECRET,
+        `https://naramakna.id/api/auth/google/admin/callback`
+      );
+
+      // Exchange code for tokens
+      console.log('🔍 Exchanging code for tokens...');
+      const { tokens } = await oauth2Client.getToken(code);
+      console.log('✅ Tokens received:', { 
+        access_token: tokens.access_token ? 'present' : 'missing',
+        refresh_token: tokens.refresh_token ? 'present' : 'missing' 
+      });
+      oauth2Client.setCredentials(tokens);
+
+      // Get user info from Google
+      console.log('🔍 Getting user info from Google...');
+      const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+      const { data: googleUser } = await oauth2.userinfo.get();
+      console.log('✅ Google user info:', { email: googleUser.email, name: googleUser.name });
+
+      // Check if user exists and is admin
+      const user = await User.findOne({ where: { user_email: googleUser.email } });
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'Admin account not found'
+        });
+      }
+
+      // Check if user is admin or superadmin
+      if (!['admin', 'superadmin'].includes(user.user_role)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. Admin privileges required.'
+        });
+      }
+
+      // Store Google Ads tokens in user account
+      console.log('🔍 Storing Google Ads tokens for user:', user.user_email);
+      try {
+        const tokenData = JSON.stringify({
+          google_ads_access_token: tokens.access_token,
+          google_ads_refresh_token: tokens.refresh_token,
+          google_ads_token_expiry: tokens.expiry_date
+        });
+        console.log('🔍 Token data length:', tokenData.length);
+        
+        await user.update({
+          user_activation_key: tokenData
+        });
+        console.log('✅ Google Ads tokens stored successfully');
+      } catch (updateError) {
+        console.error('❌ Error storing tokens:', updateError);
+        throw updateError;
+      }
+
+      // Generate JWT token with Google Ads permissions
+      const jwtToken = jwt.sign(
+        { 
+          id: user.ID, 
+          email: user.user_email, 
+          role: user.user_role,
+          google_ads_authorized: true
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      // Set cookie
+      res.cookie('naramakna_auth', jwtToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        domain: process.env.NODE_ENV === 'production' ? '.naramakna.id' : 'localhost'
+      });
+
+      console.log(`✅ Google Ads admin login successful for: ${user.user_email}`);
+      
+      // Redirect back to Google Ads page with success parameter
+      res.redirect(`${process.env.FRONTEND_URL}/superadmin/dashboard/google-ads?connected=true`);
+
+    } catch (error) {
+      console.error('Google admin callback error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        response: error.response?.data
+      });
+      res.redirect(`${process.env.FRONTEND_URL}/superadmin/dashboard/google-ads?error=auth_failed`);
+    }
+  }
+
+  // Test Google Ads connection
+  static async testGoogleAdsConnection(req, res) {
+    try {
+      // Check if user is authenticated and has admin role
+      if (!req.user || !['admin', 'superadmin'].includes(req.user.user_role)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Admin access required'
+        });
+      }
+
+      // For testing purposes, allow direct connection test using environment variables
+      // This bypasses the OAuth requirement for now
+      const googleAdsService = require('../services/googleAds');
+      const testResult = await googleAdsService.testConnection();
+
+      // If connection test fails but we have env variables, provide helpful info
+      if (!testResult.success && testResult.error) {
+        let authRequired = false;
+        let helpMessage = '';
+
+        if (testResult.error.includes('Authentication required') || 
+            testResult.error.includes('Invalid authentication credentials')) {
+          authRequired = true;
+          helpMessage = 'Google Ads OAuth tokens may be expired or invalid. You can try refreshing tokens or re-authenticating.';
+        }
+
+        return res.status(400).json({
+          success: false,
+          message: 'Google Ads connection failed',
+          error: testResult.error,
+          auth_required: authRequired,
+          help: helpMessage,
+          debug: testResult.details || null
+        });
+      }
+
+      res.json({
+        success: testResult.success,
+        message: testResult.success ? 'Google Ads connection successful' : 'Google Ads connection failed',
+        data: testResult.success ? testResult.account : null,
+        error: testResult.error || null
+      });
+
+    } catch (error) {
+      console.error('Google Ads connection test error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to test Google Ads connection',
+        error: error.message
+      });
     }
   }
 }

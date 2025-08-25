@@ -418,6 +418,15 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
           </div>
         </div>
 
+        {/* Content Advertisement */}
+        <div className="my-12">
+          <AdSection 
+            placement="article-bottom" 
+            size="header" 
+            rotationInterval={7000}
+          />
+        </div>
+
         {/* Related Articles */}
         <RelatedArticles articles={relatedArticles} />
         
