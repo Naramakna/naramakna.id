@@ -669,18 +669,20 @@ const ArticleWriterPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
+
       <Navbar />
       
       {/* Header */}
       <div className="border-b border-gray-200 bg-white sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-xl font-semibold text-gray-900">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-12">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            {/* Left side - Title and Status */}
+            <div className="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
+              <h1 className="text-base sm:text-lg lg:text-xl font-semibold text-gray-900 truncate">
                 {isEditMode ? 'Edit Artikel' : 'Tulis Artikel'}
               </h1>
-              <div className="flex items-center space-x-2 text-sm">
-                <span className={`px-2 py-1 rounded text-xs ${
+              <div className="hidden sm:flex items-center">
+                <span className={`px-2 py-1 rounded text-xs whitespace-nowrap ${
                   saveStatus === 'saved' ? 'text-green-600 bg-green-50' :
                   saveStatus === 'saving' ? 'text-yellow-600 bg-yellow-50' :
                   saveStatus === 'error' ? 'text-red-600 bg-red-50' :
@@ -694,12 +696,14 @@ const ArticleWriterPage: React.FC = () => {
               </div>
             </div>
             
-            <div className="flex items-center space-x-3">
+            {/* Right side - Action Buttons */}
+            <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 flex-shrink-0">
               <button
                 onClick={handleSaveDraft}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                className="px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
               >
-                Simpan Draft
+                <span className="hidden sm:inline">Simpan Draft</span>
+                <span className="sm:hidden">Draft</span>
               </button>
               
               {/* Schedule button - only for admin/superadmin */}
@@ -707,29 +711,47 @@ const ArticleWriterPage: React.FC = () => {
                 <button
                   onClick={handleSchedule}
                   disabled={!article.title.trim()}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-500 border border-transparent rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  className="px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white bg-blue-500 border border-transparent rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1 sm:space-x-2"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  <span>Jadwalkan</span>
+                  <span className="hidden sm:inline">Jadwalkan</span>
                 </button>
               )}
               
               <button
                 onClick={handlePublish}
-                className="px-4 py-2 text-sm font-medium text-white bg-yellow-500 border border-transparent rounded-md hover:bg-yellow-600"
+                className="px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white bg-yellow-500 border border-transparent rounded-md hover:bg-yellow-600"
               >
-                {(() => {
-                  // Admin/SuperAdmin editing pending post
-                  if (user && ['admin', 'superadmin'].includes(user.user_role) && isEditMode && article.status === 'pending') {
-                    return `Publikasikan "${article.title.slice(0, 30)}${article.title.length > 30 ? '...' : ''}"`;
-                  }
-                  // Regular publish
-                  return 'Publikasikan';
-                })()}
+                <span className="hidden sm:inline">
+                  {(() => {
+                    // Admin/SuperAdmin editing pending post
+                    if (user && ['admin', 'superadmin'].includes(user.user_role) && isEditMode && article.status === 'pending') {
+                      return `Publikasikan "${article.title.slice(0, 20)}${article.title.length > 20 ? '...' : ''}"`;
+                    }
+                    // Regular publish
+                    return 'Publikasikan';
+                  })()}
+                </span>
+                <span className="sm:hidden">Publish</span>
               </button>
             </div>
+          </div>
+          
+          {/* Mobile Status Bar - Show on mobile only */}
+          <div className="sm:hidden pb-2">
+            <span className={`inline-block px-2 py-1 rounded text-xs ${
+              saveStatus === 'saved' ? 'text-green-600 bg-green-50' :
+              saveStatus === 'saving' ? 'text-yellow-600 bg-yellow-50' :
+              saveStatus === 'error' ? 'text-red-600 bg-red-50' :
+              'text-gray-600 bg-gray-50'
+            }`}>
+              {saveStatus === 'saved' ? 'Tersimpan sebagai Draft' :
+               saveStatus === 'saving' ? 'Menyimpan...' :
+               saveStatus === 'error' ? 'Error saat menyimpan' :
+               'Belum disimpan'}
+            </span>
           </div>
         </div>
       </div>
