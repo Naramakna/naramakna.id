@@ -50,6 +50,7 @@ interface Article {
 }
 
 export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId, articleSlug }) => {
+  console.log('🚀 ArticleDetailPage rendering', { articleId, articleSlug });
   const [article, setArticle] = useState<Article | null>(null);
   const [relatedArticles, setRelatedArticles] = useState([]);
   const [loading, setLoading] = useState(true);

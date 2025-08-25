@@ -9,9 +9,9 @@ const AuthSuccessPage: React.FC = () => {
     const handleSuccess = async () => {
       try {
         await refreshUser();
-        // Redirect to dashboard or home
+        // Redirect to profile page
         setTimeout(() => {
-          window.location.href = '/user/dashboard';
+          window.location.href = '/profile';
         }, 2000);
       } catch (error) {
         console.error('Failed to refresh user:', error);
@@ -42,7 +42,7 @@ const AuthSuccessPage: React.FC = () => {
           </h1>
           
           <p className="text-gray-600 mb-6">
-            Anda berhasil masuk dengan akun Google. Tunggu sebentar, kami akan mengalihkan Anda ke dashboard.
+            Anda berhasil masuk dengan akun Google. Tunggu sebentar, kami akan mengalihkan Anda ke halaman profil.
           </p>
           
           <div className="flex items-center justify-center">

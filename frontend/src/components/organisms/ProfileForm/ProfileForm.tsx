@@ -41,7 +41,9 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
   isCriticalFieldDisabled
 }) => {
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <div className="bg-gray-50 rounded-lg p-6 sm:p-8">
+      <h2 className="text-xl font-semibold text-gray-900 mb-6">Informasi Profil</h2>
+      <form onSubmit={onSubmit} className="space-y-6">
       {/* Name Field */}
       <ProfileFormField
         label="Nama"
@@ -172,6 +174,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
           </Button>
         </div>
       )}
-    </form>
+      </form>
+    </div>
   );
 };

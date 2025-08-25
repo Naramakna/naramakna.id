@@ -258,15 +258,17 @@ const ProfilePage: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <div className="max-w-2xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="bg-white">
+      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Pengaturan Profil</h1>
-            <p className="text-gray-600">
+          <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 px-6 py-8 text-center">
+            <h1 className="text-3xl font-bold text-white mb-2">Pengaturan Profil</h1>
+            <p className="text-yellow-100">
               Kelola informasi profil dan pengaturan akun Anda
             </p>
           </div>
+          
+          <div className="p-6 sm:p-8 lg:p-10">
 
           {/* Profile Image Upload */}
           <ProfileImageUpload
@@ -294,15 +296,15 @@ const ProfilePage: React.FC = () => {
             isCriticalFieldDisabled={isCriticalFieldDisabled}
           />
 
-          <div className="space-y-6">{/* Form Container */}
+            <div className="space-y-8 mt-8">{/* Form Container */}
 
-            {/* Profile Incomplete Warning */}
-            {isIncompleteProfile && !checkProfileCompletion() && (
-              <AlertMessage 
-                type="warning" 
-                message="Anda perlu melengkapi profil terlebih dahulu sebelum dapat mengakses fitur lainnya. Silakan isi data yang diperlukan di bawah ini."
-              />
-            )}
+              {/* Profile Incomplete Warning */}
+              {isIncompleteProfile && !checkProfileCompletion() && (
+                <AlertMessage 
+                  type="warning" 
+                  message="Anda perlu melengkapi profil terlebih dahulu sebelum dapat mengakses fitur lainnya. Silakan isi data yang diperlukan di bawah ini."
+                />
+              )}
 
             {/* Profile Complete - Ready to Continue */}
             {isIncompleteProfile && checkProfileCompletion() && (
@@ -352,17 +354,18 @@ const ProfilePage: React.FC = () => {
             )}
 
             {/* Profile Form */}
-            <ProfileForm
-              formData={formData}
-              onFormDataChange={handleChange}
-              onSubmit={handleUpdateProfile}
-              loading={loading}
-              user={user}
-              canApplyWriter={canApplyWriter}
-              onApplyWriter={handleApplyWriter}
-              isApplyingWriter={isApplyingWriter}
-              isCriticalFieldDisabled={isCriticalFieldDisabled}
-            />
+              <ProfileForm
+                formData={formData}
+                onFormDataChange={handleChange}
+                onSubmit={handleUpdateProfile}
+                loading={loading}
+                user={user}
+                canApplyWriter={canApplyWriter}
+                onApplyWriter={handleApplyWriter}
+                isApplyingWriter={isApplyingWriter}
+                isCriticalFieldDisabled={isCriticalFieldDisabled}
+              />
+            </div>
           </div>
         </div>
       </div>

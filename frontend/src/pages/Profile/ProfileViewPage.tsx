@@ -5,6 +5,7 @@ import { ProfileAvatar } from '../../components/atoms/ProfileAvatar';
 import { SocialStats } from '../../components/molecules/SocialStats';
 import { ProfileActionButtons } from '../../components/molecules/ProfileActionButtons';
 import { ProfileTabs } from '../../components/molecules/ProfileTabs';
+import { PreviewDetailArticle } from '../../components/organisms/PreviewDetailArticle';
 import { buildApiUrl, buildBackendUrl } from '../../config/api';
 
 // Helper function to get full image URL
@@ -40,6 +41,8 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
   });
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [previewArticleId, setPreviewArticleId] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const isOwnProfile = !username || (user?.user_login === username) || false;
 
@@ -163,20 +166,46 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
     fetchUserArticles();
   }, [isOwnProfile, user, profileUser]);
 
+  // Handler for preview modal
+  const handlePreviewArticle = (articleId: string) => {
+    setPreviewArticleId(articleId);
+    setIsPreviewOpen(true);
+  };
+
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false);
+    setPreviewArticleId(null);
+  };
+
   const displayUser = isOwnProfile ? user : profileUser;
 
   if (isLoading || isLoadingProfile) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <div className="max-w-md mx-auto bg-white min-h-screen">
-          <div className="animate-pulse p-6">
-            <div className="w-24 h-24 bg-gray-200 rounded-full mx-auto mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded mb-4 w-3/4"></div>
-            <div className="flex space-x-4 mb-4">
-              <div className="h-8 bg-gray-200 rounded flex-1"></div>
-              <div className="h-8 bg-gray-200 rounded flex-1"></div>
+        <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div className="px-6 py-8 sm:px-8 sm:py-10 text-center">
+              <div className="animate-pulse">
+                <div className="w-24 h-24 bg-gray-200 rounded-full mx-auto mb-4"></div>
+                <div className="h-6 bg-gray-200 rounded mb-2 w-1/2 mx-auto"></div>
+                <div className="h-4 bg-gray-200 rounded mb-4 w-1/3 mx-auto"></div>
+                <div className="flex justify-center space-x-4 mb-4">
+                  <div className="h-10 bg-gray-200 rounded w-24"></div>
+                  <div className="h-10 bg-gray-200 rounded w-24"></div>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 sm:p-8">
+              <div className="animate-pulse space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="border rounded-lg p-4">
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded mb-2 w-3/4"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -188,16 +217,25 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <div className="max-w-md mx-auto bg-white min-h-screen">
-          <div className="p-6 text-center">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Akses Ditolak</h2>
-            <p className="text-gray-600 mb-4">Anda harus login untuk melihat profil.</p>
-            <a 
-              href="/login" 
-              className="inline-block bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-            >
-              Login
-            </a>
+        <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div className="p-8 text-center">
+              <div className="max-w-md mx-auto">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">Akses Ditolak</h2>
+                <p className="text-gray-600 mb-6">Anda harus login untuk melihat profil.</p>
+                <a 
+                  href="/login" 
+                  className="inline-block bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+                >
+                  Login
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -208,16 +246,25 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <div className="max-w-md mx-auto bg-white min-h-screen">
-          <div className="p-6 text-center">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Profil Tidak Ditemukan</h2>
-            <p className="text-gray-600 mb-4">User @{username} tidak ditemukan.</p>
-            <a 
-              href="/" 
-              className="inline-block bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-            >
-              Kembali ke Beranda
-            </a>
+        <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div className="p-8 text-center">
+              <div className="max-w-md mx-auto">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">Profil Tidak Ditemukan</h2>
+                <p className="text-gray-600 mb-6">User @{username} tidak ditemukan.</p>
+                <a 
+                  href="/" 
+                  className="inline-block bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+                >
+                  Kembali ke Beranda
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -267,15 +314,15 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
                   <div className="flex-1 min-w-0">
                     <a 
                       href={`/artikel/${article.slug}`}
-                      className="block hover:text-blue-600 transition-colors"
+                      className="block hover:text-blue-600 transition-colors text-left"
                     >
-                      <h3 className="text-base font-medium text-gray-900 line-clamp-2">
+                      <h3 className="text-base font-medium text-gray-900 line-clamp-2 text-left">
                         {article.title}
                       </h3>
-                      <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                      <p className="text-sm text-gray-500 mt-1 line-clamp-2 text-left">
                         {article.excerpt}
                       </p>
-                      <div className="flex items-center mt-2 text-xs text-gray-400 space-x-4">
+                      <div className="flex items-center justify-start mt-2 text-xs text-gray-400 space-x-4">
                         <span>{new Date(article.date).toLocaleDateString('id-ID')}</span>
                         {article.view_count !== undefined && (
                           <span>{article.view_count} views</span>
@@ -284,9 +331,21 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
                       </div>
                     </a>
                     
-                    {/* Edit button - show for own articles or admin */}
+                    {/* Action buttons - show for own articles or admin */}
                     {(isOwnProfile || user?.user_role === 'admin' || user?.user_role === 'superadmin') && (
                       <div className="flex items-center mt-3 space-x-2">
+                        {/* Preview Button */}
+                        <button
+                          onClick={() => handlePreviewArticle(article.id)}
+                          className="inline-flex items-center px-3 py-1 text-xs font-medium bg-green-50 text-green-700 border border-green-200 rounded-md hover:bg-green-100 transition-colors"
+                        >
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          Preview
+                        </button>
+
                         {(() => {
                           const isPending = article.status === 'pending' || article.post_status === 'pending';
                           const isWriter = user?.user_role === 'writer';
@@ -375,53 +434,69 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      {/* Social Media Style Profile */}
-      <div className="max-w-md mx-auto bg-white min-h-screen">
-        {/* Profile Header */}
-        <div className="p-6 text-center">
-          {/* Profile Picture */}
-          <div className="relative inline-block mb-4">
-            <ProfileAvatar
-              profileImage={displayUser.profile_image}
-              displayName={displayUser.display_name}
-              getImageUrl={getImageUrl}
+      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          {/* Profile Header */}
+          <div className="px-6 py-8 sm:px-8 sm:py-10 text-center">
+            {/* Profile Picture */}
+            <div className="relative inline-block mb-4">
+              <ProfileAvatar
+                profileImage={displayUser.profile_image}
+                displayName={displayUser.display_name}
+                getImageUrl={getImageUrl}
+              />
+            </div>
+            
+            {/* User Name */}
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{displayUser.display_name}</h1>
+            
+            {/* Follow Stats */}
+            <div className="mb-6">
+              <SocialStats 
+                mengikuti={stats.mengikuti}
+                pengikut={stats.pengikut}
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <ProfileActionButtons 
+              isOwnProfile={isOwnProfile}
+              userId={displayUser?.ID}
+              isFollowing={isFollowing}
+              onFollowChange={(newFollowState) => {
+                setIsFollowing(newFollowState);
+                // Update follower count
+                setStats(prev => ({
+                  ...prev,
+                  pengikut: prev.pengikut + (newFollowState ? 1 : -1)
+                }));
+              }}
             />
           </div>
-          
-          {/* User Name */}
-          <h1 className="text-xl font-semibold text-gray-900 mb-1">{displayUser.display_name}</h1>
-          
-          {/* Follow Stats */}
-          <SocialStats 
-            mengikuti={stats.mengikuti}
-            pengikut={stats.pengikut}
-          />
 
-          {/* Action Buttons */}
-          <ProfileActionButtons 
-            isOwnProfile={isOwnProfile}
-            userId={displayUser?.ID}
-            isFollowing={isFollowing}
-            onFollowChange={(newFollowState) => {
-              setIsFollowing(newFollowState);
-              // Update follower count
-              setStats(prev => ({
-                ...prev,
-                pengikut: prev.pengikut + (newFollowState ? 1 : -1)
-              }));
-            }}
-          />
+          {/* Tabs */}
+          <div className="border-b border-gray-200">
+            <ProfileTabs 
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+            />
+          </div>
+
+          {/* Tab Content */}
+          <div className="p-6 sm:p-8">
+            {renderTabContent()}
+          </div>
         </div>
-
-        {/* Tabs */}
-        <ProfileTabs 
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
-
-        {/* Tab Content */}
-        {renderTabContent()}
       </div>
+      
+      {/* Preview Article Modal */}
+      {previewArticleId && (
+        <PreviewDetailArticle
+          articleId={previewArticleId}
+          isOpen={isPreviewOpen}
+          onClose={handleClosePreview}
+        />
+      )}
     </div>
   );
 };
