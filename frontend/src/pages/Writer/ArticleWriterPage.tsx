@@ -1229,7 +1229,7 @@ const ArticleWriterPage: React.FC = () => {
 
             {/* Rich Text Editor */}
             <div className={`prose-editor ${
-              (!article.content.trim() || article.content.trim() === '<p><br></p>') ? 'ring-2 ring-red-200' : ''
+              (!article.content.trim() || article.content.trim() === '<p><br></p>') ? 'ring-2 ring-gray-200' : ''
             }`}>
               <ReactQuill
                 key={`quill-${windowWidth < 640 ? 'mobile' : windowWidth < 1024 ? 'tablet' : 'desktop'}`}
