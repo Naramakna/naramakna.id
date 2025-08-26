@@ -9,7 +9,7 @@ export interface Advertisement {
   target_url?: string;
   ad_content?: string;
   google_ads_code?: string;
-  placement_type: 'header' | 'regular' | 'sidebar' | 'inline' | 'footer' | 'popup' | 'hero-banner' | 'mid-content' | 'bottom-content' | 'article-top' | 'article-mid' | 'article-bottom' | 'article-final' | 'content-ad' | 'content-middle' | 'breaking-pre' | 'breaking-post';
+  placement_type: 'header' | 'regular' | 'sidebar' | 'inline' | 'footer' | 'popup' | 'hero-banner' | 'mid-content' | 'bottom-content' | 'article-top' | 'article-mid' | 'article-bottom' | 'article-final' | 'article-ads' | 'content-middle' | 'breaking-pre' | 'breaking-post';
   advertiser?: string;
   start_date: string;
   end_date: string;
@@ -63,7 +63,7 @@ const mapPlacementToBackend = (frontendPlacement: string): string => {
     'article-mid': 'article-mid',    // Fixed: Keep article-mid as article-mid
     'article-final': 'article-final', // Fixed: Keep article-final as article-final
     'article-bottom': 'article-bottom', // Fixed: Keep article-bottom as article-bottom
-    'content-ad': 'content-ad',      // Fixed: Keep content-ad as content-ad
+    'article-ads': 'article-ads',    // Fixed: Keep article-ads as article-ads
     'content-middle': 'content-middle', // Fixed: Keep content-middle as content-middle
     'breaking-pre': 'breaking-pre',  // Fixed: Keep breaking-pre as breaking-pre
     'breaking-post': 'breaking-post', // Fixed: Keep breaking-post as breaking-post

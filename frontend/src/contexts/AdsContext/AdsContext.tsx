@@ -69,7 +69,7 @@ export const AdsProvider: React.FC<AdsProviderProps> = ({ children }) => {
   };
 
   const refreshAds = async (placement?: string, forceRefresh: boolean = false) => {
-    const placements = placement ? [placement] : ['header', 'regular', 'sidebar', 'hero-banner', 'mid-content', 'bottom-content', 'article-top', 'article-mid', 'article-bottom', 'article-final', 'content-ad', 'breaking-pre', 'breaking-post'];
+    const placements = placement ? [placement] : ['header', 'regular', 'sidebar', 'hero-banner', 'mid-content', 'bottom-content', 'article-top', 'article-mid', 'article-bottom', 'article-final', 'article-ads', 'breaking-pre', 'breaking-post'];
     console.log('🎯 AdsContext: Refreshing ads for placements:', placements, 'forceRefresh:', forceRefresh);
     
     setLoading(true);

@@ -29,7 +29,7 @@ const Advertisement = sequelize.define('Advertisement', {
     allowNull: false
   },
   placement_type: {
-    type: DataTypes.ENUM('header', 'sidebar', 'inline', 'footer', 'popup', 'regular'),
+    type: DataTypes.ENUM('header', 'sidebar', 'inline', 'footer', 'popup', 'regular', 'hero-banner', 'mid-content', 'bottom-content', 'article-top', 'article-mid', 'article-bottom', 'article-final', 'article-ads', 'breaking-pre', 'breaking-post'),
     allowNull: false,
     defaultValue: 'regular'
   },

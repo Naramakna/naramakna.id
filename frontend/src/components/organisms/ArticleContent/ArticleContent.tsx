@@ -339,7 +339,7 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                 {secondHalf && (
                   <div className="my-8 flex justify-center">
                     <AdSection 
-                      placement="content-ad" 
+                      placement="article-ads" 
                       size="regular" 
                       rotationInterval={5000}
                     />

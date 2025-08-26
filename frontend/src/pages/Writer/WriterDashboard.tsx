@@ -17,7 +17,14 @@ const WriterDashboard: React.FC = () => {
   const [pendingPosts, setPendingPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
-
+  const [newPost, setNewPost] = useState({
+    title: '',
+    content: '',
+    type: 'post'
+  });
+  const [featuredImage, setFeaturedImage] = useState<File | null>(null);
+  const [galleryImages, setGalleryImages] = useState<File[]>([]);
+  const [creating, setCreating] = useState(false);
 
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
   const token = localStorage.getItem('token');
@@ -44,7 +51,67 @@ const WriterDashboard: React.FC = () => {
     }
   };
 
+  const createPost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
 
+    try {
+      // Debug: Check form data before submission
+      console.log('Form submission data:', {
+        title: newPost.title,
+        content: newPost.content,
+        type: newPost.type,
+        author_id: currentUser.ID,
+        status: 'pending'
+      });
+      
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('title', newPost.title);
+      formData.append('content', newPost.content);
+      formData.append('type', newPost.type);
+      formData.append('status', 'pending');
+      // Don't send author_id - backend will use authenticated user
+      
+      // Add featured image if selected
+      if (featuredImage) {
+        formData.append('featured_image', featuredImage);
+      }
+      
+      // Add gallery images if selected
+      galleryImages.forEach((file) => {
+        formData.append('gallery_images', file);
+      });
+      
+      const response = await fetch(buildApiUrl('content'), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        credentials: 'include',
+        body: formData
+      });
+
+      const data = await response.json();
+      
+      console.log('Server response:', data);
+      
+      if (data.success) {
+        alert('Post created and submitted for review!');
+        setNewPost({ title: '', content: '', type: 'post' });
+        setFeaturedImage(null);
+        setGalleryImages([]);
+        fetchData(); // Refresh data
+      } else {
+        console.error('Error details:', data);
+        alert('Error creating post: ' + data.message);
+      }
+    } catch (error) {
+      alert('Error creating post');
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const logout = () => {
     localStorage.removeItem('user');

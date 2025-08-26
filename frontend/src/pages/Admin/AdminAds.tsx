@@ -767,10 +767,11 @@ export const AdminAds: React.FC = () => {
                 <option value="popup">🎯 Homepage Popup (Fullscreen)</option>
                 <option value="regular">📝 Content Pages (728x90)</option>
                 <option value="sidebar">📱 Sidebar Ads (300x250)</option>
-                <option value="article-top">📰 Article Page Top</option>
-                <option value="article-mid">📰 Article Page Middle</option>
-                <option value="article-bottom">📰 Article Page Bottom</option>
-                <option value="article-final">📰 Article Page End</option>
+                <option value="article-top">📰 Article Page Top (970x250)</option>
+                <option value="article-ads">📰 Article Page Ad (728x90)</option>
+                <option value="article-mid">📰 Article Page Middle (728x90)</option>
+                <option value="article-bottom">📰 Article Page Bottom (970x250)</option>
+                <option value="article-final">📰 Article Page End (728x90)</option>
               </select>
               
               {/* URL Examples for each placement */}
@@ -787,6 +788,7 @@ export const AdminAds: React.FC = () => {
                       'regular': '• All content pages: https://naramakna.id/artikel/judul-artikel\n• Video pages: https://naramakna.id/video-story\n• Index pages: https://naramakna.id/index-berita',
                       'sidebar': '• All pages with sidebar content',
                       'article-top': '• Article pages: https://naramakna.id/artikel/judul-artikel',
+                      'article-ads': '• Article pages: https://naramakna.id/artikel/judul-artikel',
                       'article-mid': '• Article pages: https://naramakna.id/artikel/judul-artikel',
                       'article-bottom': '• Article pages: https://naramakna.id/artikel/judul-artikel',
                       'article-final': '• Article pages: https://naramakna.id/artikel/judul-artikel'

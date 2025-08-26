@@ -83,7 +83,7 @@ const ArticleWriterPage: React.FC = () => {
   }>({
     popularChannels: [],
     popularTags: [],
-    defaultChannels: ['News', 'Entertainment', 'Tekno & Sains', 'Bisnis', 'Bola & Sports', 'Otomotif', 'Woman', 'Food & Travel', 'Mom', 'Bolanita']
+    defaultChannels: ['News', 'Entertainment', 'Tekno & Sains', 'Bisnis', 'Bola & Sports', 'Otomotif', 'Woman', 'Food & Travel', 'Mom', 'Jagat Kita']
   });
 
   // Categories state
@@ -356,7 +356,9 @@ const ArticleWriterPage: React.FC = () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(articleWithCategories)
+        body: JSON.stringify(articleWithCategories),
+        // Add timeout for auto-save
+        signal: AbortSignal.timeout(15000) // 15 seconds timeout
       });
 
       if (response.ok) {
@@ -367,17 +369,26 @@ const ArticleWriterPage: React.FC = () => {
         console.error('❌ Auto-save error:', response.status, errorText);
         setSaveStatus('unsaved');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Auto-save error:', error);
+      if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+        console.log('⏰ Auto-save timeout, will retry later');
+      }
       setSaveStatus('unsaved');
     } finally {
       isSavingRef.current = false; // Reset saving flag
     }
-  }, [article, isEditMode, editId]);
+  }, [article, isEditMode, editId, selectedCategories]);
 
   // Save Draft function
   const handleSaveDraft = async (): Promise<string | null> => {
     if (isSavingRef.current) {
+      return null;
+    }
+    
+    // Basic validation for draft
+    if (!article.title.trim()) {
+      showNotification('Judul artikel wajib diisi untuk menyimpan draft.', 'error');
       return null;
     }
     
@@ -401,36 +412,47 @@ const ArticleWriterPage: React.FC = () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(draftData)
+        body: JSON.stringify(draftData),
+        // Add timeout for draft save
+        signal: AbortSignal.timeout(20000) // 20 seconds timeout
       });
 
       if (response.ok) {
         const result = await response.json();
         
         if (isEditMode) {
-          alert('Draft berhasil disimpan!');
+          showNotification('Draft berhasil disimpan!', 'success');
           setArticle(prev => ({ ...prev, status: 'draft' }));
+          setSaveStatus('saved');
           return editId;
         } else {
           const newId = result.data?.id || result.data?.ID || result.id || result.ID;
-          alert(`Draft berhasil disimpan! ID: ${newId}`);
+          showNotification(`Draft berhasil disimpan! ID: ${newId}`, 'success');
           // Update to edit mode with the new ID
           setIsEditMode(true);
           setEditId(newId);
           setArticle(prev => ({ ...prev, status: 'draft' }));
+          setSaveStatus('saved');
           return newId;
         }
-        setSaveStatus('saved');
       } else {
         const errorData = await response.text();
         console.error('🔧 Debug Frontend handleSaveDraft - error response:', response.status, errorData);
-        alert('Gagal menyimpan draft. Silakan coba lagi.');
+        if (response.status === 408) {
+          alert('⏰ Permintaan timeout. Silakan coba lagi dalam beberapa saat.');
+        } else {
+          alert('❌ Gagal menyimpan draft. Silakan coba lagi.');
+        }
         setSaveStatus('error');
         return null;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('🔧 Debug Frontend handleSaveDraft - error:', error);
-      alert('Terjadi kesalahan saat menyimpan draft.');
+      if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+        alert('⏰ Koneksi timeout. Silakan coba lagi.');
+      } else {
+        alert('❌ Terjadi kesalahan saat menyimpan draft.');
+      }
       setSaveStatus('error');
       return null;
     } finally {
@@ -440,6 +462,17 @@ const ArticleWriterPage: React.FC = () => {
 
   // Schedule function
   const handleSchedule = async () => {
+    // Basic validation before scheduling
+    if (!article.title.trim()) {
+      showNotification('Judul artikel wajib diisi sebelum dijadwalkan.', 'error');
+      return;
+    }
+    
+    if (!article.content.trim() || article.content.trim() === '<p><br></p>') {
+      showNotification('Isi artikel wajib diisi sebelum dijadwalkan.', 'error');
+      return;
+    }
+    
     try {
       let postId = editId;
       
@@ -452,7 +485,7 @@ const ArticleWriterPage: React.FC = () => {
         postId = savedId || editId;
         
         if (!postId) {
-          alert('Gagal menyimpan artikel. Silakan coba lagi.');
+          alert('❌ Gagal menyimpan artikel. Silakan coba lagi.');
           return;
         }
       }
@@ -481,30 +514,132 @@ const ArticleWriterPage: React.FC = () => {
       setIsScheduleModalOpen(true);
     } catch (error) {
       console.error('Error preparing schedule:', error);
-      alert('Error saat menyiapkan schedule. Silakan coba lagi.');
+      alert('❌ Error saat menyiapkan penjadwalan. Silakan coba lagi.');
     }
   };
 
   const handleScheduleSubmit = async (postId: number, scheduleData: ScheduleRequest) => {
+    // Validate before scheduling
+    const validation = validateArticleForPublish();
+    if (!validation.isValid) {
+      const errorMessage = `Artikel belum siap dijadwalkan:\n\n${validation.errors.join('\n')}\n\nSilakan lengkapi data yang diperlukan terlebih dahulu.`;
+      alert(errorMessage);
+      return;
+    }
+    
     try {
       await schedulerAPI.schedulePost(postId, scheduleData);
-      alert('Artikel berhasil dijadwalkan!');
-    } catch (error) {
+      showNotification('Artikel berhasil dijadwalkan!', 'success');
+    } catch (error: any) {
       console.error('Error scheduling post:', error);
-      alert('Error saat menjadwalkan artikel. Silakan coba lagi.');
+      if (error.message?.includes('timeout') || error.name === 'AbortError') {
+        showNotification('Koneksi timeout. Silakan coba lagi dalam beberapa saat.', 'error');
+      } else {
+        showNotification('Error saat menjadwalkan artikel. Silakan coba lagi.', 'error');
+      }
     }
+  };
+
+  // Validation function
+  const validateArticleForPublish = (): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    
+    if (!article.title.trim()) {
+      errors.push('Judul artikel wajib diisi');
+    }
+    
+    if (!article.content.trim() || article.content.trim() === '<p><br></p>') {
+      errors.push('Isi artikel wajib diisi');
+    }
+    
+    if (!article.description.trim()) {
+      errors.push('Deskripsi artikel wajib diisi untuk publikasi');
+    }
+    
+    if (!article.summary_social.trim()) {
+      errors.push('Summary Social wajib diisi untuk publikasi');
+    }
+    
+    if (selectedCategories.length === 0) {
+      errors.push('Pilih minimal satu kategori');
+    }
+    
+    // Check minimum content length
+    const contentText = article.content.replace(/<[^>]*>/g, '').trim();
+    if (contentText.length < 100) {
+      errors.push('Isi artikel terlalu pendek, minimal 100 karakter');
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  };
+  
+  // Show validation errors in Indonesian
+  const showValidationErrors = (errors: string[]) => {
+    const errorMessage = `Artikel belum siap dipublikasi:\n\n• ${errors.join('\n• ')}\n\nSilakan lengkapi data yang diperlukan terlebih dahulu.`;
+    showNotification(errorMessage, 'error');
+  };
+
+  // Show notification function
+  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 p-3 sm:p-4 rounded-lg shadow-lg z-50 max-w-xs sm:max-w-md transition-all duration-300 ${
+      type === 'success' ? 'bg-green-500 text-white' :
+      type === 'error' ? 'bg-red-500 text-white' :
+      'bg-blue-500 text-white'
+    }`;
+    notification.innerHTML = `
+      <div class="flex items-start space-x-2 sm:space-x-3">
+        <div class="flex-shrink-0">
+          ${type === 'success' ? 
+            '<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>' :
+            type === 'error' ?
+            '<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>' :
+            '<svg class="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>'
+          }
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-xs sm:text-sm font-medium whitespace-pre-line">${message.replace(/\n/g, '<br>')}</p>
+        </div>
+        <button onclick="this.parentElement.parentElement.remove()" class="flex-shrink-0 ml-1 sm:ml-2 p-1 hover:bg-black hover:bg-opacity-10 rounded">
+          <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+          </svg>
+        </button>
+      </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto remove after 6 seconds (longer for mobile users to read)
+    setTimeout(() => {
+      if (notification.parentElement) {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => notification.remove(), 300);
+      }
+    }, 6000);
   };
 
   // Publish function
   const handlePublish = async () => {
     if (isSavingRef.current) {
-      // console.log('🔧 Debug: Publish skipped - save in progress');
+      return;
+    }
+    
+    // Validate before publish
+    const validation = validateArticleForPublish();
+    if (!validation.isValid) {
+      showValidationErrors(validation.errors);
       return;
     }
     
     try {
-      // console.log('🔧 Debug: Publish called with:', { isEditMode, editId });
       isSavingRef.current = true;
+      setSaveStatus('saving');
       
       const publishData = { 
         ...article, 
@@ -512,14 +647,9 @@ const ArticleWriterPage: React.FC = () => {
         categories: selectedCategories
       };
       
-      // Include categories in publish data
-      
       const url = isEditMode 
         ? buildApiUrl(`writer/articles/${editId}`)
         : buildApiUrl('writer/articles');
-      
-      // console.log('🔧 Debug: Publish URL:', url);
-      // console.log('🔧 Debug: Publish method:', isEditMode ? 'PUT' : 'POST');
       
       const response = await fetch(url, {
         method: isEditMode ? 'PUT' : 'POST',
@@ -527,17 +657,30 @@ const ArticleWriterPage: React.FC = () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(publishData)
+        body: JSON.stringify(publishData),
+        // Add timeout to prevent hanging
+        signal: AbortSignal.timeout(30000) // 30 seconds timeout
       });
 
       if (response.ok) {
         const result = await response.json();
+        const userRole = user?.user_role;
+        
         if (isEditMode) {
-          alert(`Artikel berhasil diupdate dan dipublikasi!`);
-          // Don't reset form in edit mode, just update status
+          if (userRole === 'admin' || userRole === 'superadmin') {
+            showNotification('Artikel berhasil diupdate dan dipublikasi langsung!', 'success');
+          } else {
+            showNotification('Artikel berhasil diupdate dan akan direview oleh admin!', 'success');
+          }
           setArticle(prev => ({ ...prev, status: 'published' }));
         } else {
-          alert(`Artikel berhasil dipublikasi! ID: ${result.data.id}`);
+          const articleId = result.data?.id || result.data?.ID || 'Unknown';
+          if (userRole === 'admin' || userRole === 'superadmin') {
+            showNotification(`Artikel berhasil dipublikasi langsung! ID: ${articleId}`, 'success');
+          } else {
+            showNotification(`Artikel berhasil dikirim untuk review! ID: ${articleId}\n\nArtikel akan dipublikasi setelah disetujui admin.`, 'success');
+          }
+          
           // Reset form only for new articles
           setArticle({
             title: '',
@@ -554,24 +697,51 @@ const ArticleWriterPage: React.FC = () => {
             featured_image: '',
             featured_image_caption: ''
           });
+          setSelectedCategories([]);
           setFeaturedImagePreview('');
         }
         setSaveStatus('saved');
       } else {
         const errorText = await response.text();
         console.error('❌ Publish error:', response.status, errorText);
-        try {
-          const error = JSON.parse(errorText);
-          alert(`Gagal mempublikasi artikel: ${error.message}`);
-        } catch {
-          alert(`Gagal mempublikasi artikel: ${response.status} ${errorText}`);
+        
+        // Handle specific error messages in Indonesian
+        if (response.status === 408) {
+          showNotification('Permintaan timeout. Server sedang sibuk, silakan coba lagi dalam beberapa saat.', 'error');
+        } else if (response.status === 400) {
+          try {
+            const error = JSON.parse(errorText);
+            const message = error.message || errorText;
+            if (message.includes('required')) {
+              showNotification(`⚠️ Data tidak lengkap: ${message}\n\nPastikan semua field wajib sudah diisi.`, 'error');
+            } else {
+              showNotification(`❌ Gagal mempublikasi artikel: ${message}`, 'error');
+            }
+          } catch {
+            showNotification('❌ Gagal mempublikasi artikel. Periksa kembali data yang diisi.', 'error');
+          }
+        } else if (response.status === 500) {
+          alert('🔧 Terjadi kesalahan server. Silakan coba lagi atau hubungi admin.');
+        } else {
+          try {
+            const error = JSON.parse(errorText);
+            alert(`❌ Gagal mempublikasi artikel: ${error.message}`);
+          } catch {
+            alert(`❌ Gagal mempublikasi artikel (Error ${response.status})`);
+          }
         }
+        setSaveStatus('error');
       }
-    } catch (error) {
-      console.error('Publish error:', error);
-      alert('Gagal mempublikasi artikel');
+    } catch (error: any) {
+      console.error('❌ Publish error:', error);
+      if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+        alert('⏰ Koneksi timeout. Silakan periksa koneksi internet dan coba lagi.');
+      } else {
+        alert('❌ Gagal mempublikasi artikel. Periksa koneksi internet Anda.');
+      }
+      setSaveStatus('error');
     } finally {
-      isSavingRef.current = false; // Reset saving flag
+      isSavingRef.current = false;
     }
   };
 
@@ -996,15 +1166,27 @@ const ArticleWriterPage: React.FC = () => {
               >
                 <span className="hidden sm:inline">
                   {(() => {
+                    const userRole = user?.user_role;
+                    
                     // Admin/SuperAdmin editing pending post
-                    if (user && ['admin', 'superadmin'].includes(user.user_role) && isEditMode && article.status === 'pending') {
+                    if (userRole && ['admin', 'superadmin'].includes(userRole) && isEditMode && article.status === 'pending') {
                       return `Publikasikan "${article.title.slice(0, 20)}${article.title.length > 20 ? '...' : ''}"`;
                     }
-                    // Regular publish
-                    return 'Publikasikan';
+                    
+                    // Different text based on user role
+                    if (userRole === 'admin' || userRole === 'superadmin') {
+                      return isEditMode ? 'Publikasikan Sekarang' : 'Publikasikan Langsung';
+                    } else {
+                      return isEditMode ? 'Kirim untuk Review' : 'Kirim untuk Review';
+                    }
                   })()}
                 </span>
-                <span className="sm:hidden">Publish</span>
+                <span className="sm:hidden">
+                  {(() => {
+                    const userRole = user?.user_role;
+                    return (userRole === 'admin' || userRole === 'superadmin') ? 'Publish' : 'Review';
+                  })()}
+                </span>
               </button>
             </div>
           </div>
@@ -1046,7 +1228,9 @@ const ArticleWriterPage: React.FC = () => {
             </div>
 
             {/* Rich Text Editor */}
-            <div className="prose-editor">
+            <div className={`prose-editor ${
+              (!article.content.trim() || article.content.trim() === '<p><br></p>') ? 'ring-2 ring-red-200' : ''
+            }`}>
               <ReactQuill
                 key={`quill-${windowWidth < 640 ? 'mobile' : windowWidth < 1024 ? 'tablet' : 'desktop'}`}
                 ref={quillRef}
@@ -1062,8 +1246,15 @@ const ArticleWriterPage: React.FC = () => {
                 style={{ minHeight: '400px' }}
               />
               <div className="text-xs text-gray-500 mt-2 flex justify-between">
-                <span>{charCount.content} karakter</span>
-                <span>{wordCount} kata</span>
+                <span>
+                  {charCount.content} karakter
+                  {charCount.content < 100 && charCount.content > 0 && (
+                    <span className="text-red-500 ml-2">⚠️ Minimal 100 karakter</span>
+                  )}
+                </span>
+                <span>
+                  {wordCount} kata
+                </span>
               </div>
             </div>
           </div>
@@ -1073,7 +1264,8 @@ const ArticleWriterPage: React.FC = () => {
             {/* Description */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description
+                Description <span className="text-red-500">*</span>
+                <span className="text-xs text-gray-500 font-normal ml-1">(Wajib untuk publikasi)</span>
               </label>
               <textarea
                 placeholder="Deskripsi singkat artikel..."
@@ -1090,7 +1282,8 @@ const ArticleWriterPage: React.FC = () => {
             {/* Categories */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Kategori
+                Kategori <span className="text-red-500">*</span>
+                <span className="text-xs text-gray-500 font-normal ml-1">(Minimal 1 kategori)</span>
               </label>
               <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-md p-3">
                 {categories.map((category) => (
@@ -1130,7 +1323,8 @@ const ArticleWriterPage: React.FC = () => {
             {/* Summary Social */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Summary Social
+                Summary Social <span className="text-red-500">*</span>
+                <span className="text-xs text-gray-500 font-normal ml-1">(Wajib untuk publikasi)</span>
               </label>
               <textarea
                 placeholder="Ringkasan untuk media sosial..."
