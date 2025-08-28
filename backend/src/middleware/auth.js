@@ -101,6 +101,9 @@ const optionalAuth = async (req, res, next) => {
 // Role-based authorization middleware
 const authorize = (...roles) => {
   return (req, res, next) => {
+    console.log('🔍 Authorize Debug - req.user:', req.user ? `ID=${req.user.ID}, role=${req.user.user_role}` : 'Not set');
+    console.log('🔍 Authorize Debug - Required roles:', roles);
+    
     if (!req.user) {
       return res.status(401).json({
         success: false,

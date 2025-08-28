@@ -13,6 +13,24 @@
     <link rel="preconnect" href="https://api.naramakna.id" crossorigin />
     <link rel="preload" as="image" href="/LogoNaramakna.png" fetchpriority="high" />
     
+    <!-- Google AdSense Manual Ad Units Only - Block All Auto Ads -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5027382595607261"
+         crossorigin="anonymous"></script>
+    
+    <!-- Block auto ads but allow manual -->
+    <script>
+        window.adsbygoogle = window.adsbygoogle || [];
+        
+        // Explicitly disable auto ads
+        (adsbygoogle = window.adsbygoogle || []).push({
+            google_ad_client: "ca-pub-5027382595607261",
+            enable_page_level_ads: false,
+            overlays: false,
+            vignette: false,
+            anchor: false
+        });
+    </script>
+    
     <!-- Non-critical resources with proper attributes -->
     <link rel="preconnect" href="https://api.naramakna.id" />
     <link rel="icon" type="image/png" href="https://api.naramakna.id/uploads/2025/07/cropped-IKON-LOGO-180x180.png" />
@@ -73,6 +91,19 @@
             align-items: center;
             justify-content: center;
             background: #f8f9fa;
+        }
+        
+        /* Block auto ads outside designated areas */
+        body {
+            data-ad-frequency-hint: "0s";
+        }
+        
+        /* Prevent auto ads in specific areas */
+        header, nav, .header, .navigation, 
+        .sidebar:not(.ad-sidebar), 
+        .footer:not(.ad-footer),
+        .menu, .nav-menu {
+            data-ad-frequency-hint: "0s";
         }
         
         /* Responsive ads aspect ratios */

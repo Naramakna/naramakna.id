@@ -16,8 +16,14 @@ class SchedulerController {
         }
       };
 
+      // If no specific status is requested, default to only show non-published posts
       if (status) {
         whereClause.post_status = status;
+      } else {
+        // Only show scheduled posts that haven't been published yet
+        whereClause.post_status = {
+          [Op.in]: ['scheduled', 'future', 'draft']
+        };
       }
 
       const posts = await Post.findAndCountAll({
@@ -433,6 +439,28 @@ class SchedulerController {
           // Ensure featured image metadata is preserved
           if (featuredImageMeta) {
             console.log(`  🖼️ Featured image preserved for post ${post.ID}: ${featuredImageMeta.meta_value}`);
+            
+            // Also preserve featured image caption if exists
+            const captionMeta = await PostMeta.findOne({
+              where: {
+                post_id: post.ID,
+                meta_key: '_thumbnail_caption'
+              }
+            });
+            
+            if (captionMeta && captionMeta.meta_value) {
+              // Find the attachment and update its title/excerpt with the caption
+              const attachment = await Post.findByPk(featuredImageMeta.meta_value);
+              if (attachment) {
+                await attachment.update({
+                  post_title: captionMeta.meta_value,
+                  post_excerpt: captionMeta.meta_value,
+                  post_modified: now,
+                  post_modified_gmt: now
+                });
+                console.log(`  📝 Featured image caption updated: "${captionMeta.meta_value}"`);
+              }
+            }
           }
 
           // Log the publishing

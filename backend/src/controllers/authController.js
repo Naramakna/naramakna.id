@@ -896,7 +896,7 @@ class AuthController {
 
       // For testing purposes, allow direct connection test using environment variables
       // This bypasses the OAuth requirement for now
-      const googleAdsService = require('../services/googleAds');
+      const googleAdsService = require('../services/googleAdsSimple');
       const testResult = await googleAdsService.testConnection();
 
       // If connection test fails but we have env variables, provide helpful info
@@ -923,8 +923,11 @@ class AuthController {
       res.json({
         success: testResult.success,
         message: testResult.success ? 'Google Ads connection successful' : 'Google Ads connection failed',
-        data: testResult.success ? testResult.account : null,
-        error: testResult.error || null
+        data: {
+          connected: testResult.success,
+          account: testResult.success ? testResult.account : null,
+          error: testResult.error || null
+        }
       });
 
     } catch (error) {

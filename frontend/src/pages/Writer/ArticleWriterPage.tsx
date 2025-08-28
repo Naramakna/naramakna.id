@@ -503,6 +503,8 @@ const ArticleWriterPage: React.FC = () => {
         scheduled_by: null,
         scheduling_notes: null,
         original_status: 'draft',
+        featured_image: article.featured_image,
+        featured_image_caption: article.featured_image_caption,
         author: {
           ID: user?.ID || 0,
           display_name: user?.display_name || '',
@@ -1229,7 +1231,7 @@ const ArticleWriterPage: React.FC = () => {
 
             {/* Rich Text Editor */}
             <div className={`prose-editor ${
-              (!article.content.trim() || article.content.trim() === '<p><br></p>') ? 'ring-2 ring-gray-200' : ''
+              (!article.content.trim() || article.content.trim() === '<p><br></p>') ? 'ring-1 ring-gray-200' : ''
             }`}>
               <ReactQuill
                 key={`quill-${windowWidth < 640 ? 'mobile' : windowWidth < 1024 ? 'tablet' : 'desktop'}`}
@@ -1399,8 +1401,9 @@ const ArticleWriterPage: React.FC = () => {
               <div className="mb-3">
                 <p className="text-xs text-gray-500 mb-2">Channel Populer:</p>
                 <div className="flex flex-wrap gap-2">
-                  {/* Default channels */}
-                  {popularTags.defaultChannels.map((channel) => (
+                  
+                  {/* HARDCODED CHANNELS - PASTI MUNCUL */}
+                  {['News', 'Entertainment', 'Tekno & Sains', 'Bisnis', 'Bola & Sports', 'Otomotif', 'Woman', 'Food & Travel', 'Mom', 'Jagat Kita'].map((channel) => (
                     <button
                       key={channel}
                       type="button"

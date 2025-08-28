@@ -1,5 +1,8 @@
 // backend/src/app.js
 
+// Load environment variables
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
@@ -97,6 +100,12 @@ app.use('/uploads', express.static(path.join(__dirname, '../../public/uploads'))
 
 // Serve ads directory for advertisement images
 app.use('/ads', express.static(path.join(__dirname, '../../public/ads')));
+
+// Serve ads.txt file for AdSense verification
+app.get('/ads.txt', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain');
+  res.sendFile(path.join(__dirname, '../public/ads.txt'));
+});
 
 // Import routes
 const authRoutes = require('./routes/auth');

@@ -1,6 +1,13 @@
 // Komponen untuk display banner iklan
-import React from 'react';
+import React, { useEffect } from 'react';
 import type { Advertisement } from '../../../services/api';
+
+// Global type declaration for AdSense
+declare global {
+  interface Window {
+    adsbygoogle: any[];
+  }
+}
 
 interface AdBannerProps {
   className?: string;
@@ -15,6 +22,8 @@ interface AdBannerProps {
   // Animation props
   isVisible?: boolean;
   showTransition?: boolean;
+  // Fallback props
+  hasActiveAds?: boolean; // If true, don't show AdSense fallback
 }
 
 export const AdBanner: React.FC<AdBannerProps> = ({
@@ -27,15 +36,27 @@ export const AdBanner: React.FC<AdBannerProps> = ({
   advertisement,
   onAdClick,
   isVisible = true,
-  showTransition = true
+  showTransition = true,
+  hasActiveAds = false
 }) => {
   // Check if we have real advertisement data
   const hasRealAd = advertisement && !isPlaceholder;
   const adMediaUrl = advertisement?.media_url || advertisement?.image_url || imageSrc;
   const adTargetUrl = advertisement?.target_url || href;
   const adMediaType = advertisement?.media_type || 'image';
+  
+  // Show AdSense fallback only if:
+  // 1. No real ad data AND
+  // 2. No active ads in the system (hasActiveAds = false) AND
+  // 3. Not explicitly showing placeholder
+  const shouldShowAdSenseFallback = !hasRealAd && !hasActiveAds && !isPlaceholder;
 
   const handleClick = (e: React.MouseEvent) => {
+    // Skip click handling for Google AdSense - they handle their own clicks
+    if (adMediaType === 'google_adsense') {
+      return; // Let AdSense handle the click
+    }
+    
     e.preventDefault();
     e.stopPropagation();
     
@@ -50,7 +71,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({
       onAdClick(advertisement.id);
     }
     
-    if (adTargetUrl && adTargetUrl.trim()) {
+    if (adTargetUrl && adTargetUrl.trim() && adTargetUrl !== 'google-adsense') {
       console.log('🚀 Opening URL:', adTargetUrl);
       window.open(adTargetUrl, '_blank', 'noopener,noreferrer');
     } else {
@@ -77,8 +98,8 @@ export const AdBanner: React.FC<AdBannerProps> = ({
         return `w-[300px] h-[250px] ${baseClasses} ${visibilityClasses}`;
       case 'regular':
       default:
-        // Mobile: w-[90%] h-[60px], Tablet: w-[95%] h-[70px], Desktop: max-w-[728px] h-[90px]
-        return `w-[90%] sm:w-[95%] md:w-full lg:max-w-[728px] h-[60px] sm:h-[70px] md:h-[80px] lg:h-[90px] ${baseClasses} ${visibilityClasses}`;
+        // Mobile: w-[95%] h-[70px], Tablet: w-[98%] h-[80px], Desktop: w-[728px] h-[120px] (responsive, tidak kepotong)
+        return `w-[95%] sm:w-[98%] md:w-full lg:w-[728px] xl:w-[728px] h-[70px] sm:h-[80px] md:h-[90px] lg:h-[120px] xl:h-[120px] max-w-full ${baseClasses} ${visibilityClasses}`;
     }
   };
 
@@ -99,14 +120,60 @@ export const AdBanner: React.FC<AdBannerProps> = ({
       case 'regular':
       default:
         return {
-          mobile: '100% x 60px',
+          mobile: '100% x 70px',
           tablet: '100% x 80px',
-          desktop: '728 x 90px'
+          desktop: '728 x 120px'
         };
     }
   };
 
-  // Render placeholder if no real ad data
+  // Render AdSense fallback if conditions are met
+  if (shouldShowAdSenseFallback) {
+    const adUniqueId = `adsense-fallback-${size}-${Math.random()}`;
+    
+    // Initialize AdSense
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        try {
+          console.log(`🎯 Loading AdSense fallback for ${size}`);
+          (window.adsbygoogle = window.adsbygoogle || []).push({});
+        } catch (e) {
+          console.error('AdSense fallback error:', e);
+        }
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }, [adUniqueId, size]);
+    
+    return (
+      <div className={`${getSizeClasses()} relative rounded-lg overflow-hidden ${className}`}>
+        <ins className="adsbygoogle"
+             style={{
+               display: 'block',
+               width: '100%',
+               height: '100%',
+               border: 'none',
+               outline: 'none',
+               position: 'static',
+               left: 'auto',
+               right: 'auto',
+               top: 'auto',
+               bottom: 'auto'
+             }}
+             data-ad-client="ca-pub-5027382595607261"
+             data-ad-format="auto"
+             data-full-width-responsive="true">
+        </ins>
+        
+        {/* Fallback indicator */}
+        <div className="absolute top-1 right-1 bg-blue-500 bg-opacity-70 text-white text-xs px-1.5 py-0.5 rounded z-10">
+          AdSense
+        </div>
+      </div>
+    );
+  }
+  
+  // Render placeholder if no real ad data and not showing AdSense
   if (!hasRealAd || isPlaceholder) {
     const placeholderSizes = getPlaceholderText();
     
@@ -142,9 +209,12 @@ export const AdBanner: React.FC<AdBannerProps> = ({
           <img 
             src={adMediaUrl} 
             alt={altText}
-            className="w-full h-full object-contain rounded-lg bg-gray-50"
+            className="h-full object-fill rounded-lg bg-gray-50"
             loading="lazy"
-            style={{ aspectRatio: size === 'header' ? '970/250' : size === 'sidebar' ? '300/250' : '728/90' }}
+            style={{ 
+              aspectRatio: 'auto',
+              width: size === 'regular' ? '728px' : '100%'
+            }}
           />
         );
       
@@ -152,7 +222,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({
         return (
           <video 
             src={adMediaUrl}
-            className="w-full h-full object-contain rounded-lg bg-gray-50"
+            className="w-full h-full object-fill rounded-lg bg-gray-50"
             autoPlay 
             muted 
             loop
@@ -191,9 +261,12 @@ export const AdBanner: React.FC<AdBannerProps> = ({
             <img 
               src={adMediaUrl} 
               alt={altText}
-              className="w-full h-full object-contain rounded-lg bg-gray-50"
+              className="h-full object-fill rounded-lg bg-gray-50"
               loading="lazy"
-              style={{ aspectRatio: size === 'header' ? '970/250' : size === 'sidebar' ? '300/250' : '728/90' }}
+              style={{ 
+                aspectRatio: 'auto',
+                width: size === 'regular' ? '728px' : '100%'
+              }}
             />
           );
         } else {
@@ -214,6 +287,47 @@ export const AdBanner: React.FC<AdBannerProps> = ({
           );
         }
       
+      case 'google_adsense':
+        // Google AdSense - use container size constraints
+        const currentPlacement = advertisement?.placement_type || size || 'regular';
+        const adUniqueId = `adsense-${advertisement?.id}-${Math.random()}`;
+        
+        // Use React useEffect to initialize AdSense after render
+        useEffect(() => {
+          const timer = setTimeout(() => {
+            try {
+              console.log(`🎯 Initializing AdSense for ${currentPlacement} (${size})`);
+              (window.adsbygoogle = window.adsbygoogle || []).push({});
+            } catch (e) {
+              console.error('AdSense error:', e);
+            }
+          }, 500);
+          
+          return () => clearTimeout(timer);
+        }, [adUniqueId, size]);
+        
+        return (
+          <div className="w-full h-full flex items-center justify-center rounded-lg overflow-hidden relative">
+            <ins className="adsbygoogle"
+                 style={{
+                   display: 'block',
+                   width: '100%',
+                   height: '100%',
+                   border: 'none',
+                   outline: 'none',
+                   position: 'static',
+                   left: 'auto',
+                   right: 'auto',
+                   top: 'auto',
+                   bottom: 'auto'
+                 }}
+                 data-ad-client="ca-pub-5027382595607261"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true">
+            </ins>
+          </div>
+        );
+      
       default:
         return (
           <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-500 rounded-lg">
@@ -228,20 +342,28 @@ export const AdBanner: React.FC<AdBannerProps> = ({
 
   return (
     <div className={`${getSizeClasses()} relative rounded-lg overflow-hidden shadow-sm ${className}`}>
-      {/* Always use div with onClick for consistent behavior */}
-      <div 
-        onClick={handleClick} 
-        className="w-full h-full cursor-pointer hover:opacity-95 transition-opacity"
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            handleClick(e as any);
-          }
-        }}
-      >
-        {renderMediaContent()}
-      </div>
+      {/* Use click handler only for non-AdSense ads */}
+      {adMediaType === 'google_adsense' ? (
+        // AdSense handles its own clicks - no wrapper needed
+        <div className="w-full h-full">
+          {renderMediaContent()}
+        </div>
+      ) : (
+        // Regular ads with click handler
+        <div 
+          onClick={handleClick} 
+          className="w-full h-full cursor-pointer hover:opacity-95 transition-opacity"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              handleClick(e as any);
+            }
+          }}
+        >
+          {renderMediaContent()}
+        </div>
+      )}
       
       {/* Ad attribution - Responsive positioning */}
       {hasRealAd && (

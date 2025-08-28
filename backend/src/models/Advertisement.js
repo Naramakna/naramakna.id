@@ -34,7 +34,7 @@ const Advertisement = sequelize.define('Advertisement', {
     defaultValue: 'regular'
   },
   media_type: {
-    type: DataTypes.ENUM('image', 'gif', 'video', 'html', 'google_ads'),
+    type: DataTypes.ENUM('image', 'gif', 'video', 'html', 'google_ads', 'google_adsense'),
     allowNull: false,
     defaultValue: 'image'
   },

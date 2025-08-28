@@ -1443,7 +1443,7 @@ class ContentController {
           {
             model: User,
             as: 'author',
-            attributes: ['ID', 'user_login', 'user_nicename', 'user_email', 'display_name', 'user_role']
+            attributes: ['ID', 'user_login', 'user_nicename', 'user_email', 'display_name', 'user_role', 'profile_image']
           },
           {
             model: PostMeta,
@@ -1472,6 +1472,11 @@ class ContentController {
       const postData = post.toJSON();
       postData.view_count = viewCount;
       postData.views = viewCount; // Alternative field name
+      
+      // Format author profile image URL
+      if (postData.author && postData.author.profile_image) {
+        postData.author.profile_image = `${process.env.BACKEND_URL}${postData.author.profile_image}`;
+      }
 
       res.status(200).json({
         success: true,
@@ -1504,7 +1509,7 @@ class ContentController {
           {
             model: User,
             as: 'author',
-            attributes: ['ID', 'user_login', 'user_nicename', 'user_email', 'display_name', 'user_role']
+            attributes: ['ID', 'user_login', 'user_nicename', 'user_email', 'display_name', 'user_role', 'profile_image']
           },
           {
             model: PostMeta,
@@ -1563,6 +1568,11 @@ class ContentController {
         view_count: viewCount,
         views: viewCount // Alternative field name
       };
+      
+      // Format author profile image URL
+      if (responseData.author && responseData.author.profile_image) {
+        responseData.author.profile_image = `${process.env.BACKEND_URL}${responseData.author.profile_image}`;
+      }
 
       res.status(200).json({
         success: true,

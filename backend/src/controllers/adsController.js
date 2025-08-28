@@ -605,7 +605,9 @@ class AdsController {
 
         // Generate the URL path for the uploaded image
         const imageUrl = `/ads/${req.file.filename}`;
-        const fullUrl = `${req.protocol}://${req.get('host')}${imageUrl}`;
+        // Force HTTPS for production (naramakna.id always uses HTTPS)
+        const protocol = 'https';
+        const fullUrl = `${protocol}://${req.get('host')}${imageUrl}`;
 
         console.log('📸 Ad image uploaded:', {
           filename: req.file.filename,

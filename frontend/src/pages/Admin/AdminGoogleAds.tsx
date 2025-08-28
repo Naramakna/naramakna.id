@@ -204,12 +204,6 @@ export const AdminGoogleAds: React.FC = () => {
                 >
                   {connectionLoading ? 'Testing...' : 'Test Connection'}
                 </button>
-                <button
-                  onClick={fetchGoogleAuthUrl}
-                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                >
-                  Authorize Google Ads
-                </button>
               </div>
             </div>
             {connectionStatus && (
@@ -225,7 +219,7 @@ export const AdminGoogleAds: React.FC = () => {
                     <p className="font-medium">❌ Connection failed: {connectionStatus.error}</p>
                     {connectionStatus.error?.includes('Authentication required') && (
                       <div className="mt-2 text-sm">
-                        <p>To fix this, click "Authorize Google Ads" button above to authenticate with Google Ads API.</p>
+                        <p>Please check Google Ads credentials in server configuration.</p>
                       </div>
                     )}
                   </div>
@@ -393,7 +387,7 @@ export const AdminGoogleAds: React.FC = () => {
                               {campaign.status}
                             </span>
                           </td>
-                          <td className="px-4 py-2">${campaign.budget.toFixed(2)}</td>
+                          <td className="px-4 py-2">Rp {campaign.budget.toLocaleString('id-ID')}</td>
                           <td className="px-4 py-2 text-sm">
                             <div>👁️ {campaign.impressions.toLocaleString()}</div>
                             <div>🖱️ {campaign.clicks.toLocaleString()} ({(campaign.ctr * 100).toFixed(2)}%)</div>

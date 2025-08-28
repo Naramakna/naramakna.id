@@ -54,6 +54,7 @@ class MetaTagsController {
       
       // Get featured image URL from thumbnail_id
       let featuredImageUrl = 'https://naramakna.id/LogoNaramakna.png'; // default fallback
+      let imageType = 'image/png'; // default for logo
       
       if (metadata._thumbnail_id) {
         try {
@@ -63,9 +64,22 @@ class MetaTagsController {
           });
           
           if (thumbnailPost && thumbnailPost.guid) {
-            // Add cache-busting parameter to force social media refresh
-            const timestamp = new Date().getTime();
-            featuredImageUrl = `${thumbnailPost.guid}?v=${timestamp}`;
+            // Ensure URL uses HTTPS protocol for social media compatibility
+            featuredImageUrl = thumbnailPost.guid.replace(/^http:\/\//, 'https://');
+            
+            // Detect image type from URL extension
+            const urlLower = featuredImageUrl.toLowerCase();
+            if (urlLower.includes('.jpg') || urlLower.includes('.jpeg')) {
+              imageType = 'image/jpeg';
+            } else if (urlLower.includes('.png')) {
+              imageType = 'image/png';
+            } else if (urlLower.includes('.gif')) {
+              imageType = 'image/gif';
+            } else if (urlLower.includes('.webp')) {
+              imageType = 'image/webp';
+            } else {
+              imageType = 'image/jpeg'; // fallback
+            }
           }
         } catch (error) {
           console.log('Error fetching thumbnail:', error.message);
@@ -92,6 +106,7 @@ class MetaTagsController {
         .replace(/{{TITLE}}/g, title)
         .replace(/{{DESCRIPTION}}/g, description)
         .replace(/{{IMAGE_URL}}/g, featuredImageUrl)
+        .replace(/{{IMAGE_TYPE}}/g, imageType)
         .replace(/{{ARTICLE_URL}}/g, articleUrl)
         .replace(/{{AUTHOR_NAME}}/g, authorName)
         .replace(/{{PUBLISHED_TIME}}/g, publishedTime)
@@ -212,7 +227,9 @@ class MetaTagsController {
     <meta property="og:image" content="{{IMAGE_URL}}" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:type" content="{{IMAGE_TYPE}}" />
+    <meta property="og:image:alt" content="{{TITLE}}" />
+    <meta property="og:image:secure_url" content="{{IMAGE_URL}}" />
     <meta property="og:url" content="{{ARTICLE_URL}}" />
     <meta property="og:type" content="article" />
     <meta property="og:site_name" content="Naramakna" />

@@ -1,0 +1,11 @@
+# ads.txt file for naramakna.id
+# This file authorizes sellers to sell ads on this domain
+
+# Google AdSense
+google.com, pub-5027382595607261, DIRECT, f08c47fec0942fa0
+
+# Google Ad Manager (if needed later)
+# google.com, pub-5027382595607261, DIRECT, f08c47fec0942fa0
+
+# Additional authorized sellers can be added here
+# Format: <FieldDomain>, <PublisherAccountID>, <AccountType>, <CertificateAuthorityID>

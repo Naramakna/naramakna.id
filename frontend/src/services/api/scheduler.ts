@@ -42,6 +42,8 @@ export interface ScheduledPost {
   scheduled_by: number | null;
   scheduling_notes: string | null;
   original_status: string;
+  featured_image?: string;
+  featured_image_caption?: string;
   author: {
     ID: number;
     display_name: string;

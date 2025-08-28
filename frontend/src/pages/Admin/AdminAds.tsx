@@ -525,10 +525,11 @@ export const AdminAds: React.FC = () => {
                 <option value="popup">🎯 Homepage Popup (Fullscreen)</option>
                 <option value="regular">📝 Content Pages (728x90)</option>
                 <option value="sidebar">📱 Sidebar Ads (300x250)</option>
-                <option value="article-top">📰 Article Page Top</option>
-                <option value="article-mid">📰 Article Page Middle</option>
-                <option value="article-bottom">📰 Article Page Bottom</option>
-                <option value="article-final">📰 Article Page End</option>
+                <option value="article-top">📰 Article Page Top (970x250)</option>
+                <option value="article-ads">📰 Article Page Ad (728x90)</option>
+                <option value="article-mid">📰 Article Page Middle (728x90)</option>
+                <option value="article-bottom">📰 Article Page Bottom (970x250)</option>
+                <option value="article-final">📰 Article Page End (728x90)</option>
               </select>
               
               {/* URL Examples for each placement */}
@@ -545,6 +546,7 @@ export const AdminAds: React.FC = () => {
                       'regular': '• All content pages: https://naramakna.id/artikel/judul-artikel\n• Video pages: https://naramakna.id/video-story\n• Index pages: https://naramakna.id/index-berita',
                       'sidebar': '• All pages with sidebar content',
                       'article-top': '• Article pages: https://naramakna.id/artikel/judul-artikel',
+                      'article-ads': '• Article pages: https://naramakna.id/artikel/judul-artikel',
                       'article-mid': '• Article pages: https://naramakna.id/artikel/judul-artikel',
                       'article-bottom': '• Article pages: https://naramakna.id/artikel/judul-artikel',
                       'article-final': '• Article pages: https://naramakna.id/artikel/judul-artikel'
@@ -591,7 +593,8 @@ export const AdminAds: React.FC = () => {
                 <option value="gif">GIF</option>
                 <option value="video">Video</option>
                 <option value="html">HTML Content</option>
-                <option value="google_ads">Google Ads</option>
+                <option value="google_ads">Google Ads (Manual)</option>
+                <option value="google_adsense">Google AdSense (Auto)</option>
               </select>
             </div>
 
@@ -635,7 +638,7 @@ export const AdminAds: React.FC = () => {
               />
             </div>
 
-            {/* Media Upload/URL */}
+            {/* Media Upload/URL - Hide for AdSense */}
             {(formData.media_type === 'image' || formData.media_type === 'gif' || formData.media_type === 'video') && (
               <div className="md:col-span-2 space-y-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -668,17 +671,19 @@ export const AdminAds: React.FC = () => {
               </div>
             )}
 
-            {/* Target URL */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Target URL
-              </label>
-              <Input
-                value={formData.target_url}
-                onChange={(e) => handleInputChange('target_url', e.target.value)}
-                placeholder="https://example.com"
-              />
-            </div>
+            {/* Target URL - Optional for AdSense */}
+            {formData.media_type !== 'google_adsense' && (
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Target URL
+                </label>
+                <Input
+                  value={formData.target_url}
+                  onChange={(e) => handleInputChange('target_url', e.target.value)}
+                  placeholder="https://example.com"
+                />
+              </div>
+            )}
 
             {/* HTML Content */}
             {formData.media_type === 'html' && (
@@ -709,6 +714,69 @@ export const AdminAds: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows={4}
                 />
+              </div>
+            )}
+
+            {/* Google AdSense Auto */}
+            {formData.media_type === 'google_adsense' && (
+              <div className="md:col-span-2">
+                <div className="bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-2">
+                    <div className="text-blue-500 text-lg">🎯</div>
+                    <div className="text-sm text-blue-900">
+                      <strong className="text-lg text-green-600">Google AdSense - Auto Display Network</strong><br/>
+                      <p className="mt-2 text-blue-800">
+                        Iklan ini memungkinkan <strong>pengiklan dari luar</strong> memasang banner di website naramakna.id 
+                        secara otomatis melalui Google AdSense Display Network tanpa harus kontak manual.
+                      </p>
+                      
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <strong className="text-green-700">💰 Cara Kerja Revenue:</strong>
+                          <ul className="list-disc ml-4 mt-1 text-xs">
+                            <li>Pengiklan bayar Google → Google bayar kita</li>
+                            <li>Revenue share: 68% untuk publisher (kita)</li>
+                            <li>Estimasi: Rp 3.000-8.000 per 1000 views</li>
+                            <li>Otomatis masuk ke rekening Google AdSense</li>
+                          </ul>
+                        </div>
+                        
+                        <div>
+                          <strong className="text-blue-700">🎯 Targeting Otomatis:</strong>
+                          <ul className="list-disc ml-4 mt-1 text-xs">
+                            <li>Google cocokkan iklan dengan konten</li>
+                            <li>Target audience berdasarkan behavior</li>
+                            <li>Iklan dari berbagai advertiser global</li>
+                            <li>Optimasi real-time untuk CTR terbaik</li>
+                          </ul>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 bg-white rounded p-3 border-l-4 border-green-400">
+                        <strong className="text-gray-700">📍 Placement: {formData.placement_type}</strong><br/>
+                        <div className="text-xs text-gray-600 mt-1">
+                          {(() => {
+                            const placementInfo = {
+                              'hero-banner': 'Homepage banner 970x250 - High visibility, premium rates',
+                              'header': 'Header banner 970x250 - Consistent visibility across pages',
+                              'mid-content': 'Mid-content banner 970x250 - Good engagement rates',
+                              'regular': 'Content pages 728x90 - Standard leaderboard format',
+                              'sidebar': 'Sidebar ads 300x250 - Medium rectangle, good performance',
+                              'article-top': 'Article top 970x250 - High reader engagement',
+                              'article-mid': 'Article middle 728x90 - In-content placement',
+                              'article-bottom': 'Article bottom 970x250 - End-of-content placement'
+                            };
+                            return placementInfo[formData.placement_type as keyof typeof placementInfo] || 'Standard placement';
+                          })()}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 text-xs">
+                        <strong>🔧 Requirements:</strong> AdSense Publisher ID harus dikonfigurasi di environment variables (.env)
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -835,7 +903,8 @@ export const AdminAds: React.FC = () => {
                 <option value="gif">GIF</option>
                 <option value="video">Video</option>
                 <option value="html">HTML Content</option>
-                <option value="google_ads">Google Ads</option>
+                <option value="google_ads">Google Ads (Manual)</option>
+                <option value="google_adsense">Google AdSense (Auto)</option>
               </select>
             </div>
 

@@ -30,7 +30,7 @@ router.get('/status', requireAuth, googleAdsController.getSyncStatus);
  * Get Google Ads campaigns
  * GET /api/google-ads/campaigns
  */
-router.get('/campaigns', requireSuperAdmin, googleAdsController.getCampaigns);
+router.get('/campaigns', requireAuth, requireSuperAdmin, googleAdsController.getCampaigns);
 
 /**
  * Get Google Ads from campaigns
@@ -51,5 +51,11 @@ router.post('/sync', requireSuperAdmin, googleAdsController.syncAds);
  * Body: { sync_token: "secure_token" }
  */
 router.post('/schedule-sync', googleAdsController.scheduleSync);
+
+/**
+ * Create Display Campaign
+ * POST /api/google-ads/create-display-campaign
+ */
+router.post('/create-display-campaign', requireAuth, requireSuperAdmin, googleAdsController.createDisplayCampaign);
 
 module.exports = router;

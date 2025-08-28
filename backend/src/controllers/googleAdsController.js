@@ -3,7 +3,7 @@
  * Handles Google Ads API integration endpoints
  */
 
-const googleAdsService = require('../services/googleAds');
+const googleAdsService = require('../services/googleAdsSimple');
 
 class GoogleAdsController {
 
@@ -65,16 +65,25 @@ class GoogleAdsController {
     try {
       console.log('📊 Getting Google Ads campaigns...');
       
-      const campaigns = await googleAdsService.getCampaigns();
+      const result = await googleAdsService.getCampaigns();
       
-      res.json({
-        success: true,
-        message: `Retrieved ${campaigns.length} campaigns`,
-        data: {
-          campaigns,
-          count: campaigns.length
-        }
-      });
+      if (result.success && result.campaigns) {
+        const campaigns = result.campaigns;
+        res.json({
+          success: true,
+          message: `Retrieved ${campaigns.length} campaigns`,
+          data: {
+            campaigns,
+            count: campaigns.length
+          }
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: 'Failed to get campaigns from Google Ads API',
+          error: result.error || 'Unknown error'
+        });
+      }
     } catch (error) {
       console.error('❌ Error getting campaigns:', error);
       res.status(500).json({
@@ -237,11 +246,74 @@ class GoogleAdsController {
       });
     }
   }
+
+  /**
+   * Create Display Campaign
+   * POST /api/google-ads/create-display-campaign
+   */
+  static async createDisplayCampaign(req, res) {
+    try {
+      console.log('🎨 Creating display campaign...');
+      
+      const { 
+        name, 
+        dailyBudget, 
+        maxCpc, 
+        headlines, 
+        descriptions, 
+        landingUrl, 
+        imageUrls 
+      } = req.body;
+
+      if (!name) {
+        return res.status(400).json({
+          success: false,
+          message: 'Campaign name is required'
+        });
+      }
+
+      const result = await googleAdsService.createDisplayCampaign({
+        name,
+        dailyBudget: dailyBudget || 3500,
+        maxCpc: maxCpc || 500,
+        headlines: headlines || ['Naramakna - Portal Berita Terpercaya', 'Baca Berita Terkini'],
+        descriptions: descriptions || ['Dapatkan informasi terpercaya dari Naramakna'],
+        landingUrl: landingUrl || 'https://naramakna.id',
+        imageUrls: imageUrls || []
+      });
+
+      if (result.success) {
+        res.json({
+          success: true,
+          message: result.message,
+          data: {
+            campaignId: result.campaignId,
+            adGroupId: result.adGroupId,
+            adId: result.adId
+          }
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: 'Failed to create display campaign',
+          error: result.error
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error creating display campaign:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create display campaign',
+        error: error.message
+      });
+    }
+  }
 }
 
 module.exports = {
   testConnection: GoogleAdsController.testConnection,
   getCampaigns: GoogleAdsController.getCampaigns,
+  createDisplayCampaign: GoogleAdsController.createDisplayCampaign,
   getAds: GoogleAdsController.getAds,
   syncAds: GoogleAdsController.syncAds,
   getSyncStatus: GoogleAdsController.getSyncStatus,

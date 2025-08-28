@@ -1,53 +1,38 @@
 #!/bin/bash
 
-# Test script untuk Google Ads authentication dan connection test
-# Usage: ./test-google-ads-curl.sh
+# Test Google Ads API Connection
+# Load environment variables
+source /var/www/naramakna.id/backend/.env
 
-echo "🚀 Testing Google Ads Authentication Flow for Naramakna Admin"
-echo "============================================================"
+echo "Testing Google Ads API Connection..."
+echo "Customer ID: $GOOGLE_ADS_CUSTOMER_ID"
+echo "Client ID: ${GOOGLE_ADS_CLIENT_ID:0:20}..."
 
-BASE_URL="https://naramakna.id/api"
-# BASE_URL="http://localhost:5000/api"  # Uncomment for local testing
+# Test with refresh token to get access token
+echo "Getting access token..."
+response=$(curl -s -X POST https://oauth2.googleapis.com/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "client_id=$GOOGLE_ADS_CLIENT_ID" \
+  -d "client_secret=$GOOGLE_ADS_CLIENT_SECRET" \
+  -d "refresh_token=$GOOGLE_ADS_REFRESH_TOKEN" \
+  -d "grant_type=refresh_token")
 
-echo ""
-echo "1. Getting Google Admin Auth URL..."
-echo "curl -X GET $BASE_URL/auth/google/admin"
+echo "Response: $response"
 
-RESPONSE=$(curl -s -X GET "$BASE_URL/auth/google/admin")
-echo "Response: $RESPONSE"
+# Extract access token
+access_token=$(echo $response | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
 
-# Extract auth_url from JSON response
-AUTH_URL=$(echo $RESPONSE | grep -o '"auth_url":"[^"]*' | cut -d'"' -f4)
-
-if [ ! -z "$AUTH_URL" ]; then
-    echo ""
-    echo "✅ Google Admin Auth URL generated successfully!"
-    echo ""
-    echo "🔗 Open this URL in your browser to authorize Google Ads access:"
-    echo "$AUTH_URL"
-    echo ""
-    echo "📝 After authorization, you'll be redirected to the admin dashboard."
-    echo "    The JWT token will be automatically stored in your browser cookies."
-    echo ""
-    echo "2. After authorization, you can test the connection with:"
-    echo "   curl -X GET $BASE_URL/auth/google-ads/test \\"
-    echo "        -H 'Cookie: naramakna_auth=YOUR_JWT_TOKEN'"
-    echo ""
-    echo "   Or simply visit: https://naramakna.id/admin/dashboard"
-    echo "   and check if Google Ads status shows as 'Connected'"
+if [ -n "$access_token" ]; then
+    echo "✅ Got access token: ${access_token:0:20}..."
+    
+    # Test Google Ads API call
+    echo "Testing Google Ads API call..."
+    ads_response=$(curl -s -X GET \
+      "https://googleads.googleapis.com/v14/customers/$GOOGLE_ADS_CUSTOMER_ID/campaigns" \
+      -H "Authorization: Bearer $access_token" \
+      -H "developer-token: $GOOGLE_ADS_DEVELOPER_TOKEN")
+    
+    echo "Ads API Response: $ads_response"
 else
-    echo ""
-    echo "❌ Failed to get Google Admin Auth URL"
-    echo "Response: $RESPONSE"
+    echo "❌ Failed to get access token"
 fi
-
-echo ""
-echo "💡 Tips:"
-echo "   - Make sure you have admin/superadmin account in the system"
-echo "   - Your Google account should have access to Google Ads"
-echo "   - Environment variables should be properly set:"
-echo "     * GOOGLE_ADS_CLIENT_ID"
-echo "     * GOOGLE_ADS_CLIENT_SECRET" 
-echo "     * GOOGLE_ADS_DEVELOPER_TOKEN"
-echo "     * GOOGLE_ADS_CUSTOMER_ID"
-echo "     * GOOGLE_ADS_REFRESH_TOKEN"

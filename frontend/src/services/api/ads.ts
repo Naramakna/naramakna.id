@@ -3,7 +3,7 @@ import { buildApiUrl } from '../../config/api';
 export interface Advertisement {
   id: string;
   campaign_name: string;
-  media_type: 'image' | 'gif' | 'video' | 'html' | 'google_ads';
+  media_type: 'image' | 'gif' | 'video' | 'html' | 'google_ads' | 'google_adsense';
   media_url?: string;
   image_url?: string; // Legacy support
   target_url?: string;
