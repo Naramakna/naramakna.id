@@ -99,10 +99,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
   const handleFocus = () => {
     setIsFocused(true);
-    // Don't show suggestions on mobile
-    if (!isMobile) {
-      setShowSuggestions(true);
-    }
+    // Show suggestions on all devices
+    setShowSuggestions(true);
   };
 
   const handleBlur = () => {
@@ -144,16 +142,14 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         </div>
       </form>
 
-      {/* Search Suggestions - Only show on desktop */}
-      {!isMobile && (
-        <SearchSuggestions
-          query={query}
-          onSelectSuggestion={handleSelectSuggestion}
-          onSelectCategory={handleSelectCategory}
-          onSelectTag={handleSelectTag}
-          isVisible={showSuggestions}
-        />
-      )}
+      {/* Search Suggestions - Show on all devices */}
+      <SearchSuggestions
+        query={query}
+        onSelectSuggestion={handleSelectSuggestion}
+        onSelectCategory={handleSelectCategory}
+        onSelectTag={handleSelectTag}
+        isVisible={showSuggestions}
+      />
     </div>
   );
 };

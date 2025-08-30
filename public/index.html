@@ -11,11 +11,25 @@
     <link rel="dns-prefetch" href="https://api.naramakna.id" />
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
     <link rel="preconnect" href="https://api.naramakna.id" crossorigin />
-    <link rel="preload" as="style" href="/assets/index-BhbVzwlg.css" crossorigin="anonymous" />
-    <link rel="preload" as="script" href="/assets/vendor-DnhPgHd1.js" crossorigin="anonymous" />
-    <link rel="preload" as="script" href="/assets/index-qALP_gI3.js" crossorigin="anonymous" />
     <link rel="preload" as="image" href="/LogoNaramakna.png" fetchpriority="high" />
-    <link rel="preload" href="/assets/LogoNaramakna-BOgxIwcv.png" as="image" type="image/png" fetchpriority="high" />
+    
+    <!-- Google AdSense Manual Ad Units Only - Block All Auto Ads -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5027382595607261"
+         crossorigin="anonymous"></script>
+    
+    <!-- Block auto ads but allow manual -->
+    <script>
+        window.adsbygoogle = window.adsbygoogle || [];
+        
+        // Explicitly disable auto ads
+        (adsbygoogle = window.adsbygoogle || []).push({
+            google_ad_client: "ca-pub-5027382595607261",
+            enable_page_level_ads: false,
+            overlays: false,
+            vignette: false,
+            anchor: false
+        });
+    </script>
     
     <!-- Non-critical resources with proper attributes -->
     <link rel="preconnect" href="https://api.naramakna.id" />
@@ -79,6 +93,19 @@
             background: #f8f9fa;
         }
         
+        /* Block auto ads outside designated areas */
+        body {
+            data-ad-frequency-hint: "0s";
+        }
+        
+        /* Prevent auto ads in specific areas */
+        header, nav, .header, .navigation, 
+        .sidebar:not(.ad-sidebar), 
+        .footer:not(.ad-footer),
+        .menu, .nav-menu {
+            data-ad-frequency-hint: "0s";
+        }
+        
         /* Responsive ads aspect ratios */
         .ad-banner, .ad-header {
             aspect-ratio: 970/250;
@@ -133,13 +160,13 @@
             contain: layout;
         }
     </style>
-  <script type="module" crossorigin src="/assets/index-DEDBKzUx.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/charts-ClIlDbAZ.js">
-  <link rel="modulepreload" crossorigin href="/assets/vendor-DnhPgHd1.js">
-  <link rel="modulepreload" crossorigin href="/assets/tiktok-DLli_0FK.js">
-  <link rel="stylesheet" crossorigin href="/assets/index-CEURqSz_.css">
-  <link rel="stylesheet" crossorigin href="/assets/editor-BzY4kI8E.css">
-</head>
+      <script type="module" crossorigin src="/assets/index-C55S6zfT.js"></script>
+      <link rel="modulepreload" crossorigin href="/assets/charts-ClIlDbAZ.js">
+      <link rel="modulepreload" crossorigin href="/assets/vendor-DnhPgHd1.js">
+      <link rel="modulepreload" crossorigin href="/assets/tiktok-BJXrt9Ts.js">
+      <link rel="stylesheet" crossorigin href="/assets/index-Dna8ze5j.css">
+      <link rel="stylesheet" crossorigin href="/assets/editor-BzY4kI8E.css">
+    </head>
 <body>
 <div id="root"></div>
 </body>

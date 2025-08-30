@@ -567,6 +567,40 @@ const SuperAdminDashboard: React.FC = () => {
     }
   };
 
+  const bulkDeleteArticles = async (articleIds: number[], permanent: boolean = false) => {
+    const action = permanent ? 'permanently delete' : 'move to trash';
+    const confirmed = window.confirm(`Are you sure you want to ${action} ${articleIds.length} articles? ${permanent ? 'This action cannot be undone.' : 'You can restore them from trash later.'}`);
+    
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(buildApiUrl('content/admin/articles/bulk-delete'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          articleIds: articleIds,
+          force: permanent
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(result.message || `${articleIds.length} articles ${permanent ? 'permanently deleted' : 'moved to trash'} successfully!`);
+        fetchData(); // Refresh data
+        if (activeTab === 'trash') fetchTrashedPosts(); // Refresh trash if viewing
+      } else {
+        const error = await response.json();
+        alert(error.message || `Failed to ${action} articles`);
+      }
+    } catch (error) {
+      console.error(`Error ${action.replace(' ', 'ing')} articles:`, error);
+      alert(`Error ${action.replace(' ', 'ing')} articles`);
+    }
+  };
+
   const restoreArticle = async (articleId: number) => {
     try {
       const response = await fetch(buildApiUrl(`content/admin/articles/${articleId}/restore`), {
@@ -703,6 +737,7 @@ const SuperAdminDashboard: React.FC = () => {
                   onPageChange={handlePageChange}
                   onItemsPerPageChange={handleItemsPerPageChange}
                   onDeletePost={deleteArticle}
+                  onBulkDeletePosts={(postIds) => bulkDeleteArticles(postIds, false)}
                   currentUserRole={user?.user_role || ''}
                 />
               )}

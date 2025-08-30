@@ -12,13 +12,23 @@ interface ArticleContentProps {
     caption?: string;
     alt?: string;
   };
+  imageCaptions?: Record<string, string>;
 }
 
 export const ArticleContent: React.FC<ArticleContentProps> = ({
   content,
   title: _title,
-  featuredImage
+  featuredImage,
+  imageCaptions = {}
 }) => {
+  
+  // Debug logging
+  console.log('🔍 ArticleContent Debug:', {
+    hasContent: !!content,
+    contentLength: content?.length,
+    imageCaptions,
+    imageCaptionsKeys: Object.keys(imageCaptions)
+  });
   
   // Copy protection effect
   useEffect(() => {
@@ -192,20 +202,37 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
         /https:\/\/www\.instagram\.com\/p\/[A-Za-z0-9_-]+\/?/g,
         (match) => `<div data-instagram-embed="${match}"></div>`
       )
-      // Enhance image tags with captions
+      // Add 2-line caption section after each image
       .replace(
         /<img([^>]+)>/g,
         (match, attributes) => {
           const srcMatch = attributes.match(/src="([^"]+)"/);
-          const altMatch = attributes.match(/alt="([^"]*)"/);
-          const titleMatch = attributes.match(/title="([^"]*)"/);
           
           if (srcMatch) {
             const src = srcMatch[1];
-            const alt = altMatch ? altMatch[1] : '';
-            const caption = titleMatch ? titleMatch[1] : '';
+            // Get caption from imageCaptions prop
+            const caption = imageCaptions[src] || '';
             
-            return `<div data-enhanced-image='{"src":"${src}","alt":"${alt}","caption":"${caption}"}'></div>`;
+            console.log('🖼️ Image Processing Debug:', {
+              imageSrc: src,
+              hasCaption: !!caption,
+              caption: caption,
+              allCaptionKeys: Object.keys(imageCaptions)
+            });
+            
+            // Split caption into 2 lines if it exists
+            const captionLines = caption ? caption.split('\n') : ['', ''];
+            const line1 = captionLines[0] || '';
+            const line2 = captionLines[1] || '';
+            
+            // Return image with 2-line caption section below
+            return `
+              ${match}
+              <div class="caption-container w-full flex flex-col items-center justify-center mt-3 mb-6">
+                <p class="text-sm text-gray-600 italic text-center leading-relaxed mx-auto">${line1}</p>
+                <p class="text-sm text-gray-600 italic text-center leading-relaxed mx-auto">${line2}</p>
+              </div>
+            `;
           }
           return match;
         }
@@ -232,47 +259,6 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
     );
   };
 
-  // Render Instagram embeds and enhanced images for a content part
-  const renderContentExtras = (htmlContent: string) => {
-    return (
-      <>
-        {/* Render Instagram embeds */}
-        {(() => {
-          const instagramMatches = htmlContent.match(/https:\/\/www\.instagram\.com\/p\/[A-Za-z0-9_-]+\/?/g);
-          return instagramMatches?.map((url, index) => (
-            <InstagramEmbed key={`instagram-${index}`} url={url} className="my-8" />
-          ));
-        })()}
-        
-        {/* Render enhanced images */}
-        {(() => {
-          const imageMatches = htmlContent.match(/<img[^>]+>/g);
-          return imageMatches?.map((imgTag, index) => {
-            const srcMatch = imgTag.match(/src="([^"]+)"/);
-            const altMatch = imgTag.match(/alt="([^"]*)"/);
-            const titleMatch = imgTag.match(/title="([^"]*)"/);
-            
-            if (srcMatch) {
-              const src = srcMatch[1];
-              const alt = altMatch ? altMatch[1] : '';
-              const caption = titleMatch ? titleMatch[1] : '';
-              
-              return (
-                <ImageWithCaption
-                  key={`image-${index}`}
-                  src={src}
-                  alt={alt}
-                  caption={caption}
-                  className="my-8"
-                />
-              );
-            }
-            return null;
-          });
-        })()}
-      </>
-    );
-  };
 
   return (
     <article className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
@@ -332,8 +318,14 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                 {/* First Half of Content */}
                 <div className="content-part-1">
                   {renderContentPart(firstHalf)}
-                  {renderContentExtras(firstHalf)}
-                </div>
+                  {/* Instagram embeds for first half */}
+                  {(() => {
+                    const instagramMatches = firstHalf.match(/https:\/\/www\.instagram\.com\/p\/[A-Za-z0-9_-]+\/?/g);
+                    return instagramMatches?.map((url, index) => (
+                      <InstagramEmbed key={`instagram-first-${index}`} url={url} className="my-8" />
+                    ));
+                  })()}
+            </div>
                 
                 {/* Middle Ad - Regular Size - Only show if we have second half */}
                 {secondHalf && (
@@ -344,13 +336,19 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
                       rotationInterval={5000}
                     />
                   </div>
-                )}
+                )}    
                 
                 {/* Second Half of Content */}
                 {secondHalf && (
                   <div className="content-part-2">
                     {renderContentPart(secondHalf)}
-                    {renderContentExtras(secondHalf)}
+                    {/* Instagram embeds for second half */}
+                    {(() => {
+                      const instagramMatches = secondHalf.match(/https:\/\/www\.instagram\.com\/p\/[A-Za-z0-9_-]+\/?/g);
+                      return instagramMatches?.map((url, index) => (
+                        <InstagramEmbed key={`instagram-second-${index}`} url={url} className="my-8" />
+                      ));
+                    })()}
                   </div>
                 )}
               </>

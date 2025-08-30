@@ -163,11 +163,11 @@ export const AdSection: React.FC<AdSectionProps> = ({
             </div>
             
             {/* Dots Indicator */}
-            <div className="flex justify-center mt-2 space-x-1">
+            <div className="hidden md:flex justify-center mt-2 space-x-1">
               {activeAds.map((_, index) => (
                 <button
                   key={index}
-                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  className={`w-1 h-1 md:w-2 md:h-2 rounded-full transition-all duration-300 ${
                     index === currentAdIndex 
                       ? 'bg-yellow-500 scale-125' 
                       : 'bg-gray-300 hover:bg-gray-400'

@@ -97,10 +97,11 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
 
   return (
     <div data-suggestions
-         className={`absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-b-lg shadow-lg z-[9999] max-h-80 md:max-h-96 overflow-y-auto ${className}`}
+         className={`absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-b-lg shadow-xl z-[9999] max-h-80 md:max-h-96 overflow-y-auto ${className}`}
          style={{ 
-           maxHeight: window.innerHeight < 700 ? '50vh' : '24rem',
-           boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+           maxHeight: window.innerWidth <= 768 ? '60vh' : window.innerHeight < 700 ? '50vh' : '24rem',
+           boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.08)',
+           marginTop: '2px'
          }}>
       {/* Recent searches when no query */}
       {!query && recentSearches.length > 0 && (

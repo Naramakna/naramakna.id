@@ -47,6 +47,7 @@ interface Article {
     name: string;
     slug: string;
   }>;
+  imageCaptions?: Record<string, string>;
 }
 
 export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId, articleSlug }) => {
@@ -122,14 +123,22 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
               isVerified: result.data.author?.user_role === 'admin' || result.data.author?.user_role === 'writer',
               avatar: result.data.author?.profile_image || undefined
             },
-            publishedDate: formatDate(result.data.post_date || result.data.published_date),
+            publishedDate: formatDate(result.data.date || result.data.post_date || result.data.published_date),
             readTime: calculateReadTime(result.data.post_content || result.data.content || ''),
             likes: result.data.likes || 0,
             comments: result.data.comment_count || 0,
             views: result.data.view_count || result.data.views || 0,
             category: result.data.category || 'News',
-            tags: result.data.tags || []
+            tags: result.data.tags || [],
+            imageCaptions: result.data.image_captions || {}
           };
+          
+          console.log('📄 ArticleDetailPage Debug:', {
+            articleId: result.data.ID,
+            hasImageCaptions: !!result.data.image_captions,
+            imageCaptions: result.data.image_captions,
+            transformedImageCaptions: transformedArticle.imageCaptions
+          });
           
           setArticle(transformedArticle);
         } else {
@@ -174,14 +183,22 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
               isVerified: result.data.author?.user_role === 'admin' || result.data.author?.user_role === 'writer',
               avatar: result.data.author?.profile_image || undefined
             },
-            publishedDate: formatDate(result.data.post_date || result.data.published_date),
+            publishedDate: formatDate(result.data.date || result.data.post_date || result.data.published_date),
             readTime: calculateReadTime(result.data.post_content || result.data.content || ''),
             likes: result.data.likes || 0,
             comments: result.data.comment_count || 0,
             views: result.data.view_count || result.data.views || 0,
             category: result.data.category || 'News',
-            tags: result.data.tags || []
+            tags: result.data.tags || [],
+            imageCaptions: result.data.image_captions || {}
           };
+          
+          console.log('📄 ArticleDetailPage Debug:', {
+            articleId: result.data.ID,
+            hasImageCaptions: !!result.data.image_captions,
+            imageCaptions: result.data.image_captions,
+            transformedImageCaptions: transformedArticle.imageCaptions
+          });
           
           setArticle(transformedArticle);
         } else {
@@ -270,18 +287,22 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
 
   const trackView = async (postId: string) => {
     try {
-      await fetch(buildApiUrl('analytics/track'), {
+      const response = await fetch(buildApiUrl('analytics/track'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
         body: JSON.stringify({
-          content_id: parseInt(postId),
+          content_id: postId, // Send as string - backend will handle slug lookup
           content_type: 'post',
           event_type: 'view'
         })
       });
+      
+      if (!response.ok) {
+        console.error('Analytics tracking failed:', response.status, response.statusText);
+      }
     } catch (err) {
       console.error('Error tracking view:', err);
     }
@@ -397,6 +418,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
               content={article.content}
               title={article.title}
               featuredImage={article.featuredImage}
+              imageCaptions={article.imageCaptions}
             />
 
             {/* Mid Article Ad */}

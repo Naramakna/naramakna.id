@@ -19,6 +19,9 @@ class AdsController {
         campaign_name,
         start_date,
         end_date,
+        duration_hours,
+        rotation_mode = 'global', // Default to global settings
+        rotation_duration = null, // Only for manual mode
         budget,
         placement_type = 'regular',
         media_type = 'image',
@@ -30,10 +33,28 @@ class AdsController {
       } = req.body;
 
       // Validate required fields
-      if (!advertiser_id || !campaign_name || !start_date || !end_date) {
+      if (!advertiser_id || !campaign_name) {
         return res.status(400).json({
           success: false,
-          message: 'Missing required fields: advertiser_id, campaign_name, start_date, end_date'
+          message: 'Missing required fields: advertiser_id, campaign_name'
+        });
+      }
+
+      // Validate that either end_date or duration_hours is provided
+      if (!end_date && !duration_hours) {
+        return res.status(400).json({
+          success: false,
+          message: 'Either end_date or duration_hours must be provided'
+        });
+      }
+
+      // For duration_hours mode, start_date is optional (will use current time)
+      if (duration_hours && (!start_date || start_date === '')) {
+        console.log('🕒 Duration mode: Using current time as start_date');
+      } else if (!start_date) {
+        return res.status(400).json({
+          success: false,
+          message: 'start_date is required when not using duration_hours mode'
         });
       }
 
@@ -61,12 +82,67 @@ class AdsController {
         });
       }
 
-      // Create advertisement
+      // Helper function to get current WIB time (GMT+7)
+      const getWIBTime = () => {
+        const now = new Date();
+        return new Date(now.getTime() + (7 * 60 * 60 * 1000));
+      };
+
+      // Helper function to parse WIB datetime string to UTC
+      const parseWIBToUTC = (dateTimeString) => {
+        if (dateTimeString.includes('+07:00')) {
+          // Already has timezone offset, parse directly
+          return new Date(dateTimeString);
+        } else {
+          // Assume WIB timezone, convert to UTC
+          const date = new Date(dateTimeString);
+          return new Date(date.getTime() - (7 * 60 * 60 * 1000));
+        }
+      };
+
+      // Calculate start and end dates based on different input modes
+      let calculatedStartDate, calculatedEndDate;
+      
+      if (duration_hours) {
+        // Duration mode: start immediately, calculate end date
+        if (!start_date || start_date === '') {
+          calculatedStartDate = new Date(); // Current UTC time
+        } else {
+          calculatedStartDate = parseWIBToUTC(start_date);
+        }
+        calculatedEndDate = new Date(calculatedStartDate.getTime() + (duration_hours * 60 * 60 * 1000));
+      } else {
+        // Date/datetime mode: use provided start and end dates
+        if (start_date && start_date.includes('T') && start_date.includes('+07:00')) {
+          // Datetime with timezone (from new UI)
+          calculatedStartDate = parseWIBToUTC(start_date);
+          calculatedEndDate = parseWIBToUTC(end_date);
+        } else {
+          // Legacy date-only format
+          calculatedStartDate = new Date(start_date);
+          calculatedEndDate = new Date(end_date);
+        }
+      }
+
+      // Log timezone conversion for debugging
+      console.log('🕒 Ad creation timezone info:');
+      console.log('  Input start_date:', start_date);
+      console.log('  Input end_date:', end_date);
+      console.log('  Input duration_hours:', duration_hours);
+      console.log('  Current WIB time:', getWIBTime().toISOString());
+      console.log('  Calculated start date (UTC for storage):', calculatedStartDate.toISOString());
+      console.log('  Calculated end date (UTC for storage):', calculatedEndDate.toISOString());
+      console.log('  Start date in WIB:', new Date(calculatedStartDate.getTime() + (7 * 60 * 60 * 1000)).toISOString());
+      console.log('  End date in WIB:', new Date(calculatedEndDate.getTime() + (7 * 60 * 60 * 1000)).toISOString());
+      
       const ad = await Advertisement.create({
         advertiser_id,
         campaign_name,
-        start_date: new Date(start_date),
-        end_date: new Date(end_date),
+        start_date: calculatedStartDate,
+        end_date: calculatedEndDate,
+        duration_hours: duration_hours || null,
+        rotation_mode: rotation_mode || 'global',
+        rotation_duration: rotation_mode === 'manual' ? parseInt(rotation_duration) || 30 : null,
         budget: budget || null,
         placement_type,
         media_type,
@@ -110,16 +186,18 @@ class AdsController {
         limit = 5
       } = req.query;
 
-      const now = new Date();
-      console.log(`🎯 AdsController: Serving ads for placement "${placement}" at ${now.toISOString()}`);
+      // Use current WIB time for ads comparison (convert to UTC for database comparison)
+      const nowWIB = new Date(Date.now() + (7 * 60 * 60 * 1000));
+      const nowUTC = new Date();
+      console.log(`🎯 AdsController: Serving ads for placement "${placement}" at ${nowWIB.toISOString()} WIB (UTC: ${nowUTC.toISOString()})`);
 
-      // Get active ads for the placement
+      // Get active ads for the placement (database stores in UTC, so compare with UTC)
       const ads = await Advertisement.findAll({
         where: {
           placement_type: placement,
           status: 'active',
-          start_date: { [Op.lte]: now },
-          end_date: { [Op.gte]: now }
+          start_date: { [Op.lte]: nowUTC },
+          end_date: { [Op.gte]: nowUTC }
         },
         include: [{
           model: User,
@@ -165,23 +243,104 @@ class AdsController {
         });
       }
 
-      const formattedAds = ads.map(ad => ({
-        id: ad.id,
-        campaign_name: ad.campaign_name,
-        media_type: ad.media_type,
-        media_url: ad.media_url || ad.image_url, // Prefer media_url, fallback to image_url
-        image_url: ad.image_url, // Legacy support
-        target_url: ad.target_url,
-        ad_content: ad.ad_content,
-        google_ads_code: ad.google_ads_code,
-        placement_type: ad.placement_type,
-        advertiser: ad.advertiser?.display_name,
-        start_date: ad.start_date,
-        end_date: ad.end_date,
-        status: ad.status, // Include status for frontend filtering
-        impressions: ad.impressions,
-        clicks: ad.clicks
-      }));
+      // Global rotation settings (in seconds)
+      const GLOBAL_ROTATION_SETTINGS = {
+        'hero-banner': 3,
+        'header': 5,
+        'mid-content': 5,
+        'bottom-content': 5,
+        'popup': 5,
+        'sidebar': 10,
+        'regular': 10,
+        'article-top': 10,
+        'article-mid': 10,
+        'article-bottom': 10,
+        'article-final': 10,
+        'article-ads': 10,
+        'breaking-pre': 10,
+        'breaking-post': 10
+      };
+
+      // Calculate current rotation based on time and rotation durations
+      const getRotationIndex = (ads) => {
+        if (ads.length <= 1) return 0;
+        
+        // Check if all ads use global settings
+        const allUseGlobalSettings = ads.every(ad => ad.rotation_mode === 'global' || !ad.rotation_duration);
+        
+        if (allUseGlobalSettings) {
+          // Use global rotation timing (faster rotation in seconds)
+          const globalDuration = GLOBAL_ROTATION_SETTINGS[placement] || 10;
+          const currentTime = Math.floor(Date.now() / 1000); // seconds
+          const cyclePosition = Math.floor(currentTime / globalDuration) % ads.length;
+          return cyclePosition;
+        }
+        
+        // Mixed mode: some manual, some global - use individual rotation durations (minutes)
+        const getAdDuration = (ad) => {
+          if (ad.rotation_mode === 'manual' && ad.rotation_duration) {
+            return ad.rotation_duration; // minutes
+          }
+          // Convert global seconds to minutes for consistency
+          const globalSeconds = GLOBAL_ROTATION_SETTINGS[placement] || 10;
+          return Math.max(1, Math.round(globalSeconds / 60)); // minimum 1 minute
+        };
+        
+        const totalCycleTime = ads.reduce((sum, ad) => sum + getAdDuration(ad), 0);
+        const currentTime = Math.floor(Date.now() / (1000 * 60)); // minutes
+        const cyclePosition = currentTime % totalCycleTime;
+        
+        // Find which ad should be showing based on cycle position
+        let timeAccumulator = 0;
+        for (let i = 0; i < ads.length; i++) {
+          timeAccumulator += getAdDuration(ads[i]);
+          if (cyclePosition < timeAccumulator) {
+            return i;
+          }
+        }
+        return 0; // fallback
+      };
+
+      // Sort ads by rotation timing and get current active ad
+      const rotationIndex = getRotationIndex(ads);
+      const currentAd = ads[rotationIndex];
+      
+      // Enhanced logging for hybrid rotation
+      const rotationMode = ads.every(ad => ad.rotation_mode === 'global' || !ad.rotation_duration) ? 'global' : 'mixed';
+      const currentAdMode = currentAd?.rotation_mode || 'global';
+      const currentAdDuration = currentAd?.rotation_duration || GLOBAL_ROTATION_SETTINGS[placement];
+      
+      console.log(`🎯 AdsController: Rotation (${rotationMode}) - showing ad ${rotationIndex + 1}/${ads.length}: "${currentAd?.campaign_name}" (${currentAdMode} mode, ${currentAdDuration}${currentAdMode === 'global' ? 's' : 'min'})`);
+
+      const formattedAds = ads.length > 0 ? [{
+        id: currentAd.id,
+        campaign_name: currentAd.campaign_name,
+        media_type: currentAd.media_type,
+        media_url: currentAd.media_url || currentAd.image_url,
+        image_url: currentAd.image_url,
+        target_url: currentAd.target_url,
+        ad_content: currentAd.ad_content,
+        google_ads_code: currentAd.google_ads_code,
+        placement_type: currentAd.placement_type,
+        advertiser: currentAd.advertiser?.display_name,
+        start_date: currentAd.start_date,
+        end_date: currentAd.end_date,
+        status: currentAd.status,
+        impressions: currentAd.impressions,
+        clicks: currentAd.clicks,
+        rotation_mode: currentAd.rotation_mode,
+        rotation_duration: currentAd.rotation_duration,
+        // Debug info for rotation
+        rotation_info: {
+          current_index: rotationIndex,
+          total_ads: ads.length,
+          rotation_mode: rotationMode,
+          global_setting: GLOBAL_ROTATION_SETTINGS[placement],
+          current_ad_mode: currentAdMode,
+          current_ad_duration: currentAdDuration,
+          duration_unit: currentAdMode === 'global' ? 'seconds' : 'minutes'
+        }
+      }] : [];
 
       res.json({
         success: true,
@@ -645,15 +804,17 @@ class AdsController {
     try {
       console.log('🎯 Getting active popup ad for homepage');
 
-      const now = new Date();
+      // Use current WIB time for ads comparison (convert to UTC for database comparison)
+      const nowWIB = new Date(Date.now() + (7 * 60 * 60 * 1000));
+      const nowUTC = new Date();
       
-      // Find active popup ads that are within date range
+      // Find active popup ads that are within date range (database stores in UTC)
       const popupAd = await Advertisement.findOne({
         where: {
           status: 'active',
           placement_type: 'popup',
-          start_date: { [Op.lte]: now },
-          end_date: { [Op.gte]: now }
+          start_date: { [Op.lte]: nowUTC },
+          end_date: { [Op.gte]: nowUTC }
         },
         include: [{
           model: User,

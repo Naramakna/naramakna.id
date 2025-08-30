@@ -43,8 +43,8 @@ export const CarouselItem: React.FC<CarouselItemProps> = ({
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <div className="text-white text-center">
-                <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <div className="w-12 h-12 md:w-16 md:h-16 bg-white bg-opacity-20 rounded-full mx-auto mb-4 flex items-center justify-center">
+                  <svg className="w-6 h-6 md:w-8 md:h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
                   </svg>
                 </div>
@@ -93,8 +93,8 @@ export const CarouselItem: React.FC<CarouselItemProps> = ({
         ) : (
           <div className="w-full h-full bg-gray-300 flex items-center justify-center">
             <div className="text-gray-500 text-center">
-              <div className="w-12 h-12 bg-gray-400 rounded-full mx-auto mb-2 flex items-center justify-center">
-                <svg className="w-6 h-6 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+              <div className="w-8 h-8 md:w-12 md:h-12 bg-gray-400 rounded-full mx-auto mb-2 flex items-center justify-center">
+                <svg className="w-4 h-4 md:w-6 md:h-6 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
                 </svg>
               </div>

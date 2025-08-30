@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CarouselItem } from '../../atoms/CarouselItem';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface CarouselArticle {
   id: string;
@@ -17,13 +18,15 @@ interface CarouselProps {
   className?: string;
   autoSlide?: boolean;
   autoSlideInterval?: number;
+  showDots?: boolean;
 }
 
 export const Carousel: React.FC<CarouselProps> = ({
   articles,
   className = '',
   autoSlide = true,
-  autoSlideInterval = 5000
+  autoSlideInterval = 5000,
+  showDots = true
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -93,11 +96,9 @@ export const Carousel: React.FC<CarouselProps> = ({
                 e.stopPropagation();
                 prevSlide();
               }}
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-2 rounded-full transition-all duration-200 z-10"
+              className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-1 md:p-2 rounded-full transition-all duration-200 z-10"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
+              <ChevronLeft className="w-4 h-4 md:w-6 md:h-6" />
             </button>
 
             <button
@@ -106,31 +107,31 @@ export const Carousel: React.FC<CarouselProps> = ({
                 e.stopPropagation();
                 nextSlide();
               }}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-2 rounded-full transition-all duration-200 z-10"
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-1 md:p-2 rounded-full transition-all duration-200 z-10"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
+              <ChevronRight className="w-4 h-4 md:w-6 md:h-6" />
             </button>
 
             {/* Dots Indicator */}
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
-              {articles.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    goToSlide(index);
-                  }}
-                  className={`w-3 h-3 rounded-full transition-all duration-200 ${
-                    index === currentIndex 
-                      ? 'bg-white' 
-                      : 'bg-white bg-opacity-50 hover:bg-opacity-75'
-                  }`}
-                />
-              ))}
-            </div>
+            {showDots && (
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 hidden md:flex space-x-2 z-10">
+                {articles.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      goToSlide(index);
+                    }}
+                    className={`w-2.5 h-2.5 rounded-full transition-all duration-200 ${
+                      index === currentIndex 
+                        ? 'bg-white' 
+                        : 'bg-white bg-opacity-50 hover:bg-opacity-75'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>

@@ -120,8 +120,8 @@ export const AdBanner: React.FC<AdBannerProps> = ({
       case 'regular':
       default:
         return {
-          mobile: '100% x 70px',
-          tablet: '100% x 80px',
+          mobile: '100% x 60px',
+          tablet: '100% x 70px',
           desktop: '728 x 120px'
         };
     }

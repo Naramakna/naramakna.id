@@ -1159,6 +1159,15 @@ class ContentController {
       metadata,
       view_count: viewCount,
       views: viewCount, // Alternative field name
+      // Image captions for content images
+      image_captions: (() => {
+        try {
+          return metadata._image_captions ? JSON.parse(metadata._image_captions) : {};
+        } catch (error) {
+          console.warn('Failed to parse image captions in formatPostWithMeta:', error);
+          return {};
+        }
+      })(),
       // Featured image with caption
       ...(metadata._thumbnail_url && {
         featured_image: {
@@ -1468,19 +1477,13 @@ class ContentController {
         }
       });
 
-      // Add view_count to the response
-      const postData = post.toJSON();
-      postData.view_count = viewCount;
-      postData.views = viewCount; // Alternative field name
-      
-      // Format author profile image URL
-      if (postData.author && postData.author.profile_image) {
-        postData.author.profile_image = `${process.env.BACKEND_URL}${postData.author.profile_image}`;
-      }
+      // Format post with metadata (includes featured image resolution)
+      const userAgent = req.headers['user-agent'] || '';
+      const formattedPost = await ContentController.formatPostWithMeta(post, viewCount, userAgent);
 
       res.status(200).json({
         success: true,
-        data: postData
+        data: formattedPost
       });
     } catch (error) {
       console.error('Error fetching post by ID:', error);
@@ -1560,23 +1563,13 @@ class ContentController {
         }
       });
 
-      // Prepare response with enhanced data
-      const responseData = {
-        ...post.toJSON(),
-        metadata,
-        featured_image: featuredImage,
-        view_count: viewCount,
-        views: viewCount // Alternative field name
-      };
+      // Use formatPostWithMeta for consistent data format  
+      const userAgent = req.headers['user-agent'] || '';
+      const formattedPost = await ContentController.formatPostWithMeta(post, viewCount, userAgent);
       
-      // Format author profile image URL
-      if (responseData.author && responseData.author.profile_image) {
-        responseData.author.profile_image = `${process.env.BACKEND_URL}${responseData.author.profile_image}`;
-      }
-
       res.status(200).json({
         success: true,
-        data: responseData
+        data: formattedPost
       });
     } catch (error) {
       console.error('Error fetching post by slug:', error);
@@ -1960,6 +1953,146 @@ class ContentController {
       res.status(500).json({
         success: false,
         message: 'Failed to fetch deleted articles'
+      });
+    }
+  }
+
+  /**
+   * Admin: Bulk delete articles
+   * POST /api/content/admin/articles/bulk-delete
+   */
+  static async bulkDeleteArticles(req, res) {
+    const transaction = await sequelize.transaction();
+    
+    try {
+      const { articleIds, force } = req.body; // force = true for permanent delete
+
+      // Check if user is admin or superadmin
+      if (!req.user || (req.user.user_role !== 'admin' && req.user.user_role !== 'superadmin')) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. Admin privileges required.'
+        });
+      }
+
+      // Validate input
+      if (!articleIds || !Array.isArray(articleIds) || articleIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Article IDs array is required'
+        });
+      }
+
+      const validIds = articleIds.filter(id => Number.isInteger(parseInt(id)));
+      if (validIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'No valid article IDs provided'
+        });
+      }
+
+      // Find the articles
+      const whereCondition = {
+        ID: { [Op.in]: validIds },
+        post_type: 'post'
+      };
+      
+      if (!force) {
+        // Only find non-deleted articles for soft delete
+        whereCondition.deleted_at = null;
+      }
+
+      const articles = await Post.findAll({
+        where: whereCondition,
+        include: [
+          {
+            model: User,
+            as: 'author',
+            attributes: ['ID', 'display_name', 'user_login']
+          }
+        ]
+      });
+
+      if (articles.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'No articles found with the provided IDs'
+        });
+      }
+
+      const deletedArticles = [];
+
+      if (force === true) {
+        // PERMANENT DELETE
+        for (const article of articles) {
+          // Delete related data first
+          await Comment.destroy({
+            where: { comment_post_ID: article.ID },
+            transaction
+          });
+
+          await PostMeta.destroy({
+            where: { post_id: article.ID },
+            transaction
+          });
+
+          await PostViews.destroy({
+            where: { post_id: article.ID },
+            transaction
+          });
+
+          await Analytics.destroy({
+            where: { post_id: article.ID },
+            transaction
+          });
+
+          // Delete the post permanently
+          await article.destroy({ transaction });
+
+          deletedArticles.push({
+            id: article.ID,
+            title: article.post_title,
+            author: article.author?.display_name || 'Unknown',
+            deletionType: 'permanent'
+          });
+        }
+      } else {
+        // SOFT DELETE
+        for (const article of articles) {
+          await article.update({
+            deleted_at: new Date(),
+            deleted_by: req.user.ID,
+            post_status: 'deleted'
+          }, { transaction });
+
+          deletedArticles.push({
+            id: article.ID,
+            title: article.post_title,
+            author: article.author?.display_name || 'Unknown',
+            deletionType: 'soft',
+            deleted_at: new Date(),
+            deleted_by: req.user.display_name
+          });
+        }
+      }
+
+      await transaction.commit();
+
+      res.json({
+        success: true,
+        message: `${deletedArticles.length} articles ${force ? 'permanently deleted' : 'moved to trash'} successfully.`,
+        data: {
+          deletedArticles,
+          count: deletedArticles.length
+        }
+      });
+
+    } catch (error) {
+      await transaction.rollback();
+      console.error('Bulk delete articles error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete articles'
       });
     }
   }

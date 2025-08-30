@@ -7,19 +7,26 @@ const categoryController = {
     try {
       console.log('🏷️ Getting popular tags for article writing');
       
-      // Get popular channels from terms (increased limit)
+      // Get specific allowed rubrikasi channels only
+      const allowedChannels = [
+        'narapandang', 'pelakon', 'laga-gaya', 'wahana', 'olah-bola', 
+        'cerita-rasa', 'horison', 'jagat-kita', 'akal-budi', 'budaya', 
+        'pendidikan', 'teknologi'
+      ];
+      
       const channelsQuery = `
         SELECT t.name, t.slug, tt.count 
         FROM terms t
         JOIN term_taxonomy tt ON t.term_id = tt.term_id
         WHERE tt.taxonomy IN ('category', 'newstopic')
         AND tt.count >= 0
+        AND t.slug IN (${allowedChannels.map(() => '?').join(', ')})
         ORDER BY tt.count DESC
-        LIMIT 50
       `;
 
       const channels = await sequelize.query(channelsQuery, {
-        type: QueryTypes.SELECT
+        type: QueryTypes.SELECT,
+        replacements: allowedChannels
       });
 
       // Get popular tags/keywords (increased limit)
@@ -42,10 +49,7 @@ const categoryController = {
         data: {
           popularChannels: channels,
           popularTags: tags,
-          defaultChannels: [
-            'News', 'Entertainment', 'Tekno & Sains', 'Bisnis', 
-            'Bola & Sports', 'Otomotif', 'Woman', 'Food & Travel', 'Mom', 'Bolanita'
-          ]
+          defaultChannels: [] // No hardcoded defaults, use only database channels
         }
       });
 

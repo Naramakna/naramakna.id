@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { buildApiUrl } from '../../../config/api';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface SingleCategorySectionProps {
   categorySlug: string;
@@ -363,7 +364,7 @@ export const SingleCategorySection: React.FC<SingleCategorySectionProps> = ({
                    </div>
                    
                    {/* Carousel Navigation */}
-                   <div className="absolute top-3 right-3 flex space-x-2 z-20">
+                   <div className="absolute top-3 right-3 hidden md:flex space-x-2 z-20">
                      {posts.map((_, index) => (
                        <button
                          key={index}
@@ -371,8 +372,8 @@ export const SingleCategorySection: React.FC<SingleCategorySectionProps> = ({
                            e.stopPropagation();
                            setCurrentIndex(index);
                          }}
-                         className={`w-2 h-2 rounded-full transition-all ${
-                           index === currentIndex ? 'bg-orange-500 w-6' : 'bg-white bg-opacity-60'
+                         className={`w-0.5 h-0.5 md:w-2 md:h-2 rounded-full transition-all ${
+                           index === currentIndex ? 'bg-orange-500 w-2 md:w-6' : 'bg-white bg-opacity-60'
                          }`}
                        />
                      ))}
@@ -386,9 +387,7 @@ export const SingleCategorySection: React.FC<SingleCategorySectionProps> = ({
                      }}
                      className="absolute left-3 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-black bg-opacity-50 rounded-full flex items-center justify-center hover:bg-opacity-70 transition-all text-white z-20"
                    >
-                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                     </svg>
+                     <ChevronLeft className="w-4 h-4" />
                    </button>
                    
                    <button
@@ -398,9 +397,7 @@ export const SingleCategorySection: React.FC<SingleCategorySectionProps> = ({
                      }}
                      className="absolute right-3 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-black bg-opacity-50 rounded-full flex items-center justify-center hover:bg-opacity-70 transition-all text-white z-20"
                    >
-                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                     </svg>
+                     <ChevronRight className="w-4 h-4" />
                    </button>
                  </div>
                )}

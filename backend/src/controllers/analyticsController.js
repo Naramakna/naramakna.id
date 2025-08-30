@@ -68,8 +68,28 @@ class AnalyticsController {
         });
       }
 
+      // Resolve content_id (could be numeric ID or slug)
+      let actualContentId = content_id;
+      
+      // If content_id is not numeric, treat it as a slug and find the actual ID
+      if (isNaN(content_id)) {
+        const post = await Post.findOne({
+          where: { post_name: content_id },
+          attributes: ['ID']
+        });
+        
+        if (!post) {
+          return res.status(404).json({
+            success: false,
+            message: 'Content not found'
+          });
+        }
+        
+        actualContentId = post.ID;
+      }
+
       // Verify content exists
-      const content = await Post.findByPk(content_id);
+      const content = await Post.findByPk(actualContentId);
       if (!content) {
         return res.status(404).json({
           success: false,
@@ -79,7 +99,7 @@ class AnalyticsController {
 
       // Create analytics record
       const analyticsData = {
-        content_id,
+        content_id: actualContentId,
         content_type,
         event_type,
         user_ip: req.location?.ip || req.ip || req.connection.remoteAddress,
@@ -104,7 +124,7 @@ class AnalyticsController {
       // If this is a view event, also increment the view_count in the posts table
       if (event_type === 'view') {
         await Post.increment('view_count', {
-          where: { ID: content_id }
+          where: { ID: actualContentId }
         });
       }
 

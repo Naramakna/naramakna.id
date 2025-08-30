@@ -8,7 +8,7 @@ import ScheduleModal from '../../components/molecules/ScheduleModal';
 import { schedulerAPI } from '../../services/api/scheduler';
 import type { ScheduledPost, ScheduleRequest } from '../../services/api/scheduler';
 import { buildApiUrl } from '../../config/api';
-import { decodeHtmlEntities } from '../../utils/categorySlugMapping';
+import { ImagePreview } from '../../components/molecules/ImagePreview';
 
 interface ArticleData {
   title: string;
@@ -46,7 +46,7 @@ const ArticleWriterPage: React.FC = () => {
     content: '',
     description: '',
     summary_social: '',
-    channel: 'news',
+    channel: '',
     topic: '',
     keyword: '',
     publish_date: new Date().toISOString().slice(0, 16),
@@ -83,12 +83,11 @@ const ArticleWriterPage: React.FC = () => {
   }>({
     popularChannels: [],
     popularTags: [],
-    defaultChannels: ['News', 'Entertainment', 'Tekno & Sains', 'Bisnis', 'Bola & Sports', 'Otomotif', 'Woman', 'Food & Travel', 'Mom', 'Jagat Kita']
+    defaultChannels: []
   });
 
-  // Categories state
-  const [categories, setCategories] = useState<Array<{id: number, name: string, slug: string, parent?: number}>>([]);
-  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+  // Image captions state for editor images
+  const [imageCaptions, setImageCaptions] = useState<Record<string, string>>({});
 
   // Responsive state for toolbar
   const [windowWidth, setWindowWidth] = useState(() => {
@@ -100,75 +99,26 @@ const ArticleWriterPage: React.FC = () => {
 
   const quillRef = useRef<ReactQuill>(null);
 
-  // Fetch popular tags and categories on component mount
+  // Fetch popular tags on component mount
   useEffect(() => {
     const fetchPopularTags = async () => {
       try {
         const response = await fetch(buildApiUrl('category/popular-tags'));
         if (response.ok) {
           const data = await response.json();
-          setPopularTags(data.data);
+          // Use only dynamic channels from database, no hardcoded defaults
+          setPopularTags({
+            ...data.data,
+            defaultChannels: [] // No hardcoded defaults, all channels come from database
+          });
         }
       } catch (error) {
         console.error('Failed to fetch popular tags:', error);
       }
     };
 
-    const fetchCategories = async () => {
-      try {
-        const response = await fetch(buildApiUrl('content/categories?mainCategoriesOnly=true&minCount=0'));
-        const result = await response.json();
-        
-        if (result.success && result.data.categories) {
-          // Remove Uncategorized from the list for cleaner UI
-          const filteredCategories = result.data.categories.filter((cat: any) => 
-            cat.slug !== 'uncategorized'
-          );
-          
-          // Remove duplicates based on category name (case-insensitive)
-          // Keep the one with highest count or prioritize intuitive slugs
-          const uniqueCategories = filteredCategories.reduce((acc: any[], current: any) => {
-            // Decode HTML entities for proper comparison
-            const currentName = current.name.replace(/&amp;/g, '&').toLowerCase();
-            
-            // Check if we already have this category name
-            const existingIndex = acc.findIndex(cat => 
-              cat.name.replace(/&amp;/g, '&').toLowerCase() === currentName
-            );
-            
-            if (existingIndex === -1) {
-              // New category, add it
-              acc.push(current);
-            } else {
-              // Duplicate found, keep the one with higher count or better slug
-              const existing = acc[existingIndex];
-              const preferredSlugs = ['narapandang', 'laga-gaya', 'cerita-rasa', 'horison', 'jagat-kita', 'wahana', 'olah-bola', 'akal-budi'];
-              
-              // Prefer categories with intuitive slugs or higher count
-              const shouldReplace = preferredSlugs.includes(current.slug) || 
-                                   (!preferredSlugs.includes(existing.slug) && current.count > existing.count);
-              
-              if (shouldReplace) {
-                acc[existingIndex] = current;
-              }
-            }
-            
-            return acc;
-          }, []);
-          
-          // Sort categories by name for better UX
-          uniqueCategories.sort((a, b) => a.name.localeCompare(b.name));
-          
-          setCategories(uniqueCategories);
-          console.log('📂 Loaded unique categories:', uniqueCategories);
-        }
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-      }
-    };
 
     fetchPopularTags();
-    fetchCategories();
   }, []);
 
 
@@ -244,6 +194,14 @@ const ArticleWriterPage: React.FC = () => {
       console.error('Error uploading featured image:', error);
       alert('Gagal mengupload featured image');
     }
+  };
+
+  // Handle image caption changes
+  const handleImageCaptionChange = (imageSrc: string, caption: string) => {
+    setImageCaptions(prev => ({
+      ...prev,
+      [imageSrc]: caption
+    }));
   };
 
   // Window resize handler for responsive toolbar
@@ -344,11 +302,7 @@ const ArticleWriterPage: React.FC = () => {
         ? buildApiUrl(`writer/articles/${editId}`)
         : buildApiUrl('writer/articles');
       
-      // Merge selectedCategories into article before sending
-      const articleWithCategories = {
-        ...article,
-        categories: selectedCategories
-      };
+      const articleData = article;
       
       const response = await fetch(url, {
         method: isEditMode ? 'PUT' : 'POST',
@@ -356,7 +310,7 @@ const ArticleWriterPage: React.FC = () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(articleWithCategories),
+        body: JSON.stringify(articleData),
         // Add timeout for auto-save
         signal: AbortSignal.timeout(15000) // 15 seconds timeout
       });
@@ -378,7 +332,7 @@ const ArticleWriterPage: React.FC = () => {
     } finally {
       isSavingRef.current = false; // Reset saving flag
     }
-  }, [article, isEditMode, editId, selectedCategories]);
+  }, [article, isEditMode, editId]);
 
   // Save Draft function
   const handleSaveDraft = async (): Promise<string | null> => {
@@ -392,6 +346,11 @@ const ArticleWriterPage: React.FC = () => {
       return null;
     }
     
+    if (!article.channel.trim()) {
+      showNotification('Rubrikasi harus dipilih untuk menyimpan artikel.', 'error');
+      return null;
+    }
+    
     try {
       isSavingRef.current = true;
       setSaveStatus('saving');
@@ -399,7 +358,7 @@ const ArticleWriterPage: React.FC = () => {
       const draftData = { 
         ...article, 
         status: 'draft' as const,
-        categories: selectedCategories
+        image_captions: imageCaptions
       };
       
       const url = isEditMode 
@@ -550,6 +509,10 @@ const ArticleWriterPage: React.FC = () => {
       errors.push('Judul artikel wajib diisi');
     }
     
+    if (!article.channel.trim()) {
+      errors.push('Rubrikasi harus dipilih');
+    }
+    
     if (!article.content.trim() || article.content.trim() === '<p><br></p>') {
       errors.push('Isi artikel wajib diisi');
     }
@@ -562,9 +525,6 @@ const ArticleWriterPage: React.FC = () => {
       errors.push('Summary Social wajib diisi untuk publikasi');
     }
     
-    if (selectedCategories.length === 0) {
-      errors.push('Pilih minimal satu kategori');
-    }
     
     // Check minimum content length
     const contentText = article.content.replace(/<[^>]*>/g, '').trim();
@@ -646,7 +606,7 @@ const ArticleWriterPage: React.FC = () => {
       const publishData = { 
         ...article, 
         status: 'published' as const,
-        categories: selectedCategories
+        image_captions: imageCaptions
       };
       
       const url = isEditMode 
@@ -699,7 +659,6 @@ const ArticleWriterPage: React.FC = () => {
             featured_image: '',
             featured_image_caption: ''
           });
-          setSelectedCategories([]);
           setFeaturedImagePreview('');
         }
         setSaveStatus('saved');
@@ -851,6 +810,11 @@ const ArticleWriterPage: React.FC = () => {
             // Set featured image preview if exists
             if (articleData.featured_image) {
               setFeaturedImagePreview(articleData.featured_image);
+            }
+            
+            // Load existing image captions if they exist
+            if (articleData.image_captions) {
+              setImageCaptions(articleData.image_captions);
             }
             
             // Check if writer is trying to edit pending post
@@ -1281,46 +1245,6 @@ const ArticleWriterPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Categories */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Kategori <span className="text-red-500">*</span>
-                <span className="text-xs text-gray-500 font-normal ml-1">(Minimal 1 kategori)</span>
-              </label>
-              <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-md p-3">
-                {categories.map((category) => (
-                  <div key={category.id} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id={`category-${category.id}`}
-                      checked={selectedCategories.includes(category.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedCategories(prev => [...prev, category.id]);
-                        } else {
-                          setSelectedCategories(prev => prev.filter(id => id !== category.id));
-                        }
-                      }}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <label 
-                      htmlFor={`category-${category.id}`}
-                      className="ml-2 text-sm text-gray-700 cursor-pointer"
-                    >
-                      {decodeHtmlEntities(category.name)}
-                    </label>
-                  </div>
-                ))}
-                {categories.length === 0 && (
-                  <div className="text-sm text-gray-500 text-center py-2">
-                    Loading categories...
-                  </div>
-                )}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                Pilih kategori yang sesuai dengan artikel Anda
-              </div>
-            </div>
 
             {/* Summary Social */}
             <div>
@@ -1391,10 +1315,10 @@ const ArticleWriterPage: React.FC = () => {
               )}
             </div>
 
-            {/* Channel & Tags */}
+            {/* Rubrikasi */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Channel & Tags
+                Rubrikasi
               </label>
               
               {/* Popular Channels */}
@@ -1402,31 +1326,8 @@ const ArticleWriterPage: React.FC = () => {
                 <p className="text-xs text-gray-500 mb-2">Channel Populer:</p>
                 <div className="flex flex-wrap gap-2">
                   
-                  {/* HARDCODED CHANNELS - PASTI MUNCUL */}
-                  {['News', 'Entertainment', 'Tekno & Sains', 'Bisnis', 'Bola & Sports', 'Otomotif', 'Woman', 'Food & Travel', 'Mom', 'Jagat Kita'].map((channel) => (
-                    <button
-                      key={channel}
-                      type="button"
-                      onClick={() => {
-                        const channelTag = channel.toLowerCase().replace(/ & /g, '-').replace(/ /g, '-');
-                        if (article.channel === channelTag) {
-                          setArticle(prev => ({ ...prev, channel: '' }));
-                        } else {
-                          setArticle(prev => ({ ...prev, channel: channelTag }));
-                        }
-                      }}
-                      className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                        article.channel === channel.toLowerCase().replace(/ & /g, '-').replace(/ /g, '-')
-                          ? 'bg-blue-500 text-white border-blue-500'
-                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-500'
-                      }`}
-                    >
-                      {channel}
-                    </button>
-                  ))}
-                  
-                  {/* Popular channels from database (first 10) */}
-                  {popularTags.popularChannels.slice(0, 10).map((channel) => (
+                  {/* Popular channels from database */}
+                  {popularTags.popularChannels.map((channel) => (
                     <button
                       key={channel.slug}
                       type="button"
@@ -1453,7 +1354,7 @@ const ArticleWriterPage: React.FC = () => {
               <div className="mb-3">
                 <input
                   type="text"
-                  placeholder="Atau tulis channel baru..."
+                  placeholder="Atau tulis rubrikasi baru..."
                   value={article.channel}
                   onChange={(e) => setArticle(prev => ({ ...prev, channel: e.target.value }))}
                   className="w-full p-3 border border-gray-300 rounded-md text-sm"
@@ -1555,6 +1456,13 @@ const ArticleWriterPage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Image Preview and Caption Manager */}
+            <ImagePreview
+              content={article.content}
+              imageCaptions={imageCaptions}
+              onCaptionChange={handleImageCaptionChange}
+            />
 
             {/* Mark As 18+ */}
             <div>

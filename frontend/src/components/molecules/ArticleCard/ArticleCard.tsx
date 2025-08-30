@@ -26,9 +26,9 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
     >
       {/* Featured Image with fixed dimensions */}
       <div className="w-full h-48 bg-gray-200 rounded-t-lg overflow-hidden relative">
-        {article.featured_image ? (
+        {(article.featured_image?.url || article.featured_image) ? (
           <img
-            src={article.featured_image}
+            src={article.featured_image?.url || article.featured_image}
             alt={article.title}
             className="w-full h-full object-cover"
             loading="lazy"

@@ -28,7 +28,8 @@ class WriterController {
         mark_as_18_plus,
         status = 'draft',
         featured_image,
-        featured_image_caption
+        featured_image_caption,
+        image_captions
       } = req.body;
 
 
@@ -105,7 +106,18 @@ class WriterController {
             await updatePostMeta(existingDraft.ID, '_mark_as_18_plus', mark_as_18_plus ? '1' : '0');
           }
           if (featured_image) {
-            await updatePostMeta(existingDraft.ID, '_thumbnail_id', featured_image);
+            // Find attachment post by GUID to get the correct ID
+            const attachment = await Post.findOne({
+              where: { guid: featured_image, post_type: 'attachment' }
+            });
+            
+            if (attachment) {
+              // Save attachment ID, not the URL
+              await updatePostMeta(existingDraft.ID, '_thumbnail_id', attachment.ID);
+              console.log(`🖼️ Featured image set for draft ${existingDraft.ID}: ${attachment.ID} (${featured_image})`);
+            } else {
+              console.warn(`❌ Attachment not found for URL: ${featured_image}`);
+            }
           }
           if (featured_image_caption !== undefined) {
             await updatePostMeta(existingDraft.ID, '_thumbnail_caption', featured_image_caption || '');
@@ -257,6 +269,11 @@ class WriterController {
         metaData.push({ post_id: post.ID, meta_key: '_thumbnail_caption', meta_value: featured_image_caption || '' });
       }
 
+      // Add image captions if provided
+      if (image_captions && typeof image_captions === 'object') {
+        metaData.push({ post_id: post.ID, meta_key: '_image_captions', meta_value: JSON.stringify(image_captions) });
+      }
+
       await PostMeta.bulkCreate(metaData, { transaction });
 
       await transaction.commit();
@@ -309,7 +326,9 @@ class WriterController {
         location,
         mark_as_18_plus,
         status,
-        featured_image
+        featured_image,
+        featured_image_caption,
+        image_captions
       } = req.body;
 
       // Debug log untuk featured image
@@ -408,6 +427,14 @@ class WriterController {
 
         if (existingAttachment) {
           thumbnailId = existingAttachment.ID;
+          
+          // Update existing attachment with caption if provided
+          if (featured_image_caption) {
+            await existingAttachment.update({
+              post_title: featured_image_caption,
+              post_excerpt: featured_image_caption
+            }, { transaction });
+          }
         } else {
           // Create new attachment post
           const attachmentPost = await Post.create({
@@ -415,8 +442,8 @@ class WriterController {
             post_date: new Date(),
             post_date_gmt: new Date(),
             post_content: '',
-            post_title: `Attachment for ${title}`,
-            post_excerpt: '',
+            post_title: featured_image_caption || `Attachment for ${title}`,
+            post_excerpt: featured_image_caption || '',
             post_status: 'inherit',
             comment_status: 'closed',
             ping_status: 'closed',
@@ -450,6 +477,16 @@ class WriterController {
       // Set thumbnail meta if image provided
       if (thumbnailId) {
         metaUpdates.push({ key: '_thumbnail_id', value: thumbnailId.toString() });
+      }
+      
+      // Add thumbnail caption if provided
+      if (featured_image_caption !== undefined) {
+        metaUpdates.push({ key: '_thumbnail_caption', value: featured_image_caption || '' });
+      }
+
+      // Add image captions if provided
+      if (image_captions && typeof image_captions === 'object') {
+        metaUpdates.push({ key: '_image_captions', value: JSON.stringify(image_captions) });
       }
 
       for (const meta of metaUpdates) {
@@ -642,6 +679,20 @@ class WriterController {
         }
       }
 
+      // Get selected categories for this post
+      const categoriesQuery = `
+        SELECT t.name, t.slug
+        FROM terms t
+        JOIN term_taxonomy tt ON t.term_id = tt.term_id
+        JOIN term_relationships tr ON tt.term_taxonomy_id = tr.term_taxonomy_id
+        WHERE tr.object_id = ? AND tt.taxonomy = 'category'
+      `;
+      
+      const selectedCategories = await sequelize.query(categoriesQuery, {
+        replacements: [post.ID],
+        type: sequelize.QueryTypes.SELECT
+      });
+
       // console.log('🔧 Debug: Found post for edit:', {
       //   ID: post.ID,
       //   title: post.post_title,
@@ -662,7 +713,7 @@ class WriterController {
           date: post.post_date,
           modified: post.post_modified,
           author_id: post.post_author,
-          publish_date: post.post_date,
+          publish_date: post.post_date ? new Date(post.post_date).toISOString().slice(0, 16) : null,
           location: metadata._location || '',
           channel: metadata._channel || 'news',
           topic: metadata._topic || '',
@@ -670,6 +721,16 @@ class WriterController {
           summary_social: metadata._summary_social || '',
           mark_as_18_plus: metadata._mark_as_18_plus === '1' || false,
           featured_image: featuredImageUrl,
+          featured_image_caption: metadata._thumbnail_caption || '',
+          image_captions: (() => {
+            try {
+              return metadata._image_captions ? JSON.parse(metadata._image_captions) : {};
+            } catch (error) {
+              console.warn('Failed to parse image captions:', error);
+              return {};
+            }
+          })(),
+          selected_categories: selectedCategories.map(cat => cat.name),
           metadata
         }
       });

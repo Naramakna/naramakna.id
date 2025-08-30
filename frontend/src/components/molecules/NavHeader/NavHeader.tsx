@@ -10,13 +10,7 @@ interface NavHeaderProps {
 
 export const NavHeader: React.FC<NavHeaderProps> = ({ className = '' }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const { isAuthenticated, isLoading, user } = useAuth();
-
-  const handleSearch = (value: string) => {
-    console.log('Searching for:', value);
-    setIsSearchModalOpen(false);
-  };
 
   // Get appropriate dashboard URL based on user role
   const getDashboardUrl = () => {
@@ -91,16 +85,9 @@ export const NavHeader: React.FC<NavHeaderProps> = ({ className = '' }) => {
 
             {/* Mobile Action Buttons */}
             <div className="md:hidden flex items-center space-x-1">
-              {/* Mobile Search Button */}
-              <button 
-                onClick={() => setIsSearchModalOpen(true)}
-                className="p-1.5 text-gray-700 hover:text-yellow-500 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </button>
-
+              {/* SearchBlock handles mobile search button */}
+              <SearchBlock />
+              
               {/* Mobile menu button */}
               <button 
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -172,55 +159,6 @@ export const NavHeader: React.FC<NavHeaderProps> = ({ className = '' }) => {
         </div>
       )}
 
-      {/* Mobile Search Modal - Compact */}
-      {isSearchModalOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setIsSearchModalOpen(false)}></div>
-          <div className="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-11/12 max-w-sm bg-white rounded-lg shadow-xl">
-            <div className="p-3">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-semibold text-gray-900">Cari</h3>
-                <button 
-                  onClick={() => setIsSearchModalOpen(false)}
-                  className="p-1 text-gray-500 hover:text-gray-700 transition-colors duration-200"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Cari di sini..."
-                  className="w-full px-3 py-2 pl-8 pr-3 text-sm text-gray-700 bg-gray-100 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all duration-200"
-                  autoFocus
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      handleSearch((e.target as HTMLInputElement).value);
-                    }
-                  }}
-                />
-                <div className="absolute inset-y-0 left-0 flex items-center pl-2.5">
-                  <svg
-                    className="w-4 h-4 text-gray-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 };

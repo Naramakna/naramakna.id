@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { DataTable } from '../DataTable';
 import { FilterPanel } from '../FilterPanel';
 import { Pagination } from '../../molecules/Pagination';
@@ -64,6 +64,7 @@ interface PostsManagementProps {
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (itemsPerPage: number) => void;
   onDeletePost?: (postId: number) => void;
+  onBulkDeletePosts?: (postIds: number[]) => void;
   currentUserRole?: string;
 }
 
@@ -80,9 +81,82 @@ export const PostsManagement: React.FC<PostsManagementProps> = ({
   onPageChange,
   onItemsPerPageChange,
   onDeletePost,
+  onBulkDeletePosts,
   currentUserRole
 }) => {
+  const [selectedPosts, setSelectedPosts] = useState<number[]>([]);
+  const [selectAll, setSelectAll] = useState(false);
+
+  // Clear selections when posts data changes
+  useEffect(() => {
+    setSelectedPosts([]);
+    setSelectAll(false);
+  }, [posts]);
+
+  // Update selectAll state based on selected posts
+  useEffect(() => {
+    if (posts.length > 0) {
+      const allPostIds = posts.map(post => post.id || post.ID).filter(Boolean) as number[];
+      const allSelected = allPostIds.length > 0 && allPostIds.every(id => selectedPosts.includes(id));
+      setSelectAll(allSelected);
+    }
+  }, [selectedPosts, posts]);
+
+  // Handle individual post selection
+  const handlePostSelection = (postId: number, checked: boolean) => {
+    if (checked) {
+      setSelectedPosts(prev => [...prev, postId]);
+    } else {
+      setSelectedPosts(prev => prev.filter(id => id !== postId));
+    }
+  };
+
+  // Handle select all
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allPostIds = posts.map(post => post.id || post.ID).filter(Boolean) as number[];
+      setSelectedPosts(allPostIds);
+    } else {
+      setSelectedPosts([]);
+    }
+  };
+
+  // Handle bulk delete
+  const handleBulkDelete = () => {
+    if (selectedPosts.length === 0) {
+      alert('Please select posts to delete.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${selectedPosts.length} selected posts? This action cannot be undone!`
+    );
+
+    if (confirmed && onBulkDeletePosts) {
+      onBulkDeletePosts(selectedPosts);
+      setSelectedPosts([]);
+    }
+  };
   const columns = [
+    {
+      key: 'select',
+      label: (
+        <input
+          type="checkbox"
+          checked={selectAll}
+          onChange={(e) => handleSelectAll(e.target.checked)}
+          className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+        />
+      ),
+      render: (_: any, post: Post) => (
+        <input
+          type="checkbox"
+          checked={selectedPosts.includes(post.id || post.ID || 0)}
+          onChange={(e) => handlePostSelection(post.id || post.ID || 0, e.target.checked)}
+          className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+        />
+      )
+    },
     {
       key: 'title',
       label: 'Title',
@@ -177,7 +251,35 @@ export const PostsManagement: React.FC<PostsManagementProps> = ({
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-lg font-medium text-gray-900">Posts Management</h2>
+        <div className="flex items-center space-x-4">
+          <h2 className="text-lg font-medium text-gray-900">Posts Management</h2>
+          {selectedPosts.length > 0 && (
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600">
+                {selectedPosts.length} selected
+              </span>
+              {onBulkDeletePosts && (currentUserRole === 'admin' || currentUserRole === 'superadmin') && (
+                <button
+                  onClick={handleBulkDelete}
+                  className="inline-flex items-center px-3 py-1 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Delete Selected
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setSelectedPosts([]);
+                }}
+                className="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Clear Selection
+              </button>
+            </div>
+          )}
+        </div>
         <button
           onClick={onToggleFilters}
           className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"

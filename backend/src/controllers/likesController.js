@@ -8,10 +8,30 @@ class LikesController {
     const userId = req.user.ID;
 
     try {
+      // First, resolve postId (could be numeric ID or slug)
+      let actualPostId = postId;
+      
+      // If postId is not numeric, treat it as a slug and find the actual ID
+      if (isNaN(postId)) {
+        const post = await Post.findOne({
+          where: { post_name: postId },
+          attributes: ['ID']
+        });
+        
+        if (!post) {
+          return res.status(404).json({
+            success: false,
+            message: 'Post not found'
+          });
+        }
+        
+        actualPostId = post.ID;
+      }
+
       // Check if user already liked this post
       const existingLike = await PostLikes.findOne({
         where: {
-          post_id: postId,
+          post_id: actualPostId,
           user_id: userId
         }
       });
@@ -21,17 +41,17 @@ class LikesController {
         await existingLike.destroy();
 
         // Decrease like count
-        const post = await Post.findByPk(postId);
+        const post = await Post.findByPk(actualPostId);
         if (post) {
           const newCount = Math.max((post.like_count || 0) - 1, 0);
           await post.update({
             like_count: newCount
           });
-          console.log(`👎 Post ${postId} unliked. Count: ${post.like_count} -> ${newCount}`);
+          console.log(`👎 Post ${actualPostId} unliked. Count: ${post.like_count} -> ${newCount}`);
         }
 
         // Get updated post data
-        const updatedPost = await Post.findByPk(postId);
+        const updatedPost = await Post.findByPk(actualPostId);
 
         res.json({
           success: true,
@@ -45,22 +65,22 @@ class LikesController {
       } else {
         // Like - add like
         await PostLikes.create({
-          post_id: postId,
+          post_id: actualPostId,
           user_id: userId
         });
 
         // Increase like count
-        const post = await Post.findByPk(postId);
+        const post = await Post.findByPk(actualPostId);
         if (post) {
           const newCount = (post.like_count || 0) + 1;
           await post.update({
             like_count: newCount
           });
-          console.log(`👍 Post ${postId} liked. Count: ${post.like_count} -> ${newCount}`);
+          console.log(`👍 Post ${actualPostId} liked. Count: ${post.like_count} -> ${newCount}`);
         }
 
         // Get updated post data
-        const updatedPost = await Post.findByPk(postId);
+        const updatedPost = await Post.findByPk(actualPostId);
 
         res.json({
           success: true,
@@ -88,8 +108,28 @@ class LikesController {
     const userId = req.user?.ID;
 
     try {
+      // First, resolve postId (could be numeric ID or slug)
+      let actualPostId = postId;
+      
+      // If postId is not numeric, treat it as a slug and find the actual ID
+      if (isNaN(postId)) {
+        const post = await Post.findOne({
+          where: { post_name: postId },
+          attributes: ['ID']
+        });
+        
+        if (!post) {
+          return res.status(404).json({
+            success: false,
+            message: 'Post not found'
+          });
+        }
+        
+        actualPostId = post.ID;
+      }
+
       // Get post with like count
-      const post = await Post.findByPk(postId, {
+      const post = await Post.findByPk(actualPostId, {
         attributes: ['ID', 'like_count']
       });
 
@@ -105,7 +145,7 @@ class LikesController {
         // Check if user liked this post
         const userLike = await PostLikes.findOne({
           where: {
-            post_id: postId,
+            post_id: actualPostId,
             user_id: userId
           }
         });
@@ -137,9 +177,29 @@ class LikesController {
     const offset = (page - 1) * limit;
 
     try {
+      // First, resolve postId (could be numeric ID or slug)
+      let actualPostId = postId;
+      
+      // If postId is not numeric, treat it as a slug and find the actual ID
+      if (isNaN(postId)) {
+        const post = await Post.findOne({
+          where: { post_name: postId },
+          attributes: ['ID']
+        });
+        
+        if (!post) {
+          return res.status(404).json({
+            success: false,
+            message: 'Post not found'
+          });
+        }
+        
+        actualPostId = post.ID;
+      }
+
       // Get users who liked the post with pagination
       const { count, rows: likes } = await PostLikes.findAndCountAll({
-        where: { post_id: postId },
+        where: { post_id: actualPostId },
         include: [{
           model: User,
           as: 'user',

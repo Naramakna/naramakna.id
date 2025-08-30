@@ -63,7 +63,7 @@ export const IndexBerita: React.FC = () => {
         title: post.title || 'Untitled',
         content: post.content || '',
         excerpt: post.excerpt || (post.content ? post.content.substring(0, 150) + '...' : ''),
-        featured_image: post.metadata?._thumbnail_id ? `/uploads/${post.metadata._thumbnail_id}` : '',
+        featured_image: post.featured_image?.url || '',
         date: post.date || new Date().toISOString(),
         author_name: post.author?.display_name || 'Unknown',
         author_id: post.author?.ID || 0,

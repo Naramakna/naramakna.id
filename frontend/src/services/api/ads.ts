@@ -2,6 +2,7 @@ import { buildApiUrl } from '../../config/api';
 
 export interface Advertisement {
   id: string;
+  advertiser_id?: string | number;  // Added for API compatibility
   campaign_name: string;
   media_type: 'image' | 'gif' | 'video' | 'html' | 'google_ads' | 'google_adsense';
   media_url?: string;
@@ -13,6 +14,9 @@ export interface Advertisement {
   advertiser?: string;
   start_date: string;
   end_date: string;
+  duration_hours?: number;
+  rotation_mode?: 'global' | 'manual'; // Added for rotation control
+  rotation_duration?: number | null;   // Added for rotation control
   budget?: number;
   impressions: number;
   clicks: number;
@@ -32,7 +36,10 @@ export interface CreateAdRequest {
   advertiser_id: string;
   campaign_name: string;
   start_date: string;
-  end_date: string;
+  end_date?: string;
+  duration_hours?: number;
+  rotation_mode?: 'global' | 'manual'; // Added for rotation control
+  rotation_duration?: number | null;   // Added for rotation control
   budget?: number;
   placement_type: string;
   media_type: string;
