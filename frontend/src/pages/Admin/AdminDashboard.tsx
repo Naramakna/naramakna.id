@@ -175,10 +175,10 @@ const AdminDashboard: React.FC = () => {
                 { id: 'users', name: 'Users', count: users.length },
                 { id: 'pending-writers', name: 'Pending Writers', count: pendingWriters.length },
                 { id: 'pending-posts', name: 'Pending Posts', count: pendingPosts.length },
-                { id: 'scheduled-posts', name: '⏰ Scheduled Posts', count: scheduledPosts.length },
-                { id: 'articles', name: '📝 Articles Management' },
-                { id: 'polling', name: '📊 Polling Management' },
-                { id: 'ads', name: '🎯 Ads Management' },
+                { id: 'scheduled-posts', name: 'Scheduled Posts', count: scheduledPosts.length },
+                { id: 'articles', name: 'Articles Management' },
+                { id: 'polling', name: 'Polling Management' },
+                { id: 'ads', name: 'Ads Management' },
               ]}
               activeTab={activeTab}
               onTabChange={setActiveTab}

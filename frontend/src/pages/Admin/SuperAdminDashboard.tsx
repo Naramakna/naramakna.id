@@ -650,25 +650,25 @@ const SuperAdminDashboard: React.FC = () => {
           {/* Tab Navigation */}
           <DashboardTabs
             tabs={[
-              { id: 'overview', name: '🏠 Overview' },
-              { id: 'analytics-reports', name: '📊 Analytics Reports' },
-              { id: 'users', name: '👥 Users', count: users.length },
-              { id: 'admins', name: '👨‍💼 Admins', count: admins.length },
-              { id: 'posts', name: '📝 Posts', count: systemStats.totalPosts },
-              { id: 'categories', name: '📂 Categories', count: systemStats.totalCategories },
-              { id: 'articles', name: '📋 Articles Manager' },
-              { id: 'pending-posts', name: '⏳ Pending', count: pendingPosts.length },
-              { id: 'scheduled-posts', name: '⏰ Scheduled', count: scheduledPosts.length },
-              { id: 'trash', name: '🗑️ Trash' },
-              { id: 'image-manager', name: '🖼️ Images' },
-              { id: 'polling', name: '📊 Polling' },
-              { id: 'ads', name: '🎯 Ads' },
-              { id: 'ad-placeholders', name: '👁️ Ad Placeholders' },
-              { id: 'google-ads', name: '📢 Google Ads' },
-              { id: 'youtube', name: '📺 YouTube' },
-              { id: 'tiktok', name: '🎵 TikTok' },
-              { id: 'analytics', name: '🚀 Boost' },
-              { id: 'settings', name: '⚙️ Settings' },
+              { id: 'overview', name: 'Overview' },
+              { id: 'analytics-reports', name: 'Analytics Reports' },
+              { id: 'users', name: 'Users', count: users.length },
+              { id: 'admins', name: 'Admins', count: admins.length },
+              { id: 'posts', name: 'Posts', count: systemStats.totalPosts },
+              { id: 'categories', name: 'Categories', count: systemStats.totalCategories },
+              { id: 'articles', name: 'Articles Manager' },
+              { id: 'pending-posts', name: 'Pending', count: pendingPosts.length },
+              { id: 'scheduled-posts', name: 'Scheduled', count: scheduledPosts.length },
+              { id: 'trash', name: 'Trash' },
+              { id: 'image-manager', name: 'Images' },
+              { id: 'polling', name: 'Polling' },
+              { id: 'ads', name: 'Ads' },
+              { id: 'ad-placeholders', name: 'Ad Placeholders' },
+              { id: 'google-ads', name: 'Google Ads' },
+              { id: 'youtube', name: 'YouTube' },
+              { id: 'tiktok', name: 'TikTok' },
+              { id: 'analytics', name: 'Boost' },
+              { id: 'settings', name: 'Settings' },
             ]}
             activeTab={activeTab}
             onTabChange={setActiveTab}
@@ -966,13 +966,13 @@ const SuperAdminDashboard: React.FC = () => {
           {activeTab === 'trash' && (
             <div className="p-6">
               <div className="mb-6">
-                <h2 className="text-lg font-medium text-gray-900 mb-2">🗑️ Trash - Deleted Articles</h2>
+                <h2 className="text-lg font-medium text-gray-900 mb-2">Trash - Deleted Articles</h2>
                 <p className="text-gray-600">Articles that have been moved to trash. You can restore them or permanently delete them.</p>
               </div>
               
               {trashedPosts.length === 0 ? (
                 <div className="text-center py-12">
-                  <div className="text-gray-500 text-lg mb-2">🗑️ Trash is empty</div>
+                  <div className="text-gray-500 text-lg mb-2">Trash is empty</div>
                   <p className="text-gray-400">No articles have been deleted.</p>
                 </div>
               ) : (
@@ -1006,14 +1006,14 @@ const SuperAdminDashboard: React.FC = () => {
                               className="text-green-600 hover:text-green-900"
                               title="Restore article"
                             >
-                              ♻️ Restore
+                              Restore
                             </button>
                             <button
                               onClick={() => deleteArticle(article.ID, true)}
                               className="text-red-600 hover:text-red-900"
                               title="Permanently delete article"
                             >
-                              🗑️ Delete Forever
+                              Delete Forever
                             </button>
                           </td>
                         </tr>
@@ -1028,7 +1028,7 @@ const SuperAdminDashboard: React.FC = () => {
                   onClick={fetchTrashedPosts}
                   className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                 >
-                  🔄 Refresh Trash
+                  Refresh Trash
                 </button>
               </div>
             </div>

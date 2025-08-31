@@ -129,13 +129,13 @@ const ScheduledPosts: React.FC<ScheduledPostsProps> = ({ posts, loading, onRefre
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-3 sm:space-y-0">
         <h2 className="text-lg font-medium text-gray-900">Scheduled Posts</h2>
         <button
           onClick={onRefresh}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors self-start sm:self-auto"
         >
-          🔄 Refresh
+          Refresh
         </button>
       </div>
 
@@ -150,45 +150,45 @@ const ScheduledPosts: React.FC<ScheduledPostsProps> = ({ posts, loading, onRefre
           {posts.map(post => (
             <div key={post.ID} className="bg-white border border-gray-200 rounded-lg shadow-sm">
               <div className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
+                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between">
+                  <div className="flex-1 lg:pr-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">
                       {post.post_title}
                     </h3>
                     
                     <div className="space-y-2 text-sm text-gray-600">
-                      <div className="flex items-center space-x-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0">
                         <span className="flex items-center">
-                          <span className="mr-1">👤</span>
+                          <span className="mr-1">Author:</span>
                           {post.author.display_name}
                         </span>
                         <span className="flex items-center">
-                          <span className="mr-1">📅</span>
-                          {formatScheduleDate(post.scheduled_publish_date)}
+                          <span className="mr-1">Schedule:</span>
+                          <span className="text-xs sm:text-sm break-words">{formatScheduleDate(post.scheduled_publish_date)}</span>
                         </span>
                       </div>
                       
                       {post.scheduling_notes && (
                         <div className="flex items-start">
-                          <span className="mr-1 mt-0.5">📝</span>
+                          <span className="mr-1 mt-0.5">Notes:</span>
                           <span className="italic">{post.scheduling_notes}</span>
                         </div>
                       )}
                       
                       {post.schedule_info?.scheduled_by_name && (
                         <div className="flex items-center">
-                          <span className="mr-1">👨‍💼</span>
-                          <span>Scheduled by: {post.schedule_info.scheduled_by_name}</span>
+                          <span className="mr-1">Scheduled by:</span>
+                          <span>{post.schedule_info.scheduled_by_name}</span>
                         </div>
                       )}
                     </div>
                   </div>
                   
-                  <div className="ml-6 flex flex-col items-end space-y-3">
+                  <div className="mt-4 lg:mt-0 lg:ml-6 flex flex-col lg:items-end space-y-3">
                     {/* Countdown */}
-                    <div className="text-right">
+                    <div className="text-left lg:text-right">
                       <div className="text-xs text-gray-500 mb-1">Time until publish:</div>
-                      <div className={`text-lg font-mono font-bold px-3 py-1 rounded-lg ${
+                      <div className={`text-sm lg:text-lg font-mono font-bold px-2 lg:px-3 py-1 rounded-lg inline-block ${
                         countdowns[post.ID] === 'Ready to publish!' 
                           ? 'bg-green-100 text-green-800 animate-pulse' 
                           : 'bg-blue-100 text-blue-800'
@@ -198,31 +198,31 @@ const ScheduledPosts: React.FC<ScheduledPostsProps> = ({ posts, loading, onRefre
                     </div>
                     
                     {/* Action buttons */}
-                    <div className="flex space-x-2">
+                    <div className="flex flex-col sm:flex-row lg:flex-row space-y-2 sm:space-y-0 sm:space-x-2 lg:space-x-2">
                       <button
                         onClick={() => handleForcePublish(post.ID)}
-                        className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded transition-colors"
+                        className="px-2 lg:px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded transition-colors text-center"
                         title="Force publish now"
                       >
-                        🚀 Publish Now
+                        Publish Now
                       </button>
                       
                       <button
                         onClick={() => handleCancelSchedule(post.ID)}
-                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded transition-colors"
+                        className="px-2 lg:px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded transition-colors text-center"
                         title="Cancel schedule"
                       >
-                        ❌ Cancel
+                        Cancel
                       </button>
                       
                       <a
                         href={`/tulis?edit=${post.ID}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
+                        className="px-2 lg:px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors text-center"
                         title="Edit post"
                       >
-                        ✏️ Edit
+                        Edit
                       </a>
                     </div>
                   </div>
@@ -242,7 +242,7 @@ const ScheduledPosts: React.FC<ScheduledPostsProps> = ({ posts, loading, onRefre
 
       {/* Debug info */}
       <div className="mt-8 p-4 bg-gray-100 rounded-lg">
-        <h3 className="text-sm font-medium text-gray-700 mb-2">🐛 Debug Info</h3>
+        <h3 className="text-sm font-medium text-gray-700 mb-2">Debug Info</h3>
         <div className="text-xs text-gray-600 space-y-1">
           <div>Total scheduled posts: {posts.length}</div>
           <div>Last updated: {new Date().toLocaleString()}</div>
@@ -250,7 +250,7 @@ const ScheduledPosts: React.FC<ScheduledPostsProps> = ({ posts, loading, onRefre
             onClick={() => schedulerAPI.publishNow().then(() => alert('Manual publish trigger sent!'))}
             className="mt-2 px-2 py-1 bg-yellow-500 hover:bg-yellow-600 text-white text-xs rounded"
           >
-            🔧 Trigger Manual Publish Check
+            Trigger Manual Publish Check
           </button>
         </div>
       </div>

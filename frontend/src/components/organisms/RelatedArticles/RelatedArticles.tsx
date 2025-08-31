@@ -91,12 +91,12 @@ export const RelatedArticles: React.FC<RelatedArticlesProps> = ({
 
       {/* Load More Button */}
       <div className="text-center mt-8">
-        <button className="inline-flex items-center px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+        <a href="/index-berita" className="inline-flex items-center px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
           <span>Lihat Artikel Lainnya</span>
           <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
           </svg>
-        </button>
+        </a>
       </div>
     </div>
   );

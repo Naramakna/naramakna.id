@@ -10,7 +10,7 @@ interface AdSectionProps {
   altText?: string;
   href?: string;
   isPlaceholder?: boolean;
-  size?: 'header' | 'regular' | 'sidebar';
+  size?: 'header' | 'regular' | 'sidebar' | 'article';
   placement?: string | string[]; // Single placement or array for multi-placement rotation
   rotationInterval?: number; // Custom rotation timing in milliseconds (default: 5000)
 }
@@ -35,7 +35,7 @@ export const AdSection: React.FC<AdSectionProps> = ({
     if (Array.isArray(placement)) {
       return placement;
     }
-    const singlePlacement = placement || (size === 'header' ? 'header' : size === 'sidebar' ? 'sidebar' : 'regular');
+    const singlePlacement = placement || (size === 'header' ? 'header' : size === 'sidebar' ? 'sidebar' : size === 'article' ? 'article-ads' : 'regular');
     return [singlePlacement];
   }, [placement, size]);
 
@@ -124,7 +124,7 @@ export const AdSection: React.FC<AdSectionProps> = ({
   const shouldShowPlaceholder = isPlaceholder !== undefined ? isPlaceholder : !selectedAd;
   
   // Check if placeholder should be visible for this placement
-  const placementName = Array.isArray(placement) ? placement[0] : placement || (size === 'header' ? 'header' : size === 'sidebar' ? 'sidebar' : 'regular');
+  const placementName = Array.isArray(placement) ? placement[0] : placement || (size === 'header' ? 'header' : size === 'sidebar' ? 'sidebar' : size === 'article' ? 'article-ads' : 'regular');
   const placeholderAllowed = isPlaceholderVisible(placementName);
   
   // If placeholder is not allowed and no real ad, don't render anything

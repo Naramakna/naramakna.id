@@ -15,7 +15,7 @@ interface AdBannerProps {
   altText?: string;
   href?: string;
   isPlaceholder?: boolean;
-  size?: 'header' | 'regular' | 'sidebar'; // header: 970x250, regular: 728x90, sidebar: 300x250
+  size?: 'header' | 'regular' | 'sidebar' | 'article'; // header: 970x250, regular: 728x90, sidebar: 300x250, article: bigger for article content
   // New props for advanced ads
   advertisement?: Advertisement;
   onAdClick?: (adId: string) => void;
@@ -91,11 +91,15 @@ export const AdBanner: React.FC<AdBannerProps> = ({
     
     switch (size) {
       case 'header':
-        // Mobile: w-[90%] h-[120px], Tablet: w-[95%] h-[150px], Desktop: max-w-[970px] h-[250px]
-        return `w-[90%] sm:w-[95%] md:w-full lg:w-full xl:max-w-[970px] h-[120px] sm:h-[150px] md:h-[180px] lg:h-[200px] xl:h-[250px] ${baseClasses} ${visibilityClasses}`;
+        // Mobile: w-[90%] h-[100px], Tablet: w-[95%] h-[150px], Desktop: max-w-[970px] h-[250px]
+        return `w-[90%] sm:w-[95%] md:w-full lg:w-full xl:max-w-[970px] h-[100px] sm:h-[150px] md:h-[180px] lg:h-[200px] xl:h-[250px] ${baseClasses} ${visibilityClasses}`;
       case 'sidebar':
         // Fixed sidebar size: 300x250px
         return `w-[300px] h-[250px] ${baseClasses} ${visibilityClasses}`;
+      case 'article':
+        // Article ads: Bigger size for article content container
+        // Mobile: w-full h-[100px], Tablet: w-full h-[130px], Desktop: w-full h-[180px] (lebih besar dari regular)
+        return `w-full h-[100px] sm:h-[130px] md:h-[150px] lg:h-[180px] max-w-full ${baseClasses} ${visibilityClasses}`;
       case 'regular':
       default:
         // Mobile: w-[95%] h-[70px], Tablet: w-[98%] h-[80px], Desktop: w-[728px] h-[120px] (responsive, tidak kepotong)
@@ -107,7 +111,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({
     switch (size) {
       case 'header':
         return {
-          mobile: '100% x 120px',
+          mobile: '100% x 100px',
           tablet: '100% x 180px',
           desktop: '970 x 250px'
         };
@@ -116,6 +120,12 @@ export const AdBanner: React.FC<AdBannerProps> = ({
           mobile: '300 x 250px',
           tablet: '300 x 250px',
           desktop: '300 x 250px'
+        };
+      case 'article':
+        return {
+          mobile: '100% x 100px',
+          tablet: '100% x 130px',
+          desktop: '100% x 180px'
         };
       case 'regular':
       default:
