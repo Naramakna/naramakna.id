@@ -2,7 +2,7 @@
 
 /**
  * Cronjob script to update trending topics
- * Run daily at 6 AM: 0 6 * * * /usr/bin/node /var/www/naramakna.id/cron/update-trending.cjs
+ * Run daily at 5 AM: 0 5 * * * /usr/bin/node /var/www/naramakna.id/cron/update-trending.cjs
  */
 
 const axios = require('axios');
@@ -13,7 +13,7 @@ async function updateTrending() {
     
     // Call our internal API to update trending topics
     const response = await axios.post('http://localhost:3001/api/trending/update', {}, {
-      timeout: 60000, // 1 minute timeout
+      timeout: 120000, // 2 minutes timeout
       headers: {
         'User-Agent': 'TrendingCronjob/1.0'
       }

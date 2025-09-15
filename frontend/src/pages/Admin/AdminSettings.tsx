@@ -5,7 +5,9 @@ export const AdminSettings: React.FC = () => {
   const [showAnalyticsButton, setShowAnalyticsButton] = useState(true);
   const [showViewsCount, setShowViewsCount] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [isTrendingLoading, setIsTrendingLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [trendingMessage, setTrendingMessage] = useState('');
 
   // Fetch current settings
   useEffect(() => {
@@ -102,6 +104,37 @@ export const AdminSettings: React.FC = () => {
       setMessage('Error updating setting');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Manual trending update
+  const handleManualTrendingUpdate = async () => {
+    setIsTrendingLoading(true);
+    setTrendingMessage('');
+
+    try {
+      const response = await fetch(buildApiUrl('trending/admin/update'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setTrendingMessage('Trending topics updated successfully! The update may take a few moments to reflect on the site.');
+      } else {
+        setTrendingMessage(`Error: ${result.message || 'Failed to update trending topics'}`);
+      }
+    } catch (error) {
+      console.error('Error updating trending topics:', error);
+      setTrendingMessage('Error updating trending topics. Please try again.');
+    } finally {
+      setIsTrendingLoading(false);
+      // Clear message after 5 seconds
+      setTimeout(() => setTrendingMessage(''), 5000);
     }
   };
 
@@ -233,6 +266,70 @@ export const AdminSettings: React.FC = () => {
             </span>
           </div>
         </div>
+      </div>
+
+      {/* Trending Topics Management */}
+      <div className="bg-white shadow rounded-lg p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">🔥 Trending Topics Management</h3>
+            <p className="text-gray-600 mb-4">
+              Manually update trending topics cache when the cronjob is having issues (RTO/timeout). 
+              This will refresh trending topics data immediately.
+            </p>
+            
+            <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-4">
+              <div className="flex items-start">
+                <svg className="w-5 h-5 text-yellow-600 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <div>
+                  <p className="text-sm text-yellow-800 font-medium">Note:</p>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    Use this button only when the automatic cronjob is not working properly. 
+                    Normal trending updates happen automatically every hour.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="ml-6 flex flex-col items-center space-y-4">
+            <button
+              onClick={handleManualTrendingUpdate}
+              disabled={isTrendingLoading}
+              className="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isTrendingLoading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Update Trending
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Trending Message */}
+        {trendingMessage && (
+          <div className={`mt-4 p-4 rounded-lg ${
+            trendingMessage.includes('Error') 
+              ? 'bg-red-50 text-red-700 border border-red-200' 
+              : 'bg-green-50 text-green-700 border border-green-200'
+          }`}>
+            {trendingMessage}
+          </div>
+        )}
       </div>
 
       {/* Additional Settings can be added here */}

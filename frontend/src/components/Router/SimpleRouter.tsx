@@ -29,6 +29,8 @@ import { IndexBerita } from '../../pages/IndexBerita/IndexBerita';
 import { OTPPage } from '../../pages/OTP';
 import AuthSuccessPage from '../../pages/Auth/AuthSuccessPage';
 import AuthErrorPage from '../../pages/Auth/AuthErrorPage';
+import { TermsOfService } from '../../pages/TermsOfService';
+import { PrivacyPolicy } from '../../pages/PrivacyPolicy';
 
 // Component for async username validation
 const AsyncUsernameRoute: React.FC<{ username: string }> = ({ username }) => {
@@ -160,6 +162,14 @@ const SimpleRouter: React.FC = () => {
       return <HowToWrite />;
     case '/index-berita':
       return <IndexBerita />;
+    case '/pedoman-media-siber':
+    case '/terms-of-service':
+    case '/syarat-ketentuan':
+      return <TermsOfService />;
+    case '/privacy-policy-2':
+    case '/privacy-policy':
+    case '/kebijakan-privasi':
+      return <PrivacyPolicy />;
     case '/':
       return <Home />;
     default:

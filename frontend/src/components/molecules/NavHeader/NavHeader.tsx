@@ -10,7 +10,7 @@ interface NavHeaderProps {
 
 export const NavHeader: React.FC<NavHeaderProps> = ({ className = '' }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, logout } = useAuth();
 
   // Get appropriate dashboard URL based on user role
   const getDashboardUrl = () => {
@@ -25,6 +25,22 @@ export const NavHeader: React.FC<NavHeaderProps> = ({ className = '' }) => {
         return '/writer/dashboard';
       default:
         return '/dashboard';
+    }
+  };
+
+  // Handle logout for mobile menu
+  const handleLogout = async () => {
+    try {
+      console.log('🔄 Starting logout process...');
+      await logout();
+      console.log('✅ Logout successful, redirecting...');
+      window.location.href = '/';
+    } catch (error) {
+      console.error('❌ Logout failed:', error);
+      // Still redirect even if logout fails
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      window.location.href = '/';
     }
   };
 
@@ -142,6 +158,17 @@ export const NavHeader: React.FC<NavHeaderProps> = ({ className = '' }) => {
                     <a href={getDashboardUrl()} className="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-yellow-500 hover:bg-gray-100 rounded-md transition-colors duration-200">
                       Dashboard
                     </a>
+                    <button 
+                      onClick={handleLogout} 
+                      className="block w-full text-left px-3 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors duration-200"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        <span>Keluar</span>
+                      </div>
+                    </button>
                   </>
                 ) : (
                   <>

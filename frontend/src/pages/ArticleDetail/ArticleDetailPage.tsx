@@ -387,6 +387,21 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Google Subscribe with Google (SWG) Script */}
+      <script async type="application/javascript"
+              src="https://news.google.com/swg/js/v1/swg-basic.js"></script>
+      <script dangerouslySetInnerHTML={{
+        __html: `
+          (self.SWG_BASIC = self.SWG_BASIC || []).push( basicSubscriptions => {
+            basicSubscriptions.init({
+              type: "NewsArticle",
+              isPartOfType: ["Product"],
+              isPartOfProductId: "CAowofy8DA",
+              clientOptions: { theme: "light", lang: "id" },
+            });
+          });
+        `
+      }} />
       <Navbar />
       
       {/* Top Article Ad */}
