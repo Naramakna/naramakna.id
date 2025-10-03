@@ -50,7 +50,7 @@ const imageFilter = (req, file, cb) => {
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 10 * 1024 * 1024, // 10MB limit (increased for Mata Elang)
     files: 10, // Maximum 10 files
     fieldSize: 100 * 1024 * 1024, // 100MB for field data
     fieldNameSize: 1000, // Field name size
@@ -90,7 +90,7 @@ const handleUploadError = (error, req, res, next) => {
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
         success: false,
-        message: 'File too large. Maximum size is 5MB'
+        message: 'File too large. Maximum size is 10MB'
       });
     }
     if (error.code === 'LIMIT_FILE_COUNT') {

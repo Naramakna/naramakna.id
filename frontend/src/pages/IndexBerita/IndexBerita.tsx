@@ -203,7 +203,7 @@ export const IndexBerita: React.FC = () => {
 
         {/* Mid Content Banner - Normal rotation (5 seconds) */}
         <AdSection 
-          placement="header" 
+          placement="mid-content" 
           size='header' 
           rotationInterval={5000}
         />

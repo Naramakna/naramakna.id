@@ -7,7 +7,8 @@ import { useSEO } from '../../../hooks/useSEO';
 const AdSection = lazy(() => import('../../organisms/AdSection/AdSection').then(module => ({ default: module.AdSection })));
 const MainContentSection = lazy(() => import('../../organisms/MainContentSection/MainContentSection').then(module => ({ default: module.MainContentSection })));
 const VideoSection = lazy(() => import('../../organisms/VideoSection/VideoSection').then(module => ({ default: module.VideoSection })));
-const PollingMain = lazy(() => import('../../organisms/PollingMain').then(module => ({ default: module.PollingMain })));
+// const PollingMain = lazy(() => import('../../organisms/PollingMain').then(module => ({ default: module.PollingMain })));
+import { PollingMain } from '../../organisms/PollingMain';
 const DynamicCategorySections = lazy(() => import('../../organisms/DynamicCategorySections/DynamicCategorySections').then(module => ({ default: module.DynamicCategorySections })));
 const PopupAd = lazy(() => import('../../organisms/PopupAd').then(module => ({ default: module.PopupAd })));
 const Footer = lazy(() => import('../../organisms/Footer').then(module => ({ default: module.Footer })));
@@ -64,9 +65,7 @@ export const Home: React.FC = () => {
           <VideoSection />
         </Suspense>
         
-        <Suspense fallback={<div className="polling-skeleton bg-gray-100 animate-pulse rounded-lg"></div>}>
-          <PollingMain />
-        </Suspense>
+        <PollingMain />
 
         <Suspense fallback={<div className="category-skeleton bg-gray-100 animate-pulse rounded-lg"></div>}>
           <DynamicCategorySections 

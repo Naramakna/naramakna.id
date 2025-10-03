@@ -38,7 +38,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
   // Fetch YouTube and TikTok videos
   const { videos: youtubeVideos } = useYouTubeVideos(false);
   const { videos: tiktokVideos } = useTikTokVideos();
-  
+
   // Helper function to convert TikTok data to VideoData format
   const convertTikTokToVideoData = (ttVideo: TikTokVideo): VideoData => {
     const formatDuration = (seconds: number): string => {
@@ -59,7 +59,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
       tiktokData: ttVideo
     };
   };
-  
+
   // const loading = ytLoading || ttLoading;
   // const error = ytError;
 
@@ -163,12 +163,12 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
       const itemWidth = 256 + 16; // w-64 + space-x-4
       const maxScroll = container.scrollWidth - container.clientWidth;
       const newScrollLeft = Math.min(container.scrollLeft + itemWidth, maxScroll);
-      
+
       container.scrollTo({
         left: newScrollLeft,
         behavior: 'smooth'
       });
-      
+
       setCurrentIndex(Math.min(currentIndex + 1, displayVideos.length - 1));
     }
   };
@@ -178,12 +178,12 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
       const container = scrollContainerRef.current;
       const itemWidth = 256 + 16; // w-64 + space-x-4
       const newScrollLeft = Math.max(container.scrollLeft - itemWidth, 0);
-      
+
       container.scrollTo({
         left: newScrollLeft,
         behavior: 'smooth'
       });
-      
+
       setCurrentIndex(Math.max(currentIndex - 1, 0));
     }
   };
@@ -191,7 +191,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
   // Handler untuk membuka modal yang sesuai
   const openModal = (videoIndex: number) => {
     const video = displayVideos[videoIndex];
-    
+
     if (video.sourceType === 'tiktok' && video.tiktokData) {
       // Buka TikTok modal
       setSelectedTikTokVideo(video.tiktokData);
@@ -215,7 +215,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
 
   return (
     <div className={`bg-gray-50 py-8 ${className}`}>
-      <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="flex items-center mb-6">
           <div className="flex items-center space-x-2">
@@ -228,12 +228,17 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
 
         {/* Video Cards */}
         <div className="relative">
-          <div 
+          <div
             ref={scrollContainerRef}
-            className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide"
+            className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory"
+            style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              WebkitOverflowScrolling: 'touch'
+            }}
           >
             {displayVideos.map((video, index) => (
-              <div key={video.id} className="flex-shrink-0">
+              <div key={video.id} className="flex-shrink-0 snap-start">
                 <VideoItem
                   id={video.id}
                   title={video.title}
@@ -249,7 +254,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
 
           {/* Left Navigation Button - Hidden on mobile */}
           <div className="absolute top-1/2 left-4 transform -translate-y-1/2 hidden md:block">
-            <button 
+            <button
               onClick={handlePrev}
               disabled={currentIndex <= 0}
               className="w-10 h-10 bg-naramakna-gold text-white rounded-full shadow-lg hover:bg-naramakna-gold/80 transition-colors duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
@@ -262,7 +267,7 @@ export const VideoSection: React.FC<VideoSectionProps> = ({
 
           {/* Right Navigation Button - Hidden on mobile */}
           <div className="absolute top-1/2 right-4 transform -translate-y-1/2 hidden md:block">
-            <button 
+            <button
               onClick={handleNext}
               disabled={currentIndex >= displayVideos.length - 1}
               className="w-10 h-10 bg-naramakna-gold text-white rounded-full shadow-lg hover:bg-naramakna-gold/80 transition-colors duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"

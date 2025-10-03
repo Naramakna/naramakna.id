@@ -55,7 +55,9 @@ export const AdsProvider: React.FC<AdsProviderProps> = ({ children }) => {
         const settings = JSON.parse(saved);
         setPlaceholderVisible(settings.global !== undefined ? settings.global : true);
         setPlaceholderSettings(settings.placements || {});
-        console.log('🎯 AdsContext: Loaded placeholder settings:', settings);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🎯 AdsContext: Loaded placeholder settings:', settings);
+        }
       }
     } catch (err) {
       console.error('🎯 AdsContext: Failed to load placeholder settings:', err);
@@ -70,7 +72,9 @@ export const AdsProvider: React.FC<AdsProviderProps> = ({ children }) => {
 
   const refreshAds = async (placement?: string, forceRefresh: boolean = false) => {
     const placements = placement ? [placement] : ['header', 'regular', 'sidebar', 'hero-banner', 'mid-content', 'bottom-content', 'article-top', 'article-mid', 'article-bottom', 'article-final', 'article-ads', 'breaking-pre', 'breaking-post'];
-    console.log('🎯 AdsContext: Refreshing ads for placements:', placements, 'forceRefresh:', forceRefresh);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🎯 AdsContext: Refreshing ads for placements:', placements, 'forceRefresh:', forceRefresh);
+    }
     
     setLoading(true);
     setError(null);
@@ -78,21 +82,31 @@ export const AdsProvider: React.FC<AdsProviderProps> = ({ children }) => {
     try {
       const fetchPromises = placements.map(async (p) => {
         if (!forceRefresh && !shouldRefresh(p) && ads[p]) {
-          console.log(`🎯 AdsContext: Using cached ads for ${p}:`, ads[p]);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`🎯 AdsContext: Using cached ads for ${p}:`, ads[p]);
+          }
           return { placement: p, ads: ads[p] };
         }
 
         try {
-          console.log(`🎯 AdsContext: Fetching fresh ads for ${p}`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`🎯 AdsContext: Fetching fresh ads for ${p}`);
+          }
           const response = await adsAPI.getAds(p, 5);
-          console.log(`🎯 AdsContext: Response for ${p}:`, response);
-          
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`🎯 AdsContext: Response for ${p}:`, response);
+          }
+
           if (response.success) {
             setLastFetch(prev => ({ ...prev, [p]: Date.now() }));
-            console.log(`🎯 AdsContext: Found ${response.data.ads.length} ads for ${p}`);
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`🎯 AdsContext: Found ${response.data.ads.length} ads for ${p}`);
+            }
             return { placement: p, ads: response.data.ads };
           } else {
-            console.warn(`🎯 AdsContext: Failed to fetch ads for ${p}:`, response.message);
+            if (process.env.NODE_ENV === 'development') {
+              console.warn(`🎯 AdsContext: Failed to fetch ads for ${p}:`, response.message);
+            }
             return { placement: p, ads: [] };
           }
         } catch (err) {
@@ -124,14 +138,18 @@ export const AdsProvider: React.FC<AdsProviderProps> = ({ children }) => {
   const trackClick = async (adId: string) => {
     try {
       await adsAPI.trackClick(adId);
-      console.log(`Tracked click for ad ${adId}`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Tracked click for ad ${adId}`);
+      }
     } catch (err) {
       console.error('Error tracking ad click:', err);
     }
   };
 
   const forceRefreshAds = async (placement?: string) => {
-    console.log('🎯 AdsContext: Force refreshing ads...');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🎯 AdsContext: Force refreshing ads...');
+    }
     setLastFetch({}); // Clear cache
     await refreshAds(placement, true);
   };
@@ -146,7 +164,9 @@ export const AdsProvider: React.FC<AdsProviderProps> = ({ children }) => {
       const settings = event.detail;
       setPlaceholderVisible(settings.global !== undefined ? settings.global : true);
       setPlaceholderSettings(settings.placements || {});
-      console.log('🎯 AdsContext: Placeholder settings updated:', settings);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🎯 AdsContext: Placeholder settings updated:', settings);
+      }
     };
     
     window.addEventListener('placeholderSettingsChanged', handlePlaceholderSettingsChange as EventListener);

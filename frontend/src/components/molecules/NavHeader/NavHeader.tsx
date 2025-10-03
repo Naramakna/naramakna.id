@@ -13,6 +13,32 @@ export const NavHeader: React.FC<NavHeaderProps> = ({ className = '' }) => {
   const { isAuthenticated, isLoading, user, logout } = useAuth();
 
   // Get appropriate dashboard URL based on user role
+  const getActionButton = () => {
+    if (!isAuthenticated) {
+      return {
+        href: '/tulis',
+        text: 'Buat Tulisan'
+      };
+    }
+
+    switch (user?.user_role) {
+      case 'partner_fotografi':
+        return {
+          href: '/partner-fotografi/dashboard',
+          text: 'Tambahkan Foto ke Galeri'
+        };
+      case 'writer':
+      case 'admin':
+      case 'superadmin':
+      default:
+        return {
+          href: '/tulis',
+          text: 'Buat Tulisan'
+        };
+    }
+  };
+
+  const actionButton = getActionButton();
   const getDashboardUrl = () => {
     if (!user) return '/dashboard';
     
@@ -31,9 +57,9 @@ export const NavHeader: React.FC<NavHeaderProps> = ({ className = '' }) => {
   // Handle logout for mobile menu
   const handleLogout = async () => {
     try {
-      console.log('🔄 Starting logout process...');
+      // Starting logout process
       await logout();
-      console.log('✅ Logout successful, redirecting...');
+      // Logout successful, redirecting
       window.location.href = '/';
     } catch (error) {
       console.error('❌ Logout failed:', error);
@@ -74,10 +100,10 @@ export const NavHeader: React.FC<NavHeaderProps> = ({ className = '' }) => {
                 <div className="flex items-center space-x-2">
                   <ProfileBadge />
                   <a
-                    href="/tulis"
+                    href={actionButton.href}
                     className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg transition-all duration-200 text-xs"
                   >
-                    Buat Tulisan
+                    {actionButton.text}
                   </a>
                 </div>
               ) : (
@@ -89,11 +115,11 @@ export const NavHeader: React.FC<NavHeaderProps> = ({ className = '' }) => {
                   >
                     Masuk
                   </a>
-                  <a 
-                    href="/tulis"
+                  <a
+                    href={actionButton.href}
                     className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white font-medium rounded-lg transition-all duration-200 text-xs"
                   >
-                    Buat Tulisan
+                    {actionButton.text}
                   </a>
                 </>
               )}
@@ -149,8 +175,8 @@ export const NavHeader: React.FC<NavHeaderProps> = ({ className = '' }) => {
                 {/* Conditional mobile menu items */}
                 {isAuthenticated ? (
                   <>
-                    <a href="/tulis" className="block px-3 py-2 text-sm font-medium text-white bg-yellow-500 hover:bg-yellow-600 rounded-md transition-colors duration-200 mb-2">
-                      Buat Tulisan
+                    <a href={actionButton.href} className="block px-3 py-2 text-sm font-medium text-white bg-yellow-500 hover:bg-yellow-600 rounded-md transition-colors duration-200 mb-2">
+                      {actionButton.text}
                     </a>
                     <a href={user?.user_login ? `/${user.user_login}` : '/profile'} className="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-yellow-500 hover:bg-gray-100 rounded-md transition-colors duration-200">
                       Profil Saya
@@ -175,8 +201,8 @@ export const NavHeader: React.FC<NavHeaderProps> = ({ className = '' }) => {
                     <a href="/login" className="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-yellow-500 hover:bg-gray-100 rounded-md transition-colors duration-200">
                       Masuk
                     </a>
-                    <a href="/tulis" className="block px-3 py-2 text-sm font-medium text-white bg-yellow-500 hover:bg-yellow-600 rounded-md transition-colors duration-200">
-                      Buat Tulisan
+                    <a href={actionButton.href} className="block px-3 py-2 text-sm font-medium text-white bg-yellow-500 hover:bg-yellow-600 rounded-md transition-colors duration-200">
+                      {actionButton.text}
                     </a>
                   </>
                 )}

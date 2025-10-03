@@ -94,7 +94,7 @@ export const adsAPI = {
   // Fetch ads for specific placement
   async getAds(placement: string = 'regular', limit: number = 5): Promise<AdsResponse> {
     const backendPlacement = mapPlacementToBackend(placement);
-    console.log(`🎯 Mapping placement: "${placement}" -> "${backendPlacement}"`);
+    // Mapping placement for backend
     
     const queryParams = new URLSearchParams({
       placement: backendPlacement,

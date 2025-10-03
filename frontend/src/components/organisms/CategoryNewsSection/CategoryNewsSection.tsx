@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useContent } from '../../../hooks/useContent';
 import type { Article } from '../../../services/api/articles';
 import { getCategorySlug, decodeHtmlEntities } from '../../../utils/categorySlugMapping';
+import { buildApiUrl } from '../../../config/api';
 
 interface NewsItem {
   id: string;
@@ -27,6 +28,27 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
   newsItems = [],
   className = ''
 }) => {
+  const [viewsCountEnabled, setViewsCountEnabled] = useState(true);
+
+  // Fetch views count setting
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch(buildApiUrl('settings/public'));
+        const result = await response.json();
+
+        if (result.success) {
+          setViewsCountEnabled(result.data.show_views_count);
+        }
+      } catch (error) {
+        console.error('Error fetching views count setting:', error);
+        setViewsCountEnabled(true);
+      }
+    };
+
+    fetchSettings();
+  }, []);
+
   // Fetch real data from API
   const { data: apiArticles, loading, error } = useContent({
     limit: 10,
@@ -132,13 +154,15 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
   }
 
   // Debug logging
-  console.log(`CategoryNewsSection [${category}]:`, {
-    loading,
-    error,
-    apiArticles: apiArticles.length,
-    displayNewsItems: displayNewsItems.length,
-    fallback: displayNewsItems === defaultNewsItems
-  });
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`CategoryNewsSection [${category}]:`, {
+      loading,
+      error,
+      apiArticles: apiArticles.length,
+      displayNewsItems: displayNewsItems.length,
+      fallback: displayNewsItems === defaultNewsItems
+    });
+  }
 
   // Determine display name for category and decode HTML entities
   const rawDisplayName = categoryDisplayName || 
@@ -183,7 +207,7 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
           <svg className="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
           </svg>
-          {item.true && (
+          {viewsCountEnabled && (
             <>
               <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -272,7 +296,7 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
                   <svg className="w-4 h-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
-                  {true && (
+                  {viewsCountEnabled && (
                     <>
                       <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />

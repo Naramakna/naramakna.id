@@ -155,20 +155,16 @@ export const articlesAPI = {
     // Try smart trending first, fallback to old trending
     try {
       const smartUrl = buildApiUrl(`trending/articles?${queryParams}`);
-      console.log('🚀 articlesAPI.getTrending: Trying smart trending API first');
-      console.log('🌐 Smart trending URL:', smartUrl);
+      // Trying smart trending API first
+      // Smart trending URL prepared
       const smartResponse = await fetch(smartUrl);
-      console.log('📡 Smart trending response status:', smartResponse.status);
+      // Smart trending response received
       const smartResult = await smartResponse.json();
       
-      console.log('🚀 Smart trending response:', { 
-        success: smartResult.success, 
-        postsCount: smartResult.data?.posts?.length || 0,
-        criteria: smartResult.data?.criteria 
-      });
+      // Smart trending response processed
       
       if (smartResult.success && smartResult.data.posts && smartResult.data.posts.length > 0) {
-        console.log('✅ Using smart trending data, first article:', smartResult.data.posts[0]);
+        // Using smart trending data
         // Convert smart trending format to expected format
         return {
           success: true,
@@ -192,10 +188,10 @@ export const articlesAPI = {
           }
         };
       } else {
-        console.log('❌ Smart trending failed or no data, falling back to old trending');
+        // Smart trending failed, falling back
       }
     } catch (smartError) {
-      console.warn('Smart trending fallback failed, using original trending:', smartError);
+      // Smart trending fallback failed
     }
     
     // Fallback to original trending endpoint

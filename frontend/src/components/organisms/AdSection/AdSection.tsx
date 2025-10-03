@@ -55,7 +55,9 @@ export const AdSection: React.FC<AdSectionProps> = ({
     
     // Only log when ads change
     if (allAds.length > 0) {
-      console.log(`🎯 AdSection: Available ads for [${adPlacements.join(', ')}]:`, allAds.length, 'ads');
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🎯 AdSection: Available ads for [${adPlacements.join(', ')}]:`, allAds.length, 'ads');
+      }
     }
     return allAds;
   }, [getAdsForPlacement, adPlacements]);
@@ -115,7 +117,9 @@ export const AdSection: React.FC<AdSectionProps> = ({
     const ad = activeAds[currentAdIndex];
     if (ad) {
       const placementInfo = (ad as any)._originalPlacement || adPlacements.join(', ');
-      console.log(`🎯 AdSection: Showing ad ${currentAdIndex + 1}/${activeAds.length} for [${placementInfo}]:`, ad.campaign_name);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🎯 AdSection: Showing ad ${currentAdIndex + 1}/${activeAds.length} for [${placementInfo}]:`, ad.campaign_name);
+      }
     }
     return ad;
   }, [activeAds, currentAdIndex, adPlacements]);

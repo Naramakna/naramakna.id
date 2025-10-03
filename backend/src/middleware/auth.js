@@ -7,7 +7,12 @@ const authenticate = async (req, res, next) => {
   try {
     const token = getTokenFromRequest(req);
     
-    console.log('🔍 Auth Debug - Token:', token ? 'Present' : 'Missing');
+    // Debug logging only in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Auth Debug - Token:', token ? 'Present' : 'Missing');
+      console.log('🔍 Auth Debug - Cookies:', Object.keys(req.cookies || {}));
+      console.log('🔍 Auth Debug - Headers auth:', req.headers.authorization ? 'Present' : 'Missing');
+    }
     
     if (!token) {
       return res.status(401).json({
@@ -17,10 +22,14 @@ const authenticate = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('🔍 Auth Debug - Decoded JWT:', decoded);
-    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Auth Debug - Decoded JWT:', decoded);
+    }
+
     const user = await User.findByPk(decoded.id);
-    console.log('🔍 Auth Debug - User lookup result:', user ? `Found ID=${user.ID}` : 'Not found');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Auth Debug - User lookup result:', user ? `Found ID=${user.ID}` : 'Not found');
+    }
 
     if (!user) {
       return res.status(401).json({
@@ -29,27 +38,40 @@ const authenticate = async (req, res, next) => {
       });
     }
 
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Auth Debug - User status:', user.user_status);
+      console.log('🔍 Auth Debug - User role:', user.user_role);
+      console.log('🔍 Auth Debug - User isLocked?:', typeof user.isLocked === 'function' ? user.isLocked() : 'isLocked not a function');
+    }
+
     // Allow suspended users to login (they just can't post)
     // Only block if truly inactive or banned
-    if (user.user_status === 'inactive' || user.user_status === 'banned' || user.isLocked()) {
-      console.log('🔍 Auth Debug - User blocked:', user.user_status);
+    if (user.user_status === 'inactive' || user.user_status === 'banned' || (typeof user.isLocked === 'function' && user.isLocked())) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Auth Debug - User blocked:', user.user_status);
+      }
       return res.status(401).json({
         success: false,
-        message: user.user_status === 'banned' ? 'Account is banned' : 
-                user.isLocked() ? 'Account is temporarily locked' : 'Account is inactive'
+        message: user.user_status === 'banned' ? 'Account is banned' :
+                (typeof user.isLocked === 'function' && user.isLocked()) ? 'Account is temporarily locked' : 'Account is inactive'
       });
     }
-    
+
     // Email verification is optional (disabled by default)
     if (!user.email_verified && process.env.REQUIRE_EMAIL_VERIFICATION === 'true') {
-      console.log('🔍 Auth Debug - Email not verified');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 Auth Debug - Email not verified');
+      }
       return res.status(401).json({
         success: false,
         message: 'Please verify your email address'
       });
     }
 
-    console.log('🔍 Auth Debug - Setting req.user:', { ID: user.ID, login: user.user_login, role: user.user_role });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 Auth Debug - Setting req.user:', { ID: user.ID, login: user.user_login, role: user.user_role });
+      console.log('🔍 Auth Debug - Authentication SUCCESS - calling next()');
+    }
     req.user = user;
     next();
   } catch (error) {
@@ -101,8 +123,8 @@ const optionalAuth = async (req, res, next) => {
 // Role-based authorization middleware
 const authorize = (...roles) => {
   return (req, res, next) => {
-    console.log('🔍 Authorize Debug - req.user:', req.user ? `ID=${req.user.ID}, role=${req.user.user_role}` : 'Not set');
-    console.log('🔍 Authorize Debug - Required roles:', roles);
+    // console.log('🔍 Authorize Debug - req.user:', req.user ? `ID=${req.user.ID}, role=${req.user.user_role}` : 'Not set');
+    // console.log('🔍 Authorize Debug - Required roles:', roles);
     
     if (!req.user) {
       return res.status(401).json({
@@ -203,6 +225,28 @@ const requireAdmin = authorize(USER_ROLES.ADMIN, USER_ROLES.SUPERADMIN);
 
 // Middleware for superadmin only
 const requireSuperAdmin = authorize(USER_ROLES.SUPERADMIN);
+
+// Middleware for partner fotografi
+const requirePartnerFotografi = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required'
+    });
+  }
+
+  // Allow admin, superadmin, and partner_fotografi roles
+  if (!['admin', 'superadmin', 'partner_fotografi'].includes(req.user.user_role)) {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied. Partner fotografi role required.',
+      required_roles: ['partner_fotografi', 'admin', 'superadmin'],
+      user_role: req.user.user_role
+    });
+  }
+
+  next();
+};
 
 // Helper function to extract token from request
 function getTokenFromRequest(req) {
@@ -352,6 +396,7 @@ module.exports = {
   requireWriter,
   requireAdmin,
   requireSuperAdmin,
+  requirePartnerFotografi,
   authRateLimit,
   getTokenFromRequest,
   canPost,

@@ -1,7 +1,8 @@
-  import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Carousel } from '../../molecules/Carousel';
 import { TrendingSection } from '../TrendingSection';
 import { useContent } from '../../../hooks/useContent';
+import { buildApiUrl } from '../../../config/api';
 import type { Article } from '../../../services/api/articles';
 
 interface CarouselArticle {
@@ -24,6 +25,27 @@ export const MainContentSection: React.FC<MainContentSectionProps> = ({
   articles = [],
   className = ''
 }) => {
+  const [viewsCountEnabled, setViewsCountEnabled] = useState(true);
+
+  // Fetch views count setting
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch(buildApiUrl('settings/public'));
+        const result = await response.json();
+
+        if (result.success) {
+          setViewsCountEnabled(result.data.show_views_count);
+        }
+      } catch (error) {
+        console.error('Error fetching views count setting:', error);
+        setViewsCountEnabled(true);
+      }
+    };
+
+    fetchSettings();
+  }, []);
+
   // Fetch data dari API
   const { data: apiArticles, loading, error } = useContent({
     limit: 6,
@@ -55,7 +77,9 @@ export const MainContentSection: React.FC<MainContentSectionProps> = ({
     };
     
     // Debug the href to ensure it's properly set
-    console.log('🔗 Carousel article href:', result.href, 'for article:', article.title);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔗 Carousel article href:', result.href, 'for article:', article.title);
+    }
     
     return result;
   };
@@ -192,7 +216,7 @@ export const MainContentSection: React.FC<MainContentSectionProps> = ({
                     <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
-                    {true && (
+                    {viewsCountEnabled && (
                       <>
                         <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -250,7 +274,7 @@ export const MainContentSection: React.FC<MainContentSectionProps> = ({
                       <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
-                      {true && (
+                      {viewsCountEnabled && (
                         <>
                           <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />

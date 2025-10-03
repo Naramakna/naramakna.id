@@ -9,10 +9,10 @@ export const Polling: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Navbar */}
       <Navbar />
-      
+
       {/* Header Ad Section */}
       <AdSection />
-      
+
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12 py-8">
         {/* Page Title */}
@@ -24,7 +24,7 @@ export const Polling: React.FC = () => {
             Berikan suara dan lihat pendapat masyarakat
           </p>
         </div>
-        
+
         {/* Polling Gallery */}
         <PollingGallery />
       </div>

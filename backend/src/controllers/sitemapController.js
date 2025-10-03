@@ -24,11 +24,11 @@ const generateSitemap = async (req, res) => {
     let categories = [];
     try {
       categories = await sequelize.query(`
-        SELECT 
+        SELECT
           t.slug,
           t.name
-        FROM wp_terms t
-        INNER JOIN wp_term_taxonomy tt ON t.term_id = tt.term_id
+        FROM terms t
+        INNER JOIN term_taxonomy tt ON t.term_id = tt.term_id
         WHERE tt.taxonomy = 'category'
         ORDER BY t.name
         LIMIT 50

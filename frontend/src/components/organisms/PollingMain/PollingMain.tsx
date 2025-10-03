@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { PollingItem } from '../../atoms/PollingItem';
 import { usePolling } from '../../../hooks/usePolling';
+import { useSettings } from '../../../hooks/useSettings';
 import type { Poll } from '../../../services/api/polling';
 
 interface PollingMainProps {
@@ -13,8 +14,21 @@ export const PollingMain: React.FC<PollingMainProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Fetch polling data
+  // Check if polling is enabled with error handling
+  const { settings, loading: settingsLoading, error: settingsError } = useSettings();
+
+  // Fetch polling data (must be called unconditionally)
   const { polls, loading, error } = usePolling(10);
+
+  // Don't render anything if polling is disabled or there's an error loading settings
+  if (settingsError || (settings && settings.enable_polling === false)) {
+    return null;
+  }
+
+  // Don't render while settings are loading to avoid flash
+  if (settingsLoading) {
+    return null;
+  }
 
   // Dummy data untuk fallback when no API data
   const defaultPolls: Poll[] = [

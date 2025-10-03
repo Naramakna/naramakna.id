@@ -26,8 +26,10 @@ export const DynamicCategorySections: React.FC<DynamicCategorySectionsProps> = (
   const uniqueCategories = Object.values(
     categories.reduce((acc, category) => {
       const existing = acc[category.slug];
-      // If it doesn't exist, or if the new one has a "better" name (not identical to slug)
-      if (!existing || (category.name !== category.slug && existing.name === existing.slug)) {
+      // If it doesn't exist, or if the new one has more posts, or if the new one has a "better" name (not identical to slug) and same post count
+      if (!existing ||
+          category.count > existing.count ||
+          (category.count === existing.count && category.name !== category.slug && existing.name === existing.slug)) {
         acc[category.slug] = category;
       }
       return acc;

@@ -41,6 +41,15 @@ interface CategoryPageData {
 const CategoryPage: React.FC = () => {
   // Extract slug from URL manually (similar to SimpleRouter approach)
   const slug = window.location.pathname.match(/^\/kategori\/([a-zA-Z0-9\-]+)$/)?.[1];
+
+  // Helper function to capitalize each word and handle dashes
+  const toTitleCase = (str: string) => {
+    return str
+      .replace(/-/g, ' ') // Replace dashes with spaces first
+      .replace(/\w\S*/g, (txt) =>
+        txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+      );
+  };
   
   const [data, setData] = useState<CategoryPageData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -152,7 +161,7 @@ const CategoryPage: React.FC = () => {
         <div className="container mx-auto px-4 py-8">
           <div className="text-center py-16">
             <h1 className="text-3xl font-bold text-gray-900 mb-4">
-              Kategori: {data?.category.name || slug}
+              Kategori: {data?.category.name ? toTitleCase(data.category.name) : toTitleCase(slug || '')}
             </h1>
             <p className="text-gray-600 text-lg">
               Belum ada artikel dalam kategori ini.
@@ -180,10 +189,10 @@ const CategoryPage: React.FC = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            {data.category.name}
+            {toTitleCase(data.category.name)}
           </h1>
           <p className="text-gray-600">
-            {data.pagination.total} artikel ditemukan
+            {data.pagination.total} Artikel ditemukan
           </p>
         </div>
       </div>

@@ -2,6 +2,7 @@ const { Post, PostMeta, User, sequelize } = require('../models');
 const { QueryTypes } = require('sequelize');
 const { Op } = require('sequelize');
 const path = require('path');
+const ContentController = require('./contentController');
 
 class WriterController {
   /**
@@ -271,7 +272,10 @@ class WriterController {
 
       // Add image captions if provided
       if (image_captions && typeof image_captions === 'object') {
+        console.log(`📸 [CREATE] Saving image captions for post ${post.ID}:`, Object.keys(image_captions).length, 'images');
         metaData.push({ post_id: post.ID, meta_key: '_image_captions', meta_value: JSON.stringify(image_captions) });
+      } else {
+        console.log(`📸 [CREATE] No image captions provided for post ${post.ID}. Type:`, typeof image_captions, 'Value:', image_captions);
       }
 
       await PostMeta.bulkCreate(metaData, { transaction });
@@ -359,11 +363,7 @@ class WriterController {
       // Update slug if title changed
       let slug = post.post_name;
       if (title && title !== post.post_title) {
-        slug = title
-          .toLowerCase()
-          .replace(/[^a-z0-9\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .substring(0, 50);
+        slug = await ContentController.generateUniqueSlug(title, post.ID);
       }
 
       // Determine new status based on user role and current post status
@@ -486,7 +486,10 @@ class WriterController {
 
       // Add image captions if provided
       if (image_captions && typeof image_captions === 'object') {
+        console.log(`📸 [UPDATE] Saving image captions for post ${post.ID}:`, Object.keys(image_captions).length, 'images');
         metaUpdates.push({ key: '_image_captions', value: JSON.stringify(image_captions) });
+      } else {
+        console.log(`📸 [UPDATE] No image captions provided for post ${post.ID}. Type:`, typeof image_captions, 'Value:', image_captions);
       }
 
       for (const meta of metaUpdates) {
@@ -749,7 +752,7 @@ class WriterController {
    */
   static async uploadImage(req, res) {
     const transaction = await sequelize.transaction();
-    
+
     try {
       if (!req.files || !req.files.image) {
         await transaction.rollback();

@@ -238,6 +238,101 @@ class LikesController {
     }
   }
 
+  // Get posts liked by user
+  static async getUserLikedPosts(req, res) {
+    try {
+      const userId = req.user.ID;
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const offset = (page - 1) * limit;
+
+      // Get posts liked by user with post details
+      const { count, rows: likedPosts } = await PostLikes.findAndCountAll({
+        where: { user_id: userId },
+        include: [{
+          model: Post,
+          as: 'post',
+          where: {
+            post_status: 'publish',
+            post_type: 'post'
+          },
+          attributes: ['ID', 'post_title', 'post_content', 'post_excerpt', 'post_name', 'post_date', 'post_author', 'like_count'],
+          include: [{
+            model: User,
+            as: 'author',
+            attributes: ['ID', 'display_name', 'user_login']
+          }]
+        }],
+        order: [['created_at', 'DESC']],
+        limit: limit,
+        offset: offset
+      });
+
+      // Get Analytics model for view counts
+      const { Analytics } = require('../models');
+
+      // Get view counts from Analytics table for all liked posts
+      const postIds = likedPosts.map(like => like.post.ID);
+      const viewCounts = {};
+
+      if (postIds.length > 0) {
+        const analyticsData = await Analytics.findAll({
+          attributes: [
+            'content_id',
+            [require('sequelize').fn('COUNT', require('sequelize').col('id')), 'view_count']
+          ],
+          where: {
+            content_id: postIds,
+            event_type: 'view'
+          },
+          group: ['content_id']
+        });
+
+        analyticsData.forEach(item => {
+          viewCounts[item.content_id] = parseInt(item.dataValues.view_count) || 0;
+        });
+      }
+
+      // Format the response
+      const formattedPosts = likedPosts.map(like => ({
+        id: like.post.ID,
+        title: like.post.post_title,
+        excerpt: like.post.post_excerpt || like.post.post_content.substring(0, 150) + '...',
+        slug: like.post.post_name,
+        date: like.post.post_date,
+        author: {
+          id: like.post.author.ID,
+          name: like.post.author.display_name,
+          login: like.post.author.user_login
+        },
+        like_count: like.post.like_count || 0,
+        view_count: viewCounts[like.post.ID] || 0,
+        liked_at: like.created_at
+      }));
+
+      res.json({
+        success: true,
+        data: {
+          posts: formattedPosts,
+          pagination: {
+            total: count,
+            page: page,
+            limit: limit,
+            totalPages: Math.ceil(count / limit)
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Error getting user liked posts:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get liked posts',
+        error: error.message
+      });
+    }
+  }
+
 }
 
 module.exports = LikesController;

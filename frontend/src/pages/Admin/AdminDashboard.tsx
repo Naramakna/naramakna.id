@@ -7,7 +7,9 @@ import { DataTable } from '../../components/organisms/DataTable';
 import { AdminPolling } from './AdminPolling';
 import { AdminAds } from './AdminAds';
 import { AdminArticles } from './AdminArticles';
+import { DeletePosts } from '../../components/organisms/DeletePosts';
 import ScheduledPosts from '../../components/organisms/ScheduledPosts/ScheduledPosts';
+import { AdminMataElang } from './AdminMataElang';
 import { buildApiUrl } from '../../config/api';
 
 
@@ -177,6 +179,8 @@ const AdminDashboard: React.FC = () => {
                 { id: 'pending-posts', name: 'Pending Posts', count: pendingPosts.length },
                 { id: 'scheduled-posts', name: 'Scheduled Posts', count: scheduledPosts.length },
                 { id: 'articles', name: 'Articles Management' },
+                { id: 'delete-posts', name: 'Hapus Postingan' },
+                { id: 'mata-elang', name: 'Mata Elang Gallery' },
                 { id: 'polling', name: 'Polling Management' },
                 { id: 'ads', name: 'Ads Management' },
               ]}
@@ -369,9 +373,21 @@ const AdminDashboard: React.FC = () => {
             </div>
           )}
 
+          {activeTab === 'delete-posts' && (
+            <div className="p-6">
+              <DeletePosts />
+            </div>
+          )}
+
           {activeTab === 'ads' && (
             <div className="p-6">
               <AdminAds />
+            </div>
+          )}
+
+          {activeTab === 'mata-elang' && (
+            <div className="p-6">
+              <AdminMataElang />
             </div>
           )}
 

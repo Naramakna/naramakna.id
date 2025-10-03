@@ -45,9 +45,9 @@ export const ProfileBadge: React.FC<ProfileBadgeProps> = ({ className = '' }) =>
 
   const handleLogout = async () => {
     try {
-      console.log('🔄 Starting logout process...');
+      // Starting logout process
       await logout();
-      console.log('✅ Logout successful, redirecting...');
+      // Logout successful
       window.location.href = '/';
     } catch (error) {
       console.error('❌ Logout failed:', error);
@@ -71,6 +71,7 @@ export const ProfileBadge: React.FC<ProfileBadgeProps> = ({ className = '' }) =>
     switch (role) {
       case 'user': return 'User';
       case 'writer': return 'Writer';
+      case 'partner_fotografi': return 'Partner Fotografi';
       case 'admin': return 'Admin';
       case 'superadmin': return 'Super Admin';
       default: return 'User';
@@ -81,6 +82,7 @@ export const ProfileBadge: React.FC<ProfileBadgeProps> = ({ className = '' }) =>
     switch (role) {
       case 'user': return 'bg-gray-100 text-gray-800';
       case 'writer': return 'bg-blue-100 text-blue-800';
+      case 'partner_fotografi': return 'bg-yellow-100 text-yellow-800';
       case 'admin': return 'bg-green-100 text-green-800';
       case 'superadmin': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -105,7 +107,7 @@ export const ProfileBadge: React.FC<ProfileBadgeProps> = ({ className = '' }) =>
               alt={user.display_name}
               className="w-full h-full rounded-full object-cover"
               onError={(e) => {
-                console.log('ProfileBadge image failed to load:', user.profile_image);
+                // Profile image failed to load
                 e.currentTarget.style.display = 'none';
               }}
             />
@@ -150,7 +152,7 @@ export const ProfileBadge: React.FC<ProfileBadgeProps> = ({ className = '' }) =>
                     alt={user.display_name}
                     className="w-full h-full rounded-full object-cover"
                     onError={(e) => {
-                      console.log('ProfileBadge dropdown image failed to load:', user.profile_image);
+                      // Dropdown image failed to load
                       e.currentTarget.style.display = 'none';
                     }}
                   />
@@ -214,9 +216,9 @@ export const ProfileBadge: React.FC<ProfileBadgeProps> = ({ className = '' }) =>
               </div>
             </a>
 
-            {(user.user_role === 'writer' || user.user_role === 'admin' || user.user_role === 'superadmin') && (
+            {(user.user_role === 'writer' || user.user_role === 'admin' || user.user_role === 'superadmin' || user.user_role === 'partner_fotografi') && (
               <a
-                href={`/${user.user_role}/dashboard`}
+                href={user.user_role === 'partner_fotografi' ? '/partner-fotografi/dashboard' : `/${user.user_role}/dashboard`}
                 onClick={() => setIsDropdownOpen(false)}
                 className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
               >

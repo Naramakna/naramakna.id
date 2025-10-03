@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { buildApiUrl } from '../../../config/api';
 
 interface TrendingItemProps {
   title: string;
@@ -19,7 +20,26 @@ export const TrendingItem: React.FC<TrendingItemProps> = ({
   className = '',
   views
 }) => {
-  const viewsCountEnabled = true; // Default enabled
+  const [viewsCountEnabled, setViewsCountEnabled] = useState(true);
+
+  // Fetch views count setting
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch(buildApiUrl('settings/public'));
+        const result = await response.json();
+
+        if (result.success) {
+          setViewsCountEnabled(result.data.show_views_count);
+        }
+      } catch (error) {
+        console.error('Error fetching views count setting:', error);
+        setViewsCountEnabled(true);
+      }
+    };
+
+    fetchSettings();
+  }, []);
   const handleClick = () => {
     if (href) {
       window.location.href = href;

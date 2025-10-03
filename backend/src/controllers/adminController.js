@@ -50,10 +50,10 @@ class AdminController {
         transaction
       });
 
-      // Update user's posts to mark as deleted author
+      // Update user's posts to mark as deleted author (assign to admin user ID 1)
       await Post.update(
-        { 
-          post_author: null,
+        {
+          post_author: 1, // Assign to admin instead of null
           post_title: `[DELETED USER] ${new Date().toISOString().split('T')[0]} - ` + sequelize.col('post_title')
         },
         { 
@@ -62,12 +62,12 @@ class AdminController {
         }
       );
 
-      // Update user's comments to mark as deleted author
+      // Update user's comments to mark as deleted author (assign to admin)
       await Comment.update(
-        { 
+        {
           comment_author: '[DELETED USER]',
           comment_author_email: 'deleted@example.com',
-          user_id: null
+          user_id: 1 // Assign to admin instead of null
         },
         { 
           where: { user_id: id },
@@ -791,6 +791,96 @@ class AdminController {
   }
 
   /**
+   * Get polling settings
+   * GET /api/admin/settings/polling
+   */
+  static async getPollingSettings(req, res) {
+    try {
+      // Check if user is superadmin
+      if (!req.user || req.user.user_role !== 'superadmin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. SuperAdmin privileges required.'
+        });
+      }
+
+      const setting = await Option.findOne({
+        where: { option_name: 'enable_polling' }
+      });
+
+      const enablePolling = setting ? setting.option_value === 'true' : true;
+
+      res.json({
+        success: true,
+        data: {
+          enable_polling: enablePolling
+        }
+      });
+
+    } catch (error) {
+      console.error('Get polling setting error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  /**
+   * Toggle polling settings
+   * POST /api/admin/settings/polling/toggle
+   */
+  static async togglePollingSettings(req, res) {
+    try {
+      // Check if user is superadmin
+      if (!req.user || req.user.user_role !== 'superadmin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. SuperAdmin privileges required.'
+        });
+      }
+
+      const { enabled } = req.body;
+
+      // Find or create the setting
+      const [setting, created] = await Option.findOrCreate({
+        where: { option_name: 'enable_polling' },
+        defaults: {
+          option_name: 'enable_polling',
+          option_value: 'true',
+          autoload: 'yes'
+        }
+      });
+
+      // Update the setting
+      await setting.update({
+        option_value: enabled ? 'true' : 'false'
+      });
+
+      console.log(`📊 Polling ${enabled ? 'enabled' : 'disabled'} by ${req.user.user_login}`);
+
+      res.json({
+        success: true,
+        message: `Polling ${enabled ? 'enabled' : 'disabled'} successfully`,
+        data: {
+          enable_polling: enabled,
+          updated_by: req.user.user_login,
+          updated_at: new Date()
+        }
+      });
+
+    } catch (error) {
+      console.error('Toggle polling setting error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  /**
    * Get site settings for public use (no auth required)
    * GET /api/admin/settings/public
    */
@@ -800,18 +890,73 @@ class AdminController {
         where: { option_name: 'show_analytics_button' }
       });
 
-      const showAnalyticsButton = analyticsButtonSetting ? 
+      const pollingSettings = await Option.findOne({
+        where: { option_name: 'enable_polling' }
+      });
+
+      const viewsCountSetting = await Option.findOne({
+        where: { option_name: 'show_views_count' }
+      });
+
+      const showAnalyticsButton = analyticsButtonSetting ?
         analyticsButtonSetting.option_value === 'true' : true;
+
+      const enablePolling = pollingSettings ?
+        pollingSettings.option_value === 'true' : true;
+
+      const showViewsCount = viewsCountSetting ?
+        viewsCountSetting.option_value === 'true' : true;
 
       res.json({
         success: true,
         data: {
-          show_analytics_button: showAnalyticsButton
+          show_analytics_button: showAnalyticsButton,
+          enable_polling: enablePolling,
+          show_views_count: showViewsCount
         }
       });
 
     } catch (error) {
       console.error('Get public settings error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  /**
+   * Toggle views count display setting
+   * POST /api/settings/toggle-views-count
+   */
+  static async toggleViewsCount(req, res) {
+    try {
+      const { enabled } = req.body;
+
+      // Find or create the views count setting
+      const [setting, created] = await Option.findOrCreate({
+        where: { option_name: 'show_views_count' },
+        defaults: {
+          option_name: 'show_views_count',
+          option_value: 'true'
+        }
+      });
+
+      // Update the setting
+      setting.option_value = enabled ? 'true' : 'false';
+      await setting.save();
+
+      res.json({
+        success: true,
+        data: {
+          views_count_enabled: enabled
+        },
+        message: `Views count display ${enabled ? 'enabled' : 'disabled'} successfully`
+      });
+
+    } catch (error) {
+      console.error('Toggle views count error:', error);
       res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -947,6 +1092,73 @@ class AdminController {
       res.status(500).json({
         success: false,
         message: 'Failed to categorize articles',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  /**
+   * SuperAdmin: Demote admin to user
+   * POST /api/superadmin/demote-admin/:userId
+   */
+  static async demoteAdmin(req, res) {
+    try {
+      const { userId } = req.params;
+
+      // Check if user is superadmin
+      if (!req.user || req.user.user_role !== 'superadmin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. SuperAdmin privileges required.'
+        });
+      }
+
+      // Find the target user
+      const targetUser = await User.findByPk(userId);
+      if (!targetUser) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      // Check if target user is actually an admin
+      if (targetUser.user_role !== 'admin') {
+        return res.status(400).json({
+          success: false,
+          message: 'User is not an admin'
+        });
+      }
+
+      // Prevent demoting self
+      if (parseInt(userId) === req.user.ID) {
+        return res.status(400).json({
+          success: false,
+          message: 'You cannot demote yourself'
+        });
+      }
+
+      // Demote admin to user
+      await targetUser.update({
+        user_role: 'user'
+      });
+
+      res.json({
+        success: true,
+        message: `Admin ${targetUser.display_name} has been demoted to user`,
+        data: {
+          user_id: targetUser.ID,
+          display_name: targetUser.display_name,
+          previous_role: 'admin',
+          new_role: 'user'
+        }
+      });
+
+    } catch (error) {
+      console.error('Demote admin error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to demote admin',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }

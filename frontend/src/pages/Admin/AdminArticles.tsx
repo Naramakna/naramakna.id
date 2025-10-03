@@ -105,7 +105,7 @@ export const AdminArticles: React.FC = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(buildApiUrl('content/categories?mainCategoriesOnly=true'), {
+      const response = await fetch(buildApiUrl('content/categories?limit=100'), {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -115,7 +115,15 @@ export const AdminArticles: React.FC = () => {
 
       const data = await response.json();
       if (data.success) {
-        setCategories(data.data.categories);
+        // Filter to only show categories (those with 'category' in taxonomy field)
+        const categoryList = data.data.categories.filter((cat: any) =>
+          cat.taxonomy && cat.taxonomy.includes('category')
+        );
+
+        // Sort categories by name for better UX
+        categoryList.sort((a: any, b: any) => a.name.localeCompare(b.name));
+
+        setCategories(categoryList);
       }
     } catch (error) {
       console.error('Error fetching categories:', error);

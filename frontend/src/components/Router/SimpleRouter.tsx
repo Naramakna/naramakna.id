@@ -10,7 +10,6 @@ import ProfileViewPage from '../../pages/Profile/ProfileViewPage';
 import AdminDashboard from '../../pages/Admin/AdminDashboard';
 import SuperAdminDashboard from '../../pages/Admin/SuperAdminDashboard';
 import { AdminTikTok } from '../../pages/Admin/AdminTikTok';
-import { AdminYouTube } from '../../pages/Admin/AdminYouTube';
 import { AdminGoogleAds } from '../../pages/Admin/AdminGoogleAds';
 import WriterDashboard from '../../pages/Writer/WriterDashboard';
 import UserDashboard from '../../pages/User/UserDashboard';
@@ -31,6 +30,8 @@ import AuthSuccessPage from '../../pages/Auth/AuthSuccessPage';
 import AuthErrorPage from '../../pages/Auth/AuthErrorPage';
 import { TermsOfService } from '../../pages/TermsOfService';
 import { PrivacyPolicy } from '../../pages/PrivacyPolicy';
+import { MataElangPage, GalleryDetailPage } from '../../pages/MataElang';
+import PartnerFotografiDashboard from '../../pages/PartnerFotografi/PartnerFotografiDashboard';
 
 // Component for async username validation
 const AsyncUsernameRoute: React.FC<{ username: string }> = ({ username }) => {
@@ -40,11 +41,15 @@ const AsyncUsernameRoute: React.FC<{ username: string }> = ({ username }) => {
   useEffect(() => {
     const validateUsername = async () => {
       try {
-        console.log('🔍 AsyncUsernameRoute: Validating username:', username);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 AsyncUsernameRoute: Validating username:', username);
+        }
         
         // Basic validation first
         if (!username || username.length < 3 || username.length > 30) {
-          console.log('❌ Basic validation failed for username:', username);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('❌ Basic validation failed for username:', username);
+          }
           setUserExists(false);
           setIsValidating(false);
           return;
@@ -52,17 +57,25 @@ const AsyncUsernameRoute: React.FC<{ username: string }> = ({ username }) => {
 
         // Check with backend
         const url = `/api/users/check/${encodeURIComponent(username)}`;
-        console.log('🌐 Fetching:', url);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🌐 Fetching:', url);
+        }
         const response = await fetch(url);
         const data = await response.json();
-        console.log('📡 Response:', data);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📡 Response:', data);
+        }
         
         if (data.success) {
           setUserExists(data.data.exists);
-          console.log(`✅ User exists: ${data.data.exists}`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`✅ User exists: ${data.data.exists}`);
+          }
         } else {
           setUserExists(false);
-          console.log('❌ API returned error');
+          if (process.env.NODE_ENV === 'development') {
+            console.log('❌ API returned error');
+          }
         }
       } catch (error) {
         console.error('❌ Error validating username:', error);
@@ -129,8 +142,6 @@ const SimpleRouter: React.FC = () => {
       return <AdminDashboard />;
     case '/admin/tiktok':
       return <AdminTikTok />;
-    case '/admin/youtube':
-      return <AdminYouTube />;
     case '/superadmin/dashboard/google-ads':
       return <AdminGoogleAds />;
     case '/superadmin/dashboard':
@@ -139,6 +150,9 @@ const SimpleRouter: React.FC = () => {
     case '/writer/dashboard':
     case '/writer':
       return <WriterDashboard />;
+    case '/partner-fotografi/dashboard':
+    case '/partner-fotografi':
+      return <PartnerFotografiDashboard />;
     case '/user/dashboard':
       return <UserDashboard />;
     case '/writer/new':
@@ -199,19 +213,37 @@ const SimpleRouter: React.FC = () => {
         // Valid category slugs (only allow main categories)
         const validCategories = [
           'narapandang', 'pelakon', 'laga-gaya', 'wahana', 'olah-bola',
-          'cerita-rasa', 'akal-budi', 'horison', 'jagat-kita',
-          'budaya', 'pendidikan', 'teknologi'
+          'cerita-rasa', 'mata-elang', 'horison', 'jagat-kita',
+          'budaya', 'pendidikan', 'teknologi', 'data-bicara', 'liputan-khusus'
         ];
-        
+
         const categorySlug = categoryMatch[1];
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 Category routing - path:', path, 'slug:', categorySlug, 'valid:', validCategories.includes(categorySlug));
+        }
+
         if (validCategories.includes(categorySlug)) {
+          // Special case for Mata Elang - redirect to dedicated gallery page
+          if (categorySlug === 'mata-elang') {
+            return <MataElangPage />;
+          }
           return <CategoryPage />;
         } else {
           // Invalid category, show 404
+          if (process.env.NODE_ENV === 'development') {
+            console.log('❌ Invalid category slug:', categorySlug);
+          }
           return <NotFound />;
         }
       }
-      
+
+      // Check if it's a Mata Elang gallery detail route (/mata-elang/:slug)
+      const mataElangMatch = path.match(/^\/mata-elang\/([a-zA-Z0-9\-]+)$/);
+      if (mataElangMatch) {
+        const gallerySlug = mataElangMatch[1];
+        return <GalleryDetailPage />;
+      }
+
       // Check if it's a username route (/@username or /username)
       // Now uses database validation instead of blacklists
       // Allow dashes anywhere in username, more flexible pattern

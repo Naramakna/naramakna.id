@@ -189,7 +189,7 @@ class AdsController {
       // Use current WIB time for ads comparison (convert to UTC for database comparison)
       const nowWIB = new Date(Date.now() + (7 * 60 * 60 * 1000));
       const nowUTC = new Date();
-      console.log(`🎯 AdsController: Serving ads for placement "${placement}" at ${nowWIB.toISOString()} WIB (UTC: ${nowUTC.toISOString()})`);
+      // console.log(`🎯 AdsController: Serving ads for placement "${placement}" at ${nowWIB.toISOString()} WIB (UTC: ${nowUTC.toISOString()})`);
 
       // Get active ads for the placement (database stores in UTC, so compare with UTC)
       const ads = await Advertisement.findAll({
@@ -220,18 +220,9 @@ class AdsController {
         attributes: ['id', 'campaign_name', 'status', 'start_date', 'end_date', 'placement_type', 'media_type']
       });
       
-      console.log(`🎯 AdsController: Found ${allAdsForPlacement.length} total ads for placement "${placement}":`, 
-        allAdsForPlacement.map(ad => ({
-          id: ad.id,
-          name: ad.campaign_name,
-          status: ad.status,
-          start: ad.start_date,
-          end: ad.end_date,
-          type: ad.media_type
-        }))
-      );
+      // console.log(`🎯 AdsController: Found ${allAdsForPlacement.length} total ads for placement "${placement}":`,
       
-      console.log(`🎯 AdsController: After date/status filtering: ${ads.length} ads for "${placement}"`);
+      // console.log(`🎯 AdsController: After date/status filtering: ${ads.length} ads for "${placement}"`);
 
       // Increment impressions
       if (ads.length > 0) {
@@ -310,7 +301,7 @@ class AdsController {
       const currentAdMode = currentAd?.rotation_mode || 'global';
       const currentAdDuration = currentAd?.rotation_duration || GLOBAL_ROTATION_SETTINGS[placement];
       
-      console.log(`🎯 AdsController: Rotation (${rotationMode}) - showing ad ${rotationIndex + 1}/${ads.length}: "${currentAd?.campaign_name}" (${currentAdMode} mode, ${currentAdDuration}${currentAdMode === 'global' ? 's' : 'min'})`);
+      // console.log(`🎯 AdsController: Rotation (${rotationMode}) - showing ad ${rotationIndex + 1}/${ads.length}: "${currentAd?.campaign_name}" (${currentAdMode} mode, ${currentAdDuration}${currentAdMode === 'global' ? 's' : 'min'})`);
 
       const formattedAds = ads.length > 0 ? [{
         id: currentAd.id,
@@ -802,7 +793,7 @@ class AdsController {
    */
   static async getActivePopupAd(req, res) {
     try {
-      console.log('🎯 Getting active popup ad for homepage');
+      // console.log('🎯 Getting active popup ad for homepage');
 
       // Use current WIB time for ads comparison (convert to UTC for database comparison)
       const nowWIB = new Date(Date.now() + (7 * 60 * 60 * 1000));
@@ -849,7 +840,7 @@ class AdsController {
         end_date: popupAd.end_date
       };
 
-      console.log('🎯 Found popup ad:', responseData.title);
+      // console.log('🎯 Found popup ad:', responseData.title);
 
       res.json({
         success: true,

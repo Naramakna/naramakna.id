@@ -11,6 +11,7 @@ interface FormData {
   phone_number: string;
   city: string;
   profession: string;
+  desired_role: string;
 }
 
 interface User {
@@ -23,9 +24,6 @@ interface ProfileFormProps {
   onSubmit: (e: React.FormEvent) => void;
   loading: boolean;
   user: User;
-  canApplyWriter: boolean;
-  onApplyWriter: () => void;
-  isApplyingWriter: boolean;
   isCriticalFieldDisabled: (fieldName: string) => boolean;
 }
 
@@ -35,9 +33,6 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
   onSubmit,
   loading,
   user,
-  canApplyWriter,
-  onApplyWriter,
-  isApplyingWriter,
   isCriticalFieldDisabled
 }) => {
   return (
@@ -138,6 +133,23 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
         placeholder="Profesi atau pekerjaan Anda"
       />
 
+      {/* Role Selection - Only for users with 'user' role */}
+      {user.user_role === 'user' && (
+        <ProfileFormField
+          label="Peran yang Diinginkan"
+          name="desired_role"
+          type="radio"
+          value={formData.desired_role}
+          onChange={onFormDataChange}
+          options={[
+            { value: 'user', label: 'Pembaca (tetap sebagai user biasa)' },
+            { value: 'writer', label: 'Penulis Artikel' },
+            { value: 'partner_fotografi', label: 'Partner Fotografi' }
+          ]}
+          helperText="Pilih peran yang sesuai dengan kontribusi yang ingin Anda berikan"
+        />
+      )}
+
       {/* Submit Button */}
       <div className="pt-6">
         <Button
@@ -150,30 +162,6 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
         </Button>
       </div>
 
-      {/* Apply Writer Button */}
-      {user.user_role === 'user' && canApplyWriter && (
-        <div className="pt-4 border-t border-gray-200">
-          <Button
-            type="button"
-            variant="success"
-            size="full"
-            onClick={onApplyWriter}
-            disabled={isApplyingWriter}
-          >
-            {isApplyingWriter ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Mengajukan...
-              </>
-            ) : (
-              'Daftar Jadi Penulis'
-            )}
-          </Button>
-        </div>
-      )}
       </form>
     </div>
   );

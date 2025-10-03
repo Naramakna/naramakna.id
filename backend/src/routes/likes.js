@@ -12,4 +12,7 @@ router.get('/posts/:postId/like-status', optionalAuth, LikesController.getLikeSt
 // Get post likers (admin only)
 router.get('/posts/:postId/likers', authenticate, LikesController.getPostLikers);
 
+// Get user's liked posts
+router.get('/user/liked-posts', authenticate, LikesController.getUserLikedPosts);
+
 module.exports = router;

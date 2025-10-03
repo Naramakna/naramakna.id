@@ -12,6 +12,8 @@ router.use(requireAdmin);
 // Settings Management (SuperAdmin only)
 router.get('/settings/analytics-button', AdminController.getAnalyticsButtonSetting);
 router.post('/settings/analytics-button/toggle', AdminController.toggleAnalyticsButtonSetting);
+router.get('/settings/polling', AdminController.getPollingSettings);
+router.post('/settings/polling/toggle', AdminController.togglePollingSettings);
 
 // User Management
 router.get('/users', AdminController.getAllUsers);

@@ -19,7 +19,7 @@ const GA_MEASUREMENT_ID = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-40CJJY40J
 export const initGA = (): void => {
   // Don't track in development
   if (import.meta.env.MODE !== 'production') {
-    console.log('GA tracking disabled in development');
+    // GA tracking disabled in development
     return;
   }
 
@@ -42,7 +42,9 @@ export const initGA = (): void => {
     }
   });
 
-  console.log('Google Analytics initialized:', GA_MEASUREMENT_ID);
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Google Analytics initialized:', GA_MEASUREMENT_ID);
+  }
 };
 
 /**
@@ -102,7 +104,7 @@ export const trackArticleRead = (articleData: {
 export const trackVideoPlay = (videoData: {
   title: string;
   videoId: string;
-  platform: 'tiktok' | 'youtube';
+  platform: 'tiktok';
   duration?: number;
 }): void => {
   trackEvent('video_play', 'Media', videoData.title, undefined, {

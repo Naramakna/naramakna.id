@@ -135,12 +135,12 @@ class ContentController {
       // Main categories filter for homepage
       if (mainCategoriesOnly === 'true') {
         const mainCategorySlugs = [
-          'reputasi-dan-komunikasi', 'tokoh', 'lifestyle', 'otomotif', 'sport', 
+          'reputasi-dan-komunikasi', 'tokoh', 'lifestyle', 'otomotif', 'sport',
           'kuliner', 'pendidikan-budaya-iptek', 'opini', 'dari-indonesia-ke-dunia',
-          'budaya', 'pendidikan', 'teknologi', // Include sub-categories
-          // Frontend alias slugs
-          'narapandang', 'pelakon', 'laga-gaya', 'wahana', 'olah-bola',
-          'cerita-rasa', 'akal-budi', 'horison', 'jagat-kita'
+          'budaya', 'pendidikan', 'teknologi', 'liputan-khusus', // Include sub-categories
+          // Frontend alias slugs - removed 'olah-bola' to avoid duplicate with 'sport'
+          'narapandang', 'pelakon', 'laga-gaya', 'wahana',
+          'cerita-rasa', 'akal-budi', 'horison', 'jagat-kita', 'data-bicara'
         ];
         
         const mainCategorySubquery = `
@@ -156,7 +156,7 @@ class ContentController {
           [Op.in]: sequelize.literal(`(${mainCategorySubquery})`)
         };
         
-        console.log('🏠 Applied main categories filter for homepage');
+        // console.log('🏠 Applied main categories filter for homepage');
       }
       // Category filtering using raw SQL subquery
       else if (category) {
@@ -174,7 +174,7 @@ class ContentController {
           [Op.in]: sequelize.literal(`(${categorySubquery})`)
         };
         
-        console.log('🏷️ Applied category filter for:', category);
+        // console.log('🏷️ Applied category filter for:', category);
       }
 
       // Determine sorting options
@@ -207,8 +207,8 @@ class ContentController {
           break;
       }
 
-      console.log('📊 Final whereClause:', JSON.stringify(whereClause, null, 2));
-      console.log('🔄 Order clause:', orderClause);
+      // console.log('📊 Final whereClause:', JSON.stringify(whereClause, null, 2));
+      // console.log('🔄 Order clause:', orderClause);
       
       const result = await Post.findAndCountAll({
         where: whereClause,
@@ -517,6 +517,9 @@ class ContentController {
       // }
 
       // Create post with all required fields
+      // Generate unique slug
+      const uniqueSlug = title ? await ContentController.generateUniqueSlug(title) : `post-${Date.now()}`;
+
       const post = await Post.create({
         post_author: author_id,
         post_title: title,
@@ -524,7 +527,7 @@ class ContentController {
         post_excerpt: excerpt,
         post_type: type,
         post_status: status,
-        post_name: title ? ContentController.generateSlug(title) : `post-${Date.now()}`,
+        post_name: uniqueSlug,
         post_date: new Date(),
         post_modified: new Date(),
         post_parent: 0,
@@ -920,7 +923,7 @@ class ContentController {
 
       // If we have smart trending results, use them. Otherwise fallback to view-based
       if (trendingPosts.length === 0) {
-        console.log('📊 No view-based trending found, trying smart trending algorithm...');
+        // console.log('📊 No view-based trending found, trying smart trending algorithm...');
         try {
           const trendingController = require('./trendingController');
           const smartTrending = await trendingController.getCachedTrendingTopics();
@@ -999,12 +1002,13 @@ class ContentController {
       // Special filter for main categories only
       if (req.query.mainCategoriesOnly === 'true') {
         const mainCategorySlugs = [
-          'reputasi-dan-komunikasi', 'tokoh', 'lifestyle', 'otomotif', 'sport', 
+          'reputasi-dan-komunikasi', 'tokoh', 'lifestyle', 'otomotif', 'sport',
           'kuliner', 'pendidikan-budaya-iptek', 'opini', 'dari-indonesia-ke-dunia',
           'budaya', 'pendidikan', 'teknologi', 'uncategorized',
-          // Frontend alias slugs
-          'narapandang', 'pelakon', 'laga-gaya', 'wahana', 'olah-bola',
-          'cerita-rasa', 'akal-budi', 'horison', 'jagat-kita'
+          // Frontend alias slugs - removed 'olah-bola' to avoid duplicate with 'sport'
+          'narapandang', 'pelakon', 'laga-gaya', 'wahana',
+          'cerita-rasa', 'akal-budi', 'horison', 'jagat-kita', 'data-bicara',
+          'liputan-khusus'
         ];
         whereClause = `tt.taxonomy = 'category' AND t.slug IN ('${mainCategorySlugs.join("', '")}') AND tt.count >= ${minCount}`;
       }
@@ -1214,6 +1218,46 @@ class ContentController {
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .trim('-');
+  }
+
+  /**
+   * Generate unique slug by checking for existing ones
+   */
+  static async generateUniqueSlug(title, excludeId = null) {
+    let baseSlug = ContentController.generateSlug(title);
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (true) {
+      // Check if slug exists for published posts (excluding current post if editing)
+      const whereClause = {
+        post_name: slug,
+        post_type: 'post',
+        post_status: 'publish'
+      };
+
+      if (excludeId) {
+        whereClause.ID = { [require('sequelize').Op.ne]: excludeId };
+      }
+
+      const existingPost = await Post.findOne({ where: whereClause });
+
+      if (!existingPost) {
+        return slug; // Slug is unique
+      }
+
+      // If slug exists, append counter
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+
+      // Prevent infinite loop
+      if (counter > 100) {
+        slug = `${baseSlug}-${Date.now()}`;
+        break;
+      }
+    }
+
+    return slug;
   }
 
   /**
@@ -1746,6 +1790,14 @@ class ContentController {
         return res.status(404).json({
           success: false,
           message: force ? 'Article not found or already permanently deleted' : 'Article not found or already deleted'
+        });
+      }
+
+      // Check ownership: admin can only delete their own posts, superadmin can delete any post
+      if (req.user.user_role === 'admin' && article.post_author !== req.user.ID) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. You can only delete your own posts.'
         });
       }
 

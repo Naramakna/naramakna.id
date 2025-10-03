@@ -142,7 +142,7 @@ export const PollingItem: React.FC<PollingItemProps> = ({
       )}
 
       {/* Question */}
-      <h3 className="text-xs md:text-sm font-semibold text-gray-900 mb-2 md:mb-3 leading-tight line-clamp-3">
+      <h3 className="text-xs md:text-sm font-semibold text-gray-900 mb-2 md:mb-3 leading-tight">
         {question}
       </h3>
 

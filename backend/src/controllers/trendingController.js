@@ -674,7 +674,7 @@ Berikan skor relevansi 1-100 dan alasan singkat. Format:
       
       // Check if cache is still valid
       if (new Date() < new Date(cache.expires)) {
-        console.log('📦 Using cached trending topics');
+        // console.log('📦 Using cached trending topics');
         return cache.articles;
       } else {
         console.log('⏰ Cache expired, need fresh data');

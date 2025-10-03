@@ -9,9 +9,9 @@ const categoryController = {
       
       // Get specific allowed rubrikasi channels only
       const allowedChannels = [
-        'narapandang', 'pelakon', 'laga-gaya', 'wahana', 'olah-bola', 
-        'cerita-rasa', 'horison', 'jagat-kita', 'akal-budi', 'budaya', 
-        'pendidikan', 'teknologi'
+        'narapandang', 'pelakon', 'laga-gaya', 'wahana', 'olah-bola',
+        'cerita-rasa', 'horison', 'jagat-kita', 'mata-elang', 'budaya',
+        'pendidikan', 'teknologi', 'data-bicara', 'liputan-khusus'
       ];
       
       const channelsQuery = `
@@ -127,20 +127,35 @@ const categoryController = {
       const slugMapping = {
         'olah-bola': 'sport',
         'laga-gaya': 'laga-gaya',
-        'horison': 'horison', 
+        'horison': 'horison',
         'cerita-rasa': 'cerita-rasa',
         'narapandang': 'narapandang',
         'wahana': 'wahana',
-        'akal-budi': 'akal-budi'
+        'mata-elang': 'mata-elang',
+        'data-bicara': 'data-bicara'
       };
       
       // Use mapped slug if exists, otherwise use original slug
       const databaseSlug = slugMapping[slug] || slug;
       console.log(`🏷️ Getting posts for category: ${slug} -> ${databaseSlug}`);
 
+      // First get category info
+      const categoryQuery = `
+        SELECT t.name, t.slug
+        FROM terms t
+        JOIN term_taxonomy tt ON t.term_id = tt.term_id
+        WHERE t.slug = ? AND tt.taxonomy = 'category'
+        LIMIT 1
+      `;
+
+      const categoryInfo = await sequelize.query(categoryQuery, {
+        replacements: [databaseSlug],
+        type: QueryTypes.SELECT
+      });
+
       // Query to get posts by term slug with metadata and view count
       const query = `
-        SELECT DISTINCT 
+        SELECT DISTINCT
           p.ID as id,
           p.post_title as title,
           p.post_content as content,

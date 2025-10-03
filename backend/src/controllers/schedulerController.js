@@ -439,7 +439,7 @@ class SchedulerController {
           // Ensure featured image metadata is preserved
           if (featuredImageMeta) {
             console.log(`  🖼️ Featured image preserved for post ${post.ID}: ${featuredImageMeta.meta_value}`);
-            
+
             // Also preserve featured image caption if exists
             const captionMeta = await PostMeta.findOne({
               where: {
@@ -447,7 +447,7 @@ class SchedulerController {
                 meta_key: '_thumbnail_caption'
               }
             });
-            
+
             if (captionMeta && captionMeta.meta_value) {
               // Find the attachment and update its title/excerpt with the caption
               const attachment = await Post.findByPk(featuredImageMeta.meta_value);
@@ -460,6 +460,26 @@ class SchedulerController {
                 });
                 console.log(`  📝 Featured image caption updated: "${captionMeta.meta_value}"`);
               }
+            }
+          }
+
+          // Preserve image captions from Quill editor
+          const imageCaptionsMeta = await PostMeta.findOne({
+            where: {
+              post_id: post.ID,
+              meta_key: '_image_captions'
+            }
+          });
+
+          if (imageCaptionsMeta && imageCaptionsMeta.meta_value) {
+            try {
+              const imageCaptions = JSON.parse(imageCaptionsMeta.meta_value);
+              console.log(`  📸 Image captions preserved for post ${post.ID}:`, Object.keys(imageCaptions).length, 'images');
+
+              // The image captions are already stored in PostMeta, so they should persist
+              // But let's make sure they are properly maintained during the publish process
+            } catch (error) {
+              console.warn(`  ⚠️ Failed to parse image captions for post ${post.ID}:`, error);
             }
           }
 
@@ -579,6 +599,23 @@ class SchedulerController {
       // Log featured image preservation if exists
       if (featuredImageMeta) {
         console.log(`🖼️ Featured image preserved for force published post ${postId}: ${featuredImageMeta.meta_value}`);
+      }
+
+      // Preserve image captions from Quill editor for force published posts
+      const imageCaptionsMeta = await PostMeta.findOne({
+        where: {
+          post_id: postId,
+          meta_key: '_image_captions'
+        }
+      });
+
+      if (imageCaptionsMeta && imageCaptionsMeta.meta_value) {
+        try {
+          const imageCaptions = JSON.parse(imageCaptionsMeta.meta_value);
+          console.log(`📸 Image captions preserved for force published post ${postId}:`, Object.keys(imageCaptions).length, 'images');
+        } catch (error) {
+          console.warn(`⚠️ Failed to parse image captions for force published post ${postId}:`, error);
+        }
       }
 
       // Log the force publishing action

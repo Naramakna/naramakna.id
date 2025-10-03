@@ -60,19 +60,23 @@ export const AdBanner: React.FC<AdBannerProps> = ({
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('🔗 Ad clicked:', {
-      campaign: advertisement?.campaign_name,
-      targetUrl: adTargetUrl,
-      hasRealAd,
-      adId: advertisement?.id
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔗 Ad clicked:', {
+        campaign: advertisement?.campaign_name,
+        targetUrl: adTargetUrl,
+        hasRealAd,
+        adId: advertisement?.id
+      });
+    }
     
     if (hasRealAd && advertisement && onAdClick) {
       onAdClick(advertisement.id);
     }
     
     if (adTargetUrl && adTargetUrl.trim() && adTargetUrl !== 'google-adsense') {
-      console.log('🚀 Opening URL:', adTargetUrl);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🚀 Opening URL:', adTargetUrl);
+      }
       window.open(adTargetUrl, '_blank', 'noopener,noreferrer');
     } else {
       console.warn('⚠️ No target URL found for ad:', advertisement?.campaign_name);
@@ -145,10 +149,14 @@ export const AdBanner: React.FC<AdBannerProps> = ({
     useEffect(() => {
       const timer = setTimeout(() => {
         try {
-          console.log(`🎯 Loading AdSense fallback for ${size}`);
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`🎯 Loading AdSense fallback for ${size}`);
+          }
           (window.adsbygoogle = window.adsbygoogle || []).push({});
         } catch (e) {
-          console.error('AdSense fallback error:', e);
+          if (process.env.NODE_ENV === 'development') {
+            console.error('AdSense fallback error:', e);
+          }
         }
       }, 500);
       
@@ -306,10 +314,14 @@ export const AdBanner: React.FC<AdBannerProps> = ({
         useEffect(() => {
           const timer = setTimeout(() => {
             try {
-              console.log(`🎯 Initializing AdSense for ${currentPlacement} (${size})`);
+              if (process.env.NODE_ENV === 'development') {
+                console.log(`🎯 Initializing AdSense for ${currentPlacement} (${size})`);
+              }
               (window.adsbygoogle = window.adsbygoogle || []).push({});
             } catch (e) {
-              console.error('AdSense error:', e);
+              if (process.env.NODE_ENV === 'development') {
+                console.error('AdSense error:', e);
+              }
             }
           }, 500);
           

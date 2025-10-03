@@ -5,7 +5,7 @@ import { ArticleHeader } from '../../components/molecules/ArticleHeader';
 import { ArticleContent } from '../../components/organisms/ArticleContent';
 import { ArticleTags } from '../../components/molecules/ArticleTags';
 import { ArticleAnalyticsModal } from '../../components/organisms/ArticleAnalyticsModal';
-// import { CommentsSection } from '../../components/organisms/CommentsSection'; // Hidden temporarily
+import { CommentsSection } from '../../components/organisms/CommentsSection';
 import { RelatedArticles } from '../../components/organisms/RelatedArticles';
 import { AdSection } from '../../components/organisms/AdSection';
 import { useSEO, generateDescription, extractKeywords, formatStructuredDataDate } from '../../hooks/useSEO';
@@ -51,7 +51,7 @@ interface Article {
 }
 
 export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId, articleSlug }) => {
-  console.log('🚀 ArticleDetailPage rendering', { articleId, articleSlug });
+  // ArticleDetailPage rendering
   const [article, setArticle] = useState<Article | null>(null);
   const [relatedArticles, setRelatedArticles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -68,11 +68,11 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
     if (currentArticleId) {
       fetchArticleById(currentArticleId);
       fetchRelatedArticles(currentArticleId);
-      // fetchComments(currentArticleId); // Hidden temporarily
+      fetchComments(currentArticleId);
     } else if (currentArticleSlug) {
       fetchArticleBySlug(currentArticleSlug);
       fetchRelatedArticlesBySlug(currentArticleSlug);
-      // fetchCommentsBySlug(currentArticleSlug); // Hidden temporarily
+      fetchCommentsBySlug(currentArticleSlug);
     }
   }, [currentArticleId, currentArticleSlug]);
   
@@ -133,12 +133,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
             imageCaptions: result.data.image_captions || {}
           };
           
-          console.log('📄 ArticleDetailPage Debug:', {
-            articleId: result.data.ID,
-            hasImageCaptions: !!result.data.image_captions,
-            imageCaptions: result.data.image_captions,
-            transformedImageCaptions: transformedArticle.imageCaptions
-          });
+          // Article data transformed
           
           setArticle(transformedArticle);
         } else {
@@ -193,12 +188,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
             imageCaptions: result.data.image_captions || {}
           };
           
-          console.log('📄 ArticleDetailPage Debug:', {
-            articleId: result.data.ID,
-            hasImageCaptions: !!result.data.image_captions,
-            imageCaptions: result.data.image_captions,
-            transformedImageCaptions: transformedArticle.imageCaptions
-          });
+          // Article data transformed
           
           setArticle(transformedArticle);
         } else {
@@ -249,41 +239,41 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
     }
   };
 
-  // const fetchComments = async (postId: string) => {
-  //   try {
-  //     const response = await fetch(buildApiUrl(`content/posts/${postId}/comments`), {
-  //       credentials: 'include'
-  //     });
-      
-  //     if (response.ok) {
-  //       const result = await response.json();
-  //       if (result.success && result.data) {
-  //         // Comments are handled by CommentsSection component
-  //         console.log('Comments loaded:', result.data.length);
-  //       }
-  //     }
-  //   } catch (err) {
-  //     console.error('Error fetching comments:', err);
-  //   }
-  // };
+  const fetchComments = async (postId: string) => {
+    try {
+      const response = await fetch(buildApiUrl(`content/posts/${postId}/comments`), {
+        credentials: 'include'
+      });
 
-  // const fetchCommentsBySlug = async (slug: string) => {
-  //   try {
-  //     const response = await fetch(buildApiUrl(`content/posts/slug/${slug}/comments`), {
-  //       credentials: 'include'
-  //     });
-      
-  //     if (response.ok) {
-  //       const result = await response.json();
-  //       if (result.success && result.data) {
-  //         // Comments are handled by CommentsSection component
-  //         console.log('Comments loaded:', result.data.length);
-  //       }
-  //     }
-  //   } catch (err) {
-  //     console.error('Error fetching comments:', err);
-  //   }
-  // };
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          // Comments are handled by CommentsSection component
+          console.log('Comments loaded:', result.data.length);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching comments:', err);
+    }
+  };
+
+  const fetchCommentsBySlug = async (slug: string) => {
+    try {
+      const response = await fetch(buildApiUrl(`content/posts/slug/${slug}/comments`), {
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          // Comments are handled by CommentsSection component
+          console.log('Comments loaded:', result.data.length);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching comments:', err);
+    }
+  };
 
   const trackView = async (postId: string) => {
     try {
@@ -448,10 +438,10 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
             {/* Article Tags */}
             <ArticleTags tags={article.tags} />
 
-            {/* Comments Section - Hidden temporarily */}
-            {/* <CommentsSection
+            {/* Comments Section */}
+            <CommentsSection
               postId={article.id}
-            /> */}
+            />
           </div>
         </div>
 

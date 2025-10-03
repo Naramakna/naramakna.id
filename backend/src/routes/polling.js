@@ -18,6 +18,25 @@ router.get('/test', (req, res) => {
 });
 router.get('/active', async (req, res) => {
   try {
+    // Check if polling is enabled via settings
+    const { Option } = require('../models');
+    const pollingSetting = await Option.findOne({
+      where: { option_name: 'enable_polling' }
+    });
+
+    const enablePolling = pollingSetting ? pollingSetting.option_value === 'true' : true;
+
+    if (!enablePolling) {
+      return res.json({
+        success: true,
+        data: {
+          polls: [],
+          pagination: { total: 0, page: 1, limit: 10, totalPages: 0 }
+        },
+        message: 'Polling is currently disabled'
+      });
+    }
+
     const { limit = 10, offset = 0 } = req.query;
     
     // Use mysql2 directly for now to bypass sequelize issue
@@ -110,6 +129,21 @@ router.get('/active', async (req, res) => {
 });
 router.post('/vote', async (req, res) => {
   try {
+    // Check if polling is enabled via settings
+    const { Option } = require('../models');
+    const pollingSetting = await Option.findOne({
+      where: { option_name: 'enable_polling' }
+    });
+
+    const enablePolling = pollingSetting ? pollingSetting.option_value === 'true' : true;
+
+    if (!enablePolling) {
+      return res.status(403).json({
+        success: false,
+        message: 'Polling is currently disabled'
+      });
+    }
+
     console.log('🗳️ Vote request received:', req.body);
     const { poll_id, option_id, user_id } = req.body;
     

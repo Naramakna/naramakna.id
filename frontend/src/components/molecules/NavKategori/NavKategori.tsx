@@ -1,6 +1,5 @@
 import React from 'react';
 import { NavDropdown } from '../NavDropdown';
-import { SimpleDropdown } from '../SimpleDropdown';
 
 interface NavKategoriProps {
   className?: string;
@@ -19,21 +18,6 @@ export const NavKategori: React.FC<NavKategoriProps> = ({ className = '' }) => {
     { name: 'Jagat Kita', slug: 'jagat-kita' },
   ];
 
-  // Data untuk dropdown "Akal Budi" - format sederhana
-  const akalBudiItems = [
-    {
-      title: 'Budaya',
-      href: '/kategori/budaya',
-    },
-    {
-      title: 'Pendidikan',
-      href: '/kategori/pendidikan',
-    },
-    {
-      title: 'Teknologi',
-      href: '/kategori/teknologi',
-    },
-  ];
 
   // Data untuk dropdown "Lainnya"
   const lainnyaItems = [
@@ -90,18 +74,13 @@ export const NavKategori: React.FC<NavKategoriProps> = ({ className = '' }) => {
             </a>
           ))}
           
-          {/* Dropdown untuk "Akal Budi" - Simple & Small */}
-          <SimpleDropdown
-            trigger={
-              <div className="flex items-center text-sm font-medium text-gray-700 hover:text-yellow-500 whitespace-nowrap transition-colors duration-200 flex-shrink-0">
-                Akal Budi 
-                <svg className="ml-1 w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            }
-            items={akalBudiItems}
-          />
+          {/* Menu "Mata Elang" - Simple Link */}
+          <a
+            href="/kategori/mata-elang"
+            className="text-sm font-medium text-gray-700 hover:text-yellow-500 whitespace-nowrap transition-colors duration-200 flex-shrink-0"
+          >
+            Mata Elang
+          </a>
           
           {/* Dropdown untuk "Lainnya" */}
           <NavDropdown

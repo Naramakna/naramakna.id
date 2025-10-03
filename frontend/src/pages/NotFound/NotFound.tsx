@@ -97,11 +97,11 @@ export const NotFound: React.FC = () => {
                 Laga & Gaya
               </a>
               <span className="text-gray-300">•</span>
-              <a 
-                href="/kategori/akal-budi" 
+              <a
+                href="/kategori/mata-elang"
                 className="text-blue-600 hover:text-blue-800 hover:underline"
               >
-                Akal Budi
+                Mata Elang
               </a>
               <span className="text-gray-300">•</span>
               <a 

@@ -1,11 +1,33 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { ArticleCardProps } from './ArticleCard.types';
+import { buildApiUrl } from '../../../config/api';
 
-export const ArticleCard: React.FC<ArticleCardProps> = ({ 
-  article, 
-  className = '' 
+export const ArticleCard: React.FC<ArticleCardProps> = ({
+  article,
+  className = ''
 }) => {
-  const viewsCountEnabled = true; // Default enabled
+  const [viewsCountEnabled, setViewsCountEnabled] = useState(true);
+
+  // Fetch views count setting
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch(buildApiUrl('settings/public'));
+        const result = await response.json();
+
+        if (result.success) {
+          setViewsCountEnabled(result.data.show_views_count);
+        }
+      } catch (error) {
+        console.error('Error fetching views count setting:', error);
+        // Default to true if there's an error
+        setViewsCountEnabled(true);
+      }
+    };
+
+    fetchSettings();
+  }, []);
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('id-ID', {

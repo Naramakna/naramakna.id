@@ -124,6 +124,7 @@ const writerRoutes = require('./routes/writer');
 const likesRoutes = require('./routes/likes');
 const commentRoutes = require('./routes/comments');
 const adminRoutes = require('./routes/admin');
+const superadminRoutes = require('./routes/superadmin');
 const categoryRoutes = require('./routes/category');
 const pollingRoutes = require('./routes/polling');
 const schedulerRoutes = require('./routes/scheduler');
@@ -132,6 +133,8 @@ const imageManagerRoutes = require('./routes/imageManager');
 const sitemapRoutes = require('./routes/sitemap');
 const googleAdsRoutes = require('./routes/googleAds');
 const trendingRoutes = require('./routes/trending');
+const aboutRoutes = require('./routes/about');
+const mataElangRoutes = require('./routes/mataElang');
 // const taxonomyRoutes = require('./routes/taxonomy'); // TODO: Implement
 
 // Initialize scheduler for auto-publishing posts
@@ -157,6 +160,8 @@ app.use('/api/seo', seoRoutes);
 app.use('/api/likes', likesRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/trending', trendingRoutes);
+app.use('/api/about', aboutRoutes);
+app.use('/api/mata-elang', mataElangRoutes);
 
 // SEO routes at root level
 app.use('/', sitemapRoutes);
@@ -164,6 +169,7 @@ app.get('/robots.txt', seoController.generateRobotsTxt);
 app.use('/api/writer', writerRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/superadmin', superadminRoutes);
 app.use('/api/category', categoryRoutes);
 app.use('/api/polling', pollingRoutes);
 app.use('/api/scheduler', schedulerRoutes);

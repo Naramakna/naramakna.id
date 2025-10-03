@@ -198,10 +198,15 @@ const ArticleWriterPage: React.FC = () => {
 
   // Handle image caption changes
   const handleImageCaptionChange = (imageSrc: string, caption: string) => {
-    setImageCaptions(prev => ({
-      ...prev,
-      [imageSrc]: caption
-    }));
+    console.log('📸 [FRONTEND] Image caption changed:', imageSrc, 'Caption:', caption);
+    setImageCaptions(prev => {
+      const updated = {
+        ...prev,
+        [imageSrc]: caption
+      };
+      console.log('📸 [FRONTEND] Updated imageCaptions state:', updated);
+      return updated;
+    });
   };
 
   // Window resize handler for responsive toolbar
@@ -355,11 +360,13 @@ const ArticleWriterPage: React.FC = () => {
       isSavingRef.current = true;
       setSaveStatus('saving');
       
-      const draftData = { 
-        ...article, 
+      const draftData = {
+        ...article,
         status: 'draft' as const,
         image_captions: imageCaptions
       };
+
+      console.log('📸 [FRONTEND] Saving draft with imageCaptions:', imageCaptions);
       
       const url = isEditMode 
         ? buildApiUrl(`writer/articles/${editId}`)
@@ -438,6 +445,7 @@ const ArticleWriterPage: React.FC = () => {
       // If no editId (new article), save as draft first to get an ID
       if (!postId) {
         console.log('🔧 Debug: No editId, saving draft first to get post ID');
+        console.log('📸 [SCHEDULE] imageCaptions state before saving draft:', imageCaptions);
         const savedId = await handleSaveDraft();
         
         // Use the returned ID from handleSaveDraft

@@ -32,7 +32,6 @@ interface User {
     instagram_url?: string;
     linkedin_url?: string;
     tiktok_url?: string;
-    youtube_url?: string;
     writer_category?: string;
     writing_experience?: string;
     portfolio_url?: string;
@@ -79,24 +78,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (storedUser) {
           const userData = JSON.parse(storedUser);
           setUser(userData);
-          console.log('🔄 Loaded user from localStorage:', userData.user_login);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔄 Loaded user from localStorage:', userData.user_login);
+          }
         }
 
         // Verify with server (optional - don't logout on failure)
-        console.log('🔄 Verifying user session with server...');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔄 Verifying user session with server...');
+        }
         try {
           await refreshUser();
         } catch (refreshError: any) {
-          console.log('⚠️ Session refresh failed, keeping local session:', refreshError.message);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('⚠️ Session refresh failed, keeping local session:', refreshError.message);
+          }
           // Keep user logged in with localStorage data
         }
       } catch (error: any) {
-        console.log('❌ No valid session found:', error.message);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('❌ No valid session found:', error.message);
+        }
         localStorage.removeItem('user');
         setUser(null);
       } finally {
         setIsLoading(false);
-        console.log('✅ Auth initialization complete');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Auth initialization complete');
+        }
       }
     };
 
@@ -115,17 +124,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Logout function
   const logout = async () => {
     try {
-      console.log('🔄 AuthContext: Calling authAPI.logout()...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔄 AuthContext: Calling authAPI.logout()...');
+      }
       await authAPI.logout();
-      console.log('✅ AuthContext: API logout successful');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ AuthContext: API logout successful');
+      }
     } catch (error) {
       console.error('❌ AuthContext: Logout API error:', error);
     } finally {
-      console.log('🧹 AuthContext: Cleaning up local data...');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🧹 AuthContext: Cleaning up local data...');
+      }
       setUser(null);
       localStorage.removeItem('user');
       localStorage.removeItem('token');
-      console.log('✅ AuthContext: Local data cleaned');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ AuthContext: Local data cleaned');
+      }
     }
   };
 
@@ -152,26 +169,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (profileResponse.ok) {
         const profileData = await profileResponse.json();
-        console.log('📡 Profile response:', profileData);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📡 Profile response:', profileData);
+        }
         
         if (profileData.success && profileData.data) {
           const userData = profileData.data.user;
           setUser(userData);
           localStorage.setItem('user', JSON.stringify(userData));
-          console.log('✅ Extended profile loaded:', userData.user_login);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('✅ Extended profile loaded:', userData.user_login);
+          }
           return;
         }
       }
 
       // Fallback to basic auth profile
       const response: ProfileResponse = await authAPI.getProfile();
-      console.log('📡 Auth response:', response);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📡 Auth response:', response);
+      }
       
       if (response.success && response.data) {
         const userData = response.data.user;
         setUser(userData);
         localStorage.setItem('user', JSON.stringify(userData));
-        console.log('✅ Basic profile loaded:', userData.user_login);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Basic profile loaded:', userData.user_login);
+        }
       } else {
         throw new Error('Invalid server response');
       }

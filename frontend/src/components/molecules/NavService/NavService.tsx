@@ -13,6 +13,8 @@ export const NavService: React.FC<NavServiceProps> = ({ className = '' }) => {
     { name: 'Budaya', href: '/kategori/budaya' },
     { name: 'Pendidikan', href: '/kategori/pendidikan' },
     { name: 'Teknologi', href: '/kategori/teknologi' },
+    { name: 'Data Bicara', href: '/kategori/data-bicara' },
+    { name: 'Liputan Khusus', href: '/kategori/liputan-khusus' },
   ];
 
   return (

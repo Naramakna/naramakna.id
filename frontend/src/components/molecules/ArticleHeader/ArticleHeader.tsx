@@ -37,7 +37,7 @@ export const ArticleHeader: React.FC<ArticleHeaderProps> = ({
   onAnalyticsClick
 }) => {
   const { user } = useAuth();
-  const viewsCountEnabled = true; // Default enabled
+  const [viewsCountEnabled, setViewsCountEnabled] = useState(true);
   const [likeCount, setLikeCount] = useState(likes);
   const [isLiked, setIsLiked] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
@@ -66,24 +66,26 @@ export const ArticleHeader: React.FC<ArticleHeaderProps> = ({
     fetchLikeStatus();
   }, [articleId]);
 
-  // Fetch analytics button setting
+  // Fetch settings from API
   useEffect(() => {
-    const fetchAnalyticsButtonSetting = async () => {
+    const fetchSettings = async () => {
       try {
         const response = await fetch(buildApiUrl('settings/public'));
         const result = await response.json();
-        
+
         if (result.success) {
           setShowAnalyticsButton(result.data.show_analytics_button);
+          setViewsCountEnabled(result.data.show_views_count);
         }
       } catch (error) {
-        console.error('Error fetching analytics button setting:', error);
+        console.error('Error fetching settings:', error);
         // Default to true if there's an error
         setShowAnalyticsButton(true);
+        setViewsCountEnabled(true);
       }
     };
 
-    fetchAnalyticsButtonSetting();
+    fetchSettings();
   }, []);
 
   // Handle like toggle
