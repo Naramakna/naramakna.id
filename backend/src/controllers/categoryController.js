@@ -7,19 +7,26 @@ const categoryController = {
     try {
       console.log('🏷️ Getting popular tags for article writing');
       
-      // Get popular channels from terms (increased limit)
+      // Get specific allowed rubrikasi channels only
+      const allowedChannels = [
+        'narapandang', 'pelakon', 'laga-gaya', 'wahana', 'olah-bola',
+        'cerita-rasa', 'horison', 'jagat-kita', 'mata-elang', 'budaya',
+        'pendidikan', 'teknologi', 'data-bicara', 'liputan-khusus'
+      ];
+      
       const channelsQuery = `
         SELECT t.name, t.slug, tt.count 
         FROM terms t
         JOIN term_taxonomy tt ON t.term_id = tt.term_id
         WHERE tt.taxonomy IN ('category', 'newstopic')
         AND tt.count >= 0
+        AND t.slug IN (${allowedChannels.map(() => '?').join(', ')})
         ORDER BY tt.count DESC
-        LIMIT 50
       `;
 
       const channels = await sequelize.query(channelsQuery, {
-        type: QueryTypes.SELECT
+        type: QueryTypes.SELECT,
+        replacements: allowedChannels
       });
 
       // Get popular tags/keywords (increased limit)
@@ -42,10 +49,7 @@ const categoryController = {
         data: {
           popularChannels: channels,
           popularTags: tags,
-          defaultChannels: [
-            'News', 'Entertainment', 'Tekno & Sains', 'Bisnis', 
-            'Bola & Sports', 'Otomotif', 'Woman', 'Food & Travel', 'Mom', 'Bolanita'
-          ]
+          defaultChannels: [] // No hardcoded defaults, use only database channels
         }
       });
 
@@ -116,27 +120,61 @@ const categoryController = {
   // Get posts by category/term
   async getPostsByCategory(req, res) {
     try {
-      const { slug } = req.params;
+      let { slug } = req.params;
       const { limit = 20, offset = 0 } = req.query;
 
-      console.log(`🏷️ Getting posts for category: ${slug}`);
+      // Map frontend slugs to database slugs
+      const slugMapping = {
+        'olah-bola': 'sport',
+        'laga-gaya': 'laga-gaya',
+        'horison': 'horison',
+        'cerita-rasa': 'cerita-rasa',
+        'narapandang': 'narapandang',
+        'wahana': 'wahana',
+        'mata-elang': 'mata-elang',
+        'data-bicara': 'data-bicara'
+      };
+      
+      // Use mapped slug if exists, otherwise use original slug
+      const databaseSlug = slugMapping[slug] || slug;
+      console.log(`🏷️ Getting posts for category: ${slug} -> ${databaseSlug}`);
 
-      // Query to get posts by term slug
+      // First get category info
+      const categoryQuery = `
+        SELECT t.name, t.slug
+        FROM terms t
+        JOIN term_taxonomy tt ON t.term_id = tt.term_id
+        WHERE t.slug = ? AND tt.taxonomy = 'category'
+        LIMIT 1
+      `;
+
+      const categoryInfo = await sequelize.query(categoryQuery, {
+        replacements: [databaseSlug],
+        type: QueryTypes.SELECT
+      });
+
+      // Query to get posts by term slug with metadata and view count
       const query = `
-        SELECT DISTINCT 
+        SELECT DISTINCT
           p.ID as id,
           p.post_title as title,
           p.post_content as content,
           p.post_excerpt as excerpt,
+          p.post_name as slug,
           p.post_date as date,
           p.post_modified as modified,
           u.display_name as author_name,
-          u.ID as author_id
+          u.ID as author_id,
+          COALESCE(p.view_count, 0) as view_count,
+          thumbnail_meta.meta_value as thumbnail_id,
+          thumbnail_post.guid as featured_image
         FROM posts p
         LEFT JOIN users u ON p.post_author = u.ID
         LEFT JOIN term_relationships tr ON p.ID = tr.object_id
         LEFT JOIN term_taxonomy tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
         LEFT JOIN terms t ON tt.term_id = t.term_id
+        LEFT JOIN postmeta thumbnail_meta ON p.ID = thumbnail_meta.post_id AND thumbnail_meta.meta_key = '_thumbnail_id'
+        LEFT JOIN posts thumbnail_post ON thumbnail_meta.meta_value = thumbnail_post.ID
         WHERE p.post_status = 'publish'
         AND p.post_type = 'post'
         AND t.slug = ?
@@ -145,9 +183,43 @@ const categoryController = {
       `;
 
       const posts = await sequelize.query(query, {
-        replacements: [slug, parseInt(limit), parseInt(offset)],
+        replacements: [databaseSlug, parseInt(limit), parseInt(offset)],
         type: QueryTypes.SELECT
       });
+
+      // Get analytics view counts for all posts (same as individual article API)
+      const { Analytics } = require('../models');
+      const postIds = posts.map(post => post.id);
+      
+      // Get view counts from analytics table for batch processing
+      const analyticsViewCounts = {};
+      if (postIds.length > 0) {
+        try {
+          const analyticsData = await Analytics.findAll({
+            attributes: [
+              'content_id',
+              [sequelize.fn('COUNT', sequelize.col('id')), 'view_count']
+            ],
+            where: {
+              content_id: postIds,
+              event_type: 'view'
+            },
+            group: ['content_id']
+          });
+
+          analyticsData.forEach(item => {
+            analyticsViewCounts[item.content_id] = parseInt(item.dataValues.view_count) || 0;
+          });
+        } catch (error) {
+          console.error('Error fetching analytics view counts:', error);
+        }
+      }
+
+      // Update posts with analytics view counts
+      const postsWithAnalytics = posts.map(post => ({
+        ...post,
+        view_count: analyticsViewCounts[post.id] || 0
+      }));
 
       // Get total count
       const countQuery = `
@@ -162,14 +234,14 @@ const categoryController = {
       `;
 
       const [{ total }] = await sequelize.query(countQuery, {
-        replacements: [slug],
+        replacements: [databaseSlug],
         type: QueryTypes.SELECT
       });
 
       res.json({
         success: true,
         data: {
-          posts,
+          posts: postsWithAnalytics,
           pagination: {
             total: parseInt(total),
             limit: parseInt(limit),

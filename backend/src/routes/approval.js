@@ -31,6 +31,13 @@ router.get('/stats', authenticate, requireAdmin, ContentApprovalController.getRe
 router.get('/my-pending', authenticate, requireWriter, ContentApprovalController.getMyPendingPosts);
 
 /**
+ * @route   GET /api/approval/my-rejected
+ * @desc    Get current user's rejected posts with rejection reasons
+ * @access  Writer+ (own posts only)
+ */
+router.get('/my-rejected', authenticate, requireWriter, ContentApprovalController.getMyRejectedPosts);
+
+/**
  * @route   POST /api/approval/:id/review
  * @desc    Approve or reject a post
  * @access  Admin+

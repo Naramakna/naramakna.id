@@ -30,6 +30,12 @@ class ContentApprovalController {
             model: User,
             as: 'author',
             attributes: ['ID', 'user_login', 'display_name', 'user_email', 'user_role']
+          },
+          {
+            model: PostMeta,
+            as: 'meta',
+            attributes: ['meta_key', 'meta_value'],
+            required: false
           }
         ],
         order: [['post_date', 'ASC']], // Oldest first for review queue
@@ -37,23 +43,21 @@ class ContentApprovalController {
         offset
       });
 
-      // Add metadata for each post
-      const postsWithMeta = await Promise.all(
-        posts.rows.map(async (post) => {
-          const meta = await PostMeta.findAll({
-            where: { post_id: post.ID },
-            attributes: ['meta_key', 'meta_value']
+      // Transform meta array to object (OPTIMIZED - no N+1 queries!)
+      const postsWithMeta = posts.rows.map(post => {
+        const postObj = post.toJSON();
+        const metaObj = {};
+        if (postObj.meta && Array.isArray(postObj.meta)) {
+          postObj.meta.forEach(m => {
+            metaObj[m.meta_key] = m.meta_value;
           });
-
-          return {
-            ...post.toJSON(),
-            meta: meta.reduce((acc, m) => {
-              acc[m.meta_key] = m.meta_value;
-              return acc;
-            }, {})
-          };
-        })
-      );
+        }
+        delete postObj.meta;
+        return {
+          ...postObj,
+          meta: metaObj
+        };
+      });
 
       res.json({
         success: true,
@@ -112,13 +116,37 @@ class ContentApprovalController {
         });
       }
 
-      // Update post status
-      const newStatus = action === 'approve' ? POST_STATUS.PUBLISHED : POST_STATUS.REJECTED;
-      
-      await post.update({
-        post_status: newStatus,
+      // Determine new status and handle scheduled posts
+      let newStatus;
+      const updateData = {
         post_modified: new Date()
-      });
+      };
+
+      if (action === 'approve') {
+        // Check if this post has a scheduled publish date
+        const scheduledDate = post.scheduled_publish_date;
+        const now = new Date();
+
+        if (scheduledDate && new Date(scheduledDate) > now) {
+          // Post is scheduled for future - keep it scheduled
+          newStatus = 'scheduled';
+          updateData.post_status = newStatus;
+          console.log(`📅 Approved post ${post.ID} will be published at ${scheduledDate}`);
+        } else {
+          // Publish immediately
+          newStatus = POST_STATUS.PUBLISHED;
+          updateData.post_status = newStatus;
+          updateData.post_date = now; // Update post_date to now when publishing
+          updateData.post_date_gmt = now;
+          console.log(`✅ Publishing post ${post.ID} immediately`);
+        }
+      } else {
+        // Reject
+        newStatus = POST_STATUS.REJECTED;
+        updateData.post_status = newStatus;
+      }
+
+      await post.update(updateData);
 
       // Add review metadata
       await PostMeta.create({
@@ -192,18 +220,43 @@ class ContentApprovalController {
         });
       }
 
-      const newStatus = action === 'approve' ? POST_STATUS.PUBLISHED : POST_STATUS.REJECTED;
-      
-      // Update all posts
-      await Post.update(
-        { 
-          post_status: newStatus,
-          post_modified: new Date()
-        },
-        {
-          where: { ID: { [Op.in]: post_ids } }
+      const now = new Date();
+
+      // For bulk operations, we need to handle each post individually to check scheduled dates
+      if (action === 'approve') {
+        for (const post of posts) {
+          const scheduledDate = post.scheduled_publish_date;
+          let newStatus;
+          const updateData = {
+            post_modified: now
+          };
+
+          if (scheduledDate && new Date(scheduledDate) > now) {
+            // Post is scheduled for future
+            newStatus = 'scheduled';
+            updateData.post_status = newStatus;
+          } else {
+            // Publish immediately
+            newStatus = POST_STATUS.PUBLISHED;
+            updateData.post_status = newStatus;
+            updateData.post_date = now;
+            updateData.post_date_gmt = now;
+          }
+
+          await post.update(updateData);
         }
-      );
+      } else {
+        // For reject, we can do bulk update
+        await Post.update(
+          {
+            post_status: POST_STATUS.REJECTED,
+            post_modified: now
+          },
+          {
+            where: { ID: { [Op.in]: post_ids } }
+          }
+        );
+      }
 
       // Add review metadata for each post
       const reviewMeta = posts.map(post => ({
@@ -227,7 +280,6 @@ class ContentApprovalController {
         data: {
           affected_posts: posts.length,
           action,
-          new_status: newStatus,
           reviewer: reviewer.display_name
         }
       });
@@ -344,6 +396,80 @@ class ContentApprovalController {
       res.status(500).json({
         success: false,
         message: 'Failed to fetch your pending posts'
+      });
+    }
+  }
+
+  // Get my rejected posts (writer can see their own with rejection reasons)
+  static async getMyRejectedPosts(req, res) {
+    try {
+      const user = req.user;
+      const { page = 1, limit = 20 } = req.query;
+      const offset = (parseInt(page) - 1) * parseInt(limit);
+
+      const posts = await Post.findAndCountAll({
+        where: {
+          post_author: user.ID,
+          post_status: POST_STATUS.REJECTED
+        },
+        include: [
+          {
+            model: PostMeta,
+            as: 'meta',
+            where: {
+              meta_key: { [Op.or]: ['_review_action', '_review_with_edit'] }
+            },
+            attributes: ['meta_key', 'meta_value', 'meta_id'],
+            required: false
+          }
+        ],
+        order: [
+          ['post_modified', 'DESC'], // Show most recently rejected first
+          [{ model: PostMeta, as: 'meta' }, 'meta_id', 'DESC'] // Latest review first
+        ],
+        limit: parseInt(limit),
+        offset
+      });
+
+      // Transform meta to review object (OPTIMIZED - no N+1 queries!)
+      const postsWithReview = posts.rows.map(post => {
+        const postObj = post.toJSON();
+        let reviewData = null;
+
+        // Get the first (latest) review meta
+        if (postObj.meta && postObj.meta.length > 0) {
+          try {
+            reviewData = JSON.parse(postObj.meta[0].meta_value);
+          } catch (e) {
+            console.error('Failed to parse review meta:', e);
+          }
+        }
+
+        delete postObj.meta;
+        return {
+          ...postObj,
+          review: reviewData
+        };
+      });
+
+      res.json({
+        success: true,
+        data: {
+          my_rejected_posts: postsWithReview,
+          pagination: {
+            total: posts.count,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            total_pages: Math.ceil(posts.count / parseInt(limit))
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Get my rejected posts error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch your rejected posts'
       });
     }
   }
@@ -606,11 +732,26 @@ class ContentApprovalController {
         hasEdits = true;
       }
 
-      // Set new status based on action
+      // Set new status based on action and scheduled date
       let newStatus;
+      const now = new Date();
+
       switch (action) {
         case 'approve':
-          newStatus = POST_STATUS.PUBLISHED;
+          // Check if this post has a scheduled publish date
+          const scheduledDate = post.scheduled_publish_date;
+
+          if (scheduledDate && new Date(scheduledDate) > now) {
+            // Post is scheduled for future
+            newStatus = 'scheduled';
+            console.log(`📅 Approved post ${post.ID} will be published at ${scheduledDate}`);
+          } else {
+            // Publish immediately
+            newStatus = POST_STATUS.PUBLISHED;
+            updateData.post_date = now; // Update post_date to now when publishing
+            updateData.post_date_gmt = now;
+            console.log(`✅ Publishing post ${post.ID} immediately`);
+          }
           break;
         case 'reject':
           newStatus = POST_STATUS.REJECTED;
@@ -621,7 +762,7 @@ class ContentApprovalController {
       }
 
       updateData.post_status = newStatus;
-      updateData.post_modified = new Date();
+      updateData.post_modified = now;
 
       await post.update(updateData, { transaction });
 

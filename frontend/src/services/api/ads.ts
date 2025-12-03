@@ -2,17 +2,22 @@ import { buildApiUrl } from '../../config/api';
 
 export interface Advertisement {
   id: string;
+  advertiser_id?: string | number;  // Added for API compatibility
   campaign_name: string;
-  media_type: 'image' | 'gif' | 'video' | 'html' | 'google_ads';
+  media_type: 'image' | 'gif' | 'video' | 'html' | 'google_ads' | 'google_adsense';
   media_url?: string;
   image_url?: string; // Legacy support
   target_url?: string;
   ad_content?: string;
   google_ads_code?: string;
-  placement_type: 'header' | 'regular' | 'sidebar' | 'inline' | 'footer' | 'popup';
+  placement_type: 'header' | 'regular' | 'sidebar' | 'inline' | 'footer' | 'popup' | 'hero-banner' | 'mid-content' | 'bottom-content' | 'article-top' | 'article-mid' | 'article-bottom' | 'article-final' | 'article-ads' | 'content-middle' | 'breaking-pre' | 'breaking-post';
   advertiser?: string;
   start_date: string;
   end_date: string;
+  duration_hours?: number;
+  rotation_mode?: 'global' | 'manual'; // Added for rotation control
+  rotation_duration?: number | null;   // Added for rotation control
+  budget?: number;
   impressions: number;
   clicks: number;
   status: 'pending' | 'active' | 'paused' | 'finished' | 'rejected';
@@ -31,7 +36,10 @@ export interface CreateAdRequest {
   advertiser_id: string;
   campaign_name: string;
   start_date: string;
-  end_date: string;
+  end_date?: string;
+  duration_hours?: number;
+  rotation_mode?: 'global' | 'manual'; // Added for rotation control
+  rotation_duration?: number | null;   // Added for rotation control
   budget?: number;
   placement_type: string;
   media_type: string;
@@ -52,11 +60,44 @@ export interface CreateAdResponse {
   message?: string;
 }
 
+// Mapping function untuk menerjemahkan placement frontend ke backend
+const mapPlacementToBackend = (frontendPlacement: string): string => {
+  const placementMap: { [key: string]: string } = {
+    'hero-banner': 'hero-banner',    // Fixed: Keep hero-banner as hero-banner
+    'mid-content': 'mid-content',    // Fixed: Keep mid-content as mid-content 
+    'bottom-content': 'bottom-content', // Fixed: Keep bottom-content as bottom-content
+    'article-top': 'article-top',    // Fixed: Keep article-top as article-top
+    'article-mid': 'article-mid',    // Fixed: Keep article-mid as article-mid
+    'article-final': 'article-final', // Fixed: Keep article-final as article-final
+    'article-bottom': 'article-bottom', // Fixed: Keep article-bottom as article-bottom
+    'article-ads': 'article-ads',    // Fixed: Keep article-ads as article-ads
+    'content-middle': 'content-middle', // Fixed: Keep content-middle as content-middle
+    'breaking-pre': 'breaking-pre',  // Fixed: Keep breaking-pre as breaking-pre
+    'breaking-post': 'breaking-post', // Fixed: Keep breaking-post as breaking-post
+    'sidebar': 'sidebar',
+    'header': 'header',
+    'regular': 'regular',
+    'inline': 'inline',
+    'footer': 'footer',
+    'popup': 'popup'
+  };
+  
+  // Dynamic index-list placements (index-list-1, index-list-2, etc.)
+  if (frontendPlacement.startsWith('index-list-')) {
+    return 'regular';
+  }
+  
+  return placementMap[frontendPlacement] || 'regular';
+};
+
 export const adsAPI = {
   // Fetch ads for specific placement
   async getAds(placement: string = 'regular', limit: number = 5): Promise<AdsResponse> {
+    const backendPlacement = mapPlacementToBackend(placement);
+    // Mapping placement for backend
+    
     const queryParams = new URLSearchParams({
-      placement,
+      placement: backendPlacement,
       limit: limit.toString()
     });
     
@@ -135,8 +176,49 @@ export const adsAPI = {
       body: JSON.stringify({ status })
     });
     return response.json();
+  },
+
+  // Update advertisement (admin only)
+  async updateAd(adId: string, adData: CreateAdRequest): Promise<CreateAdResponse> {
+    const token = localStorage.getItem('token');
+    const response = await fetch(buildApiUrl(`ads/${adId}`), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(adData)
+    });
+    return response.json();
+  },
+
+  // Upload ad image (admin only)
+  async uploadAdImage(file: File): Promise<{success: boolean; data?: {fullUrl: string; imageUrl: string; filename: string}; message?: string}> {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('adImage', file);
+    
+    const response = await fetch(buildApiUrl('ads/upload'), {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+    return response.json();
+  },
+
+  // Delete advertisement (admin only)
+  async deleteAd(adId: string): Promise<{ success: boolean; message?: string }> {
+    const token = localStorage.getItem('token');
+    const response = await fetch(buildApiUrl(`ads/${adId}`), {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return response.json();
   }
 };
 
-// Explicit type exports for better compatibility
-export type { Advertisement, AdsResponse, CreateAdRequest, CreateAdResponse };
+

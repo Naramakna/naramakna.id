@@ -100,7 +100,8 @@ router.put('/', authenticate, async (req, res) => {
       display_name,
       bio,
       user_url,
-      
+      desired_role,
+
       // Extended profile fields
       birth_date,
       gender,
@@ -128,11 +129,33 @@ router.put('/', authenticate, async (req, res) => {
       show_birth_date
     } = req.body;
 
+    // Get current user to check permissions for role change
+    const currentUser = await User.findByPk(req.user.ID);
+
     // Update basic user data if provided
     const userUpdateData = {};
     if (display_name !== undefined) userUpdateData.display_name = display_name;
     if (bio !== undefined) userUpdateData.bio = bio;
     if (user_url !== undefined) userUpdateData.user_url = user_url;
+
+    // Handle role change - only allow if user is currently 'user' role
+    if (desired_role !== undefined && desired_role !== currentUser.user_role) {
+      if (currentUser.user_role === 'user' && ['writer', 'partner_fotografi'].includes(desired_role)) {
+        // Validate profile completeness for role upgrade
+        if (!birth_date || !gender || !phone_number) {
+          return res.status(400).json({
+            success: false,
+            message: 'Profile harus lengkap (tanggal lahir, jenis kelamin, nomor telepon) sebelum mengubah role'
+          });
+        }
+        userUpdateData.user_role = desired_role;
+      } else if (currentUser.user_role !== 'user') {
+        return res.status(400).json({
+          success: false,
+          message: 'Role tidak dapat diubah setelah mendapatkan role khusus'
+        });
+      }
+    }
 
     if (Object.keys(userUpdateData).length > 0) {
       await User.update(userUpdateData, { where: { ID: req.user.ID } });
@@ -281,6 +304,108 @@ router.delete('/image', authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to delete profile image',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route   POST /api/profile/apply-photographer
+ * @desc    Apply to become a partner photographer
+ * @access  Private
+ */
+router.post('/apply-photographer', authenticate, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.ID, {
+      include: [{
+        model: UserProfile,
+        as: 'profile',
+        required: false
+      }]
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check if user already has a role other than 'user'
+    if (user.user_role !== 'user') {
+      return res.status(400).json({
+        success: false,
+        message: 'Anda sudah memiliki role khusus dan tidak dapat mengajukan role baru'
+      });
+    }
+
+    // Check if profile is complete (you can add more validation as needed)
+    if (!user.profile || !user.profile.birth_date || !user.profile.gender || !user.profile.phone_number) {
+      return res.status(400).json({
+        success: false,
+        message: 'Profile harus lengkap sebelum mengajukan sebagai partner fotografi'
+      });
+    }
+
+    // For now, automatically approve the photographer application
+    // In a real system, you might want to set a pending status and require admin approval
+    await User.update(
+      { user_role: 'partner_fotografi' },
+      { where: { ID: req.user.ID } }
+    );
+
+    res.json({
+      success: true,
+      message: 'Selamat! Anda sekarang adalah Partner Fotografi Naramakna. Anda dapat mengelola galeri foto di dashboard.'
+    });
+  } catch (error) {
+    console.error('Apply photographer error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Gagal mengajukan sebagai partner fotografi',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route   GET /api/profile/user/:user_nicename
+ * @desc    Get public user profile by user_nicename
+ * @access  Public
+ */
+router.get('/user/:user_nicename', async (req, res) => {
+  try {
+    const { user_nicename } = req.params;
+
+    // Find user by user_nicename
+    const user = await User.findOne({
+      where: { user_nicename: user_nicename },
+      include: [{
+        model: UserProfile,
+        as: 'profile',
+        required: false
+      }],
+      attributes: { exclude: ['user_pass', 'user_activation_key', 'user_email'] } // Hide sensitive fields
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        user: user
+      }
+    });
+  } catch (error) {
+    console.error('Get user profile error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get user profile',
       error: error.message
     });
   }

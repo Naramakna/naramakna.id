@@ -10,21 +10,48 @@ interface UsePollingReturn {
   refreshPolls: () => Promise<void>;
 }
 
+// Cache for API calls to prevent spam
+const pollsCache = new Map<string, { data: Poll[]; timestamp: number }>();
+const CACHE_DURATION = 30000; // 30 seconds cache
+
 export const usePolling = (limit: number = 10): UsePollingReturn => {
   const [polls, setPolls] = useState<Poll[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchPolls = useCallback(async () => {
+    const cacheKey = `polls_${limit}`;
+    const cached = pollsCache.get(cacheKey);
+
+    // Check cache first
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('usePolling - using cached data for limit:', limit);
+      }
+      setPolls(cached.data);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
-      
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('usePolling - fetching polls with limit:', limit);
+      }
       const response = await pollingAPI.getActivePolls({ limit });
-      
+
       if (response.success) {
-        setPolls(response.data?.polls || []);
+        const pollsData = response.data?.polls || [];
+        setPolls(pollsData);
+        // Cache the result
+        pollsCache.set(cacheKey, { data: pollsData, timestamp: Date.now() });
       } else {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('usePolling - API error:', response.message);
+        }
         setError(response.message || 'Failed to fetch polls');
         setPolls([]); // Ensure polls is always an array
       }

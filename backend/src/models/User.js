@@ -65,7 +65,7 @@ const User = sequelize.define('User', {
   },
   // Authentication columns (added via migrations)
   user_role: {
-    type: DataTypes.ENUM('superadmin', 'admin', 'writer', 'user'),
+    type: DataTypes.ENUM('superadmin', 'admin', 'writer', 'partner_fotografi', 'mata_elang', 'user'),
     allowNull: false,
     defaultValue: 'user',
     comment: 'User role in the system'
@@ -177,9 +177,9 @@ User.prototype.generateToken = function() {
       email: this.user_email,
       role: this.user_role
     },
-    process.env.JWT_SECRET || 'fallback-secret',
+    process.env.JWT_SECRET,
     { 
-      expiresIn: process.env.JWT_EXPIRES_IN || '7d' 
+      expiresIn: process.env.JWT_EXPIRE 
     }
   );
 };
@@ -204,13 +204,33 @@ User.prototype.canEditPost = function(post) {
   if (this.user_role === 'superadmin' || this.user_role === 'admin') {
     return true;
   }
-  
+
   // Writer hanya bisa edit post mereka sendiri
   if (this.user_role === 'writer') {
     return post.post_author === this.ID;
   }
-  
+
+  // Partner fotografi hanya bisa edit post mereka sendiri
+  if (this.user_role === 'partner_fotografi') {
+    return post.post_author === this.ID;
+  }
+
   // User biasa tidak bisa edit post
+  return false;
+};
+
+User.prototype.canEditGallery = function(gallery) {
+  // SuperAdmin dan Admin bisa edit semua gallery
+  if (this.user_role === 'superadmin' || this.user_role === 'admin') {
+    return true;
+  }
+
+  // Partner fotografi hanya bisa edit gallery mereka sendiri
+  if (this.user_role === 'partner_fotografi') {
+    return gallery.created_by === this.ID;
+  }
+
+  // Role lain tidak bisa edit gallery
   return false;
 };
 

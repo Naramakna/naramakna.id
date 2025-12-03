@@ -17,7 +17,7 @@ const ForgotPasswordPage: React.FC = () => {
               Lupa Password
             </h2>
             <p className="mt-2 text-sm text-gray-600 text-center">
-              Masukkan email Anda untuk menerima link reset password
+              Masukkan email Anda untuk menerima kode OTP reset password
             </p>
           </div>
 

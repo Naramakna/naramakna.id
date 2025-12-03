@@ -6,10 +6,10 @@ require('dotenv').config();
 
 // Database configuration
 const getDbConfig = () => ({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'naramakna_user',
-  password: process.env.DB_PASSWORD || 'password',
-  database: process.env.DB_NAME || 'naramakna_clean'
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME
 });
 
 // Public routes - no authentication required
@@ -17,33 +17,50 @@ router.get('/test', (req, res) => {
   res.json({ success: true, message: 'Polling routes working', timestamp: new Date().toISOString() });
 });
 router.get('/active', async (req, res) => {
-  console.log('🟢 Async route handler called');
-  console.log('🟢 req exists:', !!req);
-  console.log('🟢 req.query:', req.query);
-  
   try {
+    // Check if polling is enabled via settings
+    const { Option } = require('../models');
+    const pollingSetting = await Option.findOne({
+      where: { option_name: 'enable_polling' }
+    });
+
+    const enablePolling = pollingSetting ? pollingSetting.option_value === 'true' : true;
+
+    if (!enablePolling) {
+      return res.json({
+        success: true,
+        data: {
+          polls: [],
+          pagination: { total: 0, page: 1, limit: 10, totalPages: 0 }
+        },
+        message: 'Polling is currently disabled'
+      });
+    }
+
     const { limit = 10, offset = 0 } = req.query;
-    console.log('🟢 Parsed params - limit:', limit, 'offset:', offset);
     
     // Use mysql2 directly for now to bypass sequelize issue
     const mysql = require('mysql2/promise');
-    console.log('🟢 MySQL loaded');
-    
     const connection = await mysql.createConnection(getDbConfig());
-    
-    console.log('🟢 Database connected');
     
     // Get polls with options using JOIN
     const [pollsData] = await connection.query(`
       SELECT 
         p.id as poll_id,
         p.title as poll_title,
+        p.question as poll_question,
         p.category,
         p.total_votes,
         p.image_url,
         p.created_at,
+        p.expires_at,
+        CASE 
+          WHEN p.expires_at IS NULL THEN NULL
+          ELSE DATEDIFF(p.expires_at, NOW())
+        END as days_left,
         po.id as option_id,
         po.option_text,
+        po.vote_count,
         po.percentage,
         po.option_order
       FROM polls p
@@ -52,26 +69,21 @@ router.get('/active', async (req, res) => {
       ORDER BY p.created_at DESC, po.option_order ASC
     `);
     
-    console.log('🟢 Found joined data rows:', pollsData.length);
-    if (pollsData.length > 0) {
-      console.log('🟢 First row sample:', JSON.stringify(pollsData[0]));
-    }
+    // Process polling data
     
     // Group by poll_id
     const pollsMap = new Map();
     
     pollsData.forEach((row, index) => {
-      console.log(`🟢 Processing row ${index}:`, row.poll_id, row.option_id, row.option_text);
-      
       if (!pollsMap.has(row.poll_id)) {
-        console.log('🟢 Creating new poll:', row.poll_id);
                    pollsMap.set(row.poll_id, {
              id: row.poll_id.toString(),
              title: row.poll_title,
+             question: row.poll_question,
              source: row.category || 'Umum',
              timeAgo: 'Baru saja',
              totalVotes: row.total_votes || 0,
-             daysLeft: 7,
+             daysLeft: row.days_left, // null if no expiry, number if has expiry
              date: new Date(row.created_at).toLocaleDateString('id-ID'),
              created_at: row.created_at,
              image_url: row.image_url,
@@ -81,38 +93,22 @@ router.get('/active', async (req, res) => {
       
       // Add option if exists
       if (row.option_id) {
-        console.log('🟢 Adding option to poll', row.poll_id, ':', row.option_text);
         pollsMap.get(row.poll_id).options.push({
           id: row.option_id.toString(),
           text: row.option_text,
+          vote_count: row.vote_count || 0,
           percentage: row.percentage || 0
         });
       }
     });
     
-    console.log('🟢 PollsMap size:', pollsMap.size);
-    console.log('🟢 PollsMap keys:', Array.from(pollsMap.keys()));
-    
-    // Debug first poll
-    const firstPoll = pollsMap.get(1);
-    if (firstPoll) {
-      console.log('🟢 First poll options count:', firstPoll.options.length);
-      console.log('🟢 First poll options:', JSON.stringify(firstPoll.options));
-    }
-    
     // Convert Map to Array and maintain order by created_at DESC
     const pollsWithOptions = Array.from(pollsMap.values())
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .slice(0, parseInt(limit));
-    console.log('🟢 Processed polls with options:', pollsWithOptions.length);
-    console.log('🟢 Final result first poll options:', pollsWithOptions[0]?.options?.length);
     
     await connection.end();
-    console.log('🟢 Query executed, found polls with options:', pollsWithOptions.length);
-    
     const polls = pollsWithOptions;
-
-    console.log('🟢 Query executed, found polls:', polls.length);
     
     res.json({
       success: true,
@@ -133,6 +129,21 @@ router.get('/active', async (req, res) => {
 });
 router.post('/vote', async (req, res) => {
   try {
+    // Check if polling is enabled via settings
+    const { Option } = require('../models');
+    const pollingSetting = await Option.findOne({
+      where: { option_name: 'enable_polling' }
+    });
+
+    const enablePolling = pollingSetting ? pollingSetting.option_value === 'true' : true;
+
+    if (!enablePolling) {
+      return res.status(403).json({
+        success: false,
+        message: 'Polling is currently disabled'
+      });
+    }
+
     console.log('🗳️ Vote request received:', req.body);
     const { poll_id, option_id, user_id } = req.body;
     

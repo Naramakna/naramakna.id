@@ -1,18 +1,67 @@
-const isDevelopment = import.meta.env.DEV;
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
-export function buildApiUrl(endpoint: string = ''): string {
-  // For production deployment, always use the domain
-  const baseUrl = 'http://dev.naramakna.id';
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-  return `${baseUrl}/api/${cleanEndpoint}`.replace(/\/+/g, '/').replace(/:\//g, '://');
-}
-
-// Export for debugging
+// API Configuration
 export const API_CONFIG = {
-  baseUrl: 'http://dev.naramakna.id',
-  isDevelopment,
-  fullApiUrl: buildApiUrl()
+  // Determine base URL based on environment
+  BASE_URL: (() => {
+    // Check for environment variable first
+    if (import.meta.env.VITE_API_BASE_URL) {
+      return import.meta.env.VITE_API_BASE_URL;
+    }
+    
+    // In production, use relative path
+    return '/api';
+  })(),
+  
+  // Backend base URL for uploads and other resources
+  BACKEND_URL: (() => {
+    if (import.meta.env.VITE_BACKEND_URL) {
+      return import.meta.env.VITE_BACKEND_URL;
+    }
+    
+    // In production, use current domain
+    return window.location.origin;
+  })(),
+  
+  // Uploads base URL
+  UPLOADS_URL: (() => {
+    if (import.meta.env.VITE_UPLOADS_BASE_URL) {
+      return import.meta.env.VITE_UPLOADS_BASE_URL;
+    }
+    
+    // In production, use relative path
+    return '/uploads';
+  })(),
+  
+  // Request defaults
+  DEFAULTS: {
+    TIMEOUT: 10000, // 10 seconds
+    HEADERS: {
+      'Content-Type': 'application/json',
+    }
+  }
 };
 
-console.log('🔧 API Config loaded:', API_CONFIG);
+// Helper function to build API URLs
+export const buildApiUrl = (endpoint: string): string => {
+  const baseUrl = API_CONFIG.BASE_URL.replace(/\/$/, ''); // Remove trailing slash
+  const cleanEndpoint = endpoint.replace(/^\//, ''); // Remove leading slash
+  return `${baseUrl}/${cleanEndpoint}`;
+};
+
+// Helper function to build upload URLs
+export const buildUploadsUrl = (path: string): string => {
+  const baseUrl = API_CONFIG.UPLOADS_URL.replace(/\/$/, ''); // Remove trailing slash
+  const cleanPath = path.replace(/^\//, ''); // Remove leading slash
+  return `${baseUrl}/${cleanPath}`;
+};
+
+// Helper function to build backend URLs
+export const buildBackendUrl = (path: string): string => {
+  const baseUrl = API_CONFIG.BACKEND_URL.replace(/\/$/, ''); // Remove trailing slash
+  const cleanPath = path.replace(/^\//, ''); // Remove leading slash
+  return `${baseUrl}/${cleanPath}`;
+};
+
+// Export for easy import
+export const API_BASE_URL = API_CONFIG.BASE_URL;
+export const BACKEND_URL = API_CONFIG.BACKEND_URL;
+export const UPLOADS_URL = API_CONFIG.UPLOADS_URL;

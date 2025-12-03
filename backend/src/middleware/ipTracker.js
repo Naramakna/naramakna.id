@@ -1,19 +1,45 @@
 const geoip = require('geoip-lite');
 
+// Mapping untuk kota-kota besar Indonesia (MOVED OUTSIDE to prevent memory leak)
+const indonesianCities = {
+  'Jakarta': ['Jakarta', 'DKI Jakarta', 'Central Jakarta', 'South Jakarta', 'North Jakarta', 'East Jakarta', 'West Jakarta'],
+  'Bandung': ['Bandung', 'Bandung Regency'],
+  'Surabaya': ['Surabaya'],
+  'Medan': ['Medan'],
+  'Semarang': ['Semarang'],
+  'Makassar': ['Makassar', 'Ujung Pandang'],
+  'Palembang': ['Palembang'],
+  'Yogyakarta': ['Yogyakarta', 'Sleman', 'Bantul'],
+  'Malang': ['Malang'],
+  'Denpasar': ['Denpasar', 'Badung', 'Gianyar'],
+  'Banjarmasin': ['Banjarmasin'],
+  'Pontianak': ['Pontianak'],
+  'Balikpapan': ['Balikpapan'],
+  'Samarinda': ['Samarinda'],
+  'Manado': ['Manado'],
+  'Batam': ['Batam'],
+  'Pekanbaru': ['Pekanbaru'],
+  'Padang': ['Padang'],
+  'Bogor': ['Bogor'],
+  'Tangerang': ['Tangerang'],
+  'Bekasi': ['Bekasi'],
+  'Depok': ['Depok']
+};
+
 // Middleware untuk tracking IP address dan lokasi
 const ipTracker = (req, res, next) => {
   try {
     // Dapatkan IP address dari request
-    let ip = req.headers['x-forwarded-for'] || 
-             req.headers['x-real-ip'] || 
-             req.connection.remoteAddress || 
+    let ip = req.headers['x-forwarded-for'] ||
+             req.headers['x-real-ip'] ||
+             req.connection.remoteAddress ||
              req.socket.remoteAddress ||
              (req.connection.socket ? req.connection.socket.remoteAddress : null);
 
     // Clean up IP (remove port if exists)
     if (ip) {
       ip = ip.split(',')[0].trim();
-      
+
       // Remove IPv6 prefix if present
       if (ip.startsWith('::ffff:')) {
         ip = ip.substring(7);
@@ -27,32 +53,6 @@ const ipTracker = (req, res, next) => {
 
     // Lookup geolocation
     const geo = geoip.lookup(ip);
-    
-    // Mapping untuk kota-kota besar Indonesia
-    const indonesianCities = {
-      'Jakarta': ['Jakarta', 'DKI Jakarta', 'Central Jakarta', 'South Jakarta', 'North Jakarta', 'East Jakarta', 'West Jakarta'],
-      'Bandung': ['Bandung', 'Bandung Regency'],
-      'Surabaya': ['Surabaya'],
-      'Medan': ['Medan'],
-      'Semarang': ['Semarang'],
-      'Makassar': ['Makassar', 'Ujung Pandang'],
-      'Palembang': ['Palembang'],
-      'Yogyakarta': ['Yogyakarta', 'Sleman', 'Bantul'],
-      'Malang': ['Malang'],
-      'Denpasar': ['Denpasar', 'Badung', 'Gianyar'],
-      'Banjarmasin': ['Banjarmasin'],
-      'Pontianak': ['Pontianak'],
-      'Balikpapan': ['Balikpapan'],
-      'Samarinda': ['Samarinda'],
-      'Manado': ['Manado'],
-      'Batam': ['Batam'],
-      'Pekanbaru': ['Pekanbaru'],
-      'Padang': ['Padang'],
-      'Bogor': ['Bogor'],
-      'Tangerang': ['Tangerang'],
-      'Bekasi': ['Bekasi'],
-      'Depok': ['Depok']
-    };
 
     let locationData = {
       ip: ip,

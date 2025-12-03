@@ -1,0 +1,1 @@
+export { HowToWriteFAQItem } from './HowToWriteFAQItem';

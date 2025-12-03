@@ -10,8 +10,8 @@ interface AdSectionProps {
   altText?: string;
   href?: string;
   isPlaceholder?: boolean;
-  size?: 'header' | 'regular' | 'sidebar';
-  placement?: string; // Override automatic placement detection
+  size?: 'header' | 'regular' | 'sidebar' | 'article';
+  placement?: string | string[]; // Single placement or array for multi-placement rotation
   rotationInterval?: number; // Custom rotation timing in milliseconds (default: 5000)
 }
 
@@ -25,20 +25,42 @@ export const AdSection: React.FC<AdSectionProps> = ({
   placement,
   rotationInterval = 5000 // Default 5 seconds
 }) => {
-  const { getAdsForPlacement, trackClick } = useAds();
+  const { getAdsForPlacement, trackClick, forceRefreshAds: _forceRefreshAds, isPlaceholderVisible } = useAds();
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  // Determine placement based on size if not explicitly provided
-  const adPlacement = placement || (size === 'header' ? 'header' : size === 'sidebar' ? 'sidebar' : 'regular');
+  // Determine placement(s) based on size if not explicitly provided
+  const adPlacements = useMemo(() => {
+    if (Array.isArray(placement)) {
+      return placement;
+    }
+    const singlePlacement = placement || (size === 'header' ? 'header' : size === 'sidebar' ? 'sidebar' : size === 'article' ? 'article-ads' : 'regular');
+    return [singlePlacement];
+  }, [placement, size]);
 
-  // Get ads for this placement
+  // Get ads for all placements and combine them
   const availableAds = useMemo(() => {
-    const ads = getAdsForPlacement(adPlacement);
-    // console.log(`🎯 AdSection: Available ads for ${adPlacement}:`, ads);
-    return ads;
-  }, [getAdsForPlacement, adPlacement]);
+    const allAds: Advertisement[] = [];
+    
+    adPlacements.forEach(placementName => {
+      const ads = getAdsForPlacement(placementName);
+      // Tag each ad with its original placement for tracking
+      const taggedAds = ads.map(ad => ({
+        ...ad,
+        _originalPlacement: placementName
+      }));
+      allAds.push(...taggedAds);
+    });
+    
+    // Only log when ads change
+    if (allAds.length > 0) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🎯 AdSection: Available ads for [${adPlacements.join(', ')}]:`, allAds.length, 'ads');
+      }
+    }
+    return allAds;
+  }, [getAdsForPlacement, adPlacements]);
 
   // Filter active ads
   const activeAds = useMemo(() => {
@@ -91,16 +113,30 @@ export const AdSection: React.FC<AdSectionProps> = ({
 
   // Select current ad to display
   const selectedAd = useMemo(() => {
-    if (activeAds.length === 0) return null;
+    if (activeAds.length === 0) {
+      console.log(`🎯 AdSection [${adPlacements.join(', ')}]: No active ads found`);
+      return null;
+    }
     const ad = activeAds[currentAdIndex];
     if (ad) {
-      console.log(`🎯 AdSection: Showing ad ${currentAdIndex + 1}/${activeAds.length} for ${adPlacement}:`, ad.campaign_name);
+      const placementInfo = (ad as any)._originalPlacement || adPlacements.join(', ');
+      console.log(`🎯 AdSection [${placementInfo}]: Showing ad ${currentAdIndex + 1}/${activeAds.length}:`, ad.campaign_name, 'mediaUrl:', ad.media_url);
     }
     return ad;
-  }, [activeAds, currentAdIndex, adPlacement]);
+  }, [activeAds, currentAdIndex, adPlacements]);
 
   // Determine if we should show placeholder
   const shouldShowPlaceholder = isPlaceholder !== undefined ? isPlaceholder : !selectedAd;
+
+  // Check if placeholder should be visible for this placement
+  const placementName = Array.isArray(placement) ? placement[0] : placement || (size === 'header' ? 'header' : size === 'sidebar' ? 'sidebar' : size === 'article' ? 'article-ads' : 'regular');
+  const placeholderAllowed = isPlaceholderVisible(placementName);
+
+  // IMPORTANT: Don't show placeholder when there are no active ads - let AdSense fallback show instead
+  const finalShowPlaceholder = shouldShowPlaceholder && placeholderAllowed && activeAds.length > 0;
+
+  // REMOVED: Don't return null - always render to allow AdSense fallback
+  // Old logic: if (shouldShowPlaceholder && !placeholderAllowed && activeAds.length === 0) return null;
 
   const handleAdClick = (adId: string) => {
     trackClick(adId);
@@ -113,12 +149,13 @@ export const AdSection: React.FC<AdSectionProps> = ({
           imageSrc={imageSrc}
           altText={altText}
           href={href}
-          isPlaceholder={shouldShowPlaceholder}
+          isPlaceholder={finalShowPlaceholder}
           size={size}
           advertisement={selectedAd || undefined}
           onAdClick={handleAdClick}
           isVisible={!isTransitioning}
           showTransition={true}
+          hasActiveAds={activeAds.length > 0}
         />
         
         {/* Progress Bar & Rotation Indicator */}
@@ -133,11 +170,11 @@ export const AdSection: React.FC<AdSectionProps> = ({
             </div>
             
             {/* Dots Indicator */}
-            <div className="flex justify-center mt-2 space-x-1">
+            <div className="hidden md:flex justify-center mt-2 space-x-1">
               {activeAds.map((_, index) => (
                 <button
                   key={index}
-                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  className={`w-1 h-1 md:w-2 md:h-2 rounded-full transition-all duration-300 ${
                     index === currentAdIndex 
                       ? 'bg-yellow-500 scale-125' 
                       : 'bg-gray-300 hover:bg-gray-400'
@@ -153,11 +190,13 @@ export const AdSection: React.FC<AdSectionProps> = ({
             {/* Ads Counter */}
             <div className="text-center mt-1">
               <span className="text-xs text-gray-500">
-                {currentAdIndex + 1}/{activeAds.length} • {adPlacement}
+                {currentAdIndex + 1}/{activeAds.length} • {adPlacements.length > 1 ? `[${adPlacements.join(', ')}]` : adPlacements[0]}
               </span>
             </div>
           </div>
         )}
+        
+
       </div>
     </div>
   );

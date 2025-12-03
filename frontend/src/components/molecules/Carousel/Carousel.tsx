@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CarouselItem } from '../../atoms/CarouselItem';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface CarouselArticle {
   id: string;
@@ -9,6 +10,7 @@ interface CarouselArticle {
   imageSrc?: string;
   href?: string;
   isFeatured?: boolean;
+  views?: number;
 }
 
 interface CarouselProps {
@@ -16,24 +18,28 @@ interface CarouselProps {
   className?: string;
   autoSlide?: boolean;
   autoSlideInterval?: number;
+  showDots?: boolean;
 }
 
 export const Carousel: React.FC<CarouselProps> = ({
   articles,
   className = '',
   autoSlide = true,
-  autoSlideInterval = 5000
+  autoSlideInterval = 5000,
+  showDots = true
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const nextSlide = () => {
-    setCurrentIndex((prevIndex) => 
+    if (!articles || articles.length === 0) return;
+    setCurrentIndex((prevIndex) =>
       prevIndex === articles.length - 1 ? 0 : prevIndex + 1
     );
   };
 
   const prevSlide = () => {
-    setCurrentIndex((prevIndex) => 
+    if (!articles || articles.length === 0) return;
+    setCurrentIndex((prevIndex) =>
       prevIndex === 0 ? articles.length - 1 : prevIndex - 1
     );
   };
@@ -44,16 +50,16 @@ export const Carousel: React.FC<CarouselProps> = ({
 
   // Auto-slide functionality
   useEffect(() => {
-    if (!autoSlide || articles.length <= 1) return;
+    if (!autoSlide || !articles || articles.length <= 1) return;
 
     const interval = setInterval(() => {
-      setCurrentIndex((prevIndex) => 
+      setCurrentIndex((prevIndex) =>
         prevIndex === articles.length - 1 ? 0 : prevIndex + 1
       );
     }, autoSlideInterval);
 
     return () => clearInterval(interval);
-  }, [autoSlide, autoSlideInterval, articles.length]);
+  }, [autoSlide, autoSlideInterval, articles]);
 
   // Reset to first slide when articles change
   useEffect(() => {
@@ -68,7 +74,7 @@ export const Carousel: React.FC<CarouselProps> = ({
           className="flex transition-transform duration-300 ease-in-out"
           style={{ transform: `translateX(-${currentIndex * 100}%)` }}
         >
-          {articles.map((article, index) => (
+          {articles.map((article, _index) => (
             <div key={article.id} className="w-full flex-shrink-0">
               <CarouselItem
                 title={article.title}
@@ -77,46 +83,57 @@ export const Carousel: React.FC<CarouselProps> = ({
                 imageSrc={article.imageSrc}
                 href={article.href}
                 isFeatured={true}
+                views={article.views}
               />
             </div>
           ))}
         </div>
 
         {/* Navigation Buttons - Only show if more than 1 article */}
-        {articles.length > 1 && (
+        {articles && articles.length > 1 && (
           <>
             <button
-              onClick={prevSlide}
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-2 rounded-full transition-all duration-200 z-10"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                prevSlide();
+              }}
+              className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-1 md:p-2 rounded-full transition-all duration-200 z-10"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
+              <ChevronLeft className="w-4 h-4 md:w-6 md:h-6" />
             </button>
 
             <button
-              onClick={nextSlide}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-2 rounded-full transition-all duration-200 z-10"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                nextSlide();
+              }}
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-75 text-white p-1 md:p-2 rounded-full transition-all duration-200 z-10"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
+              <ChevronRight className="w-4 h-4 md:w-6 md:h-6" />
             </button>
 
             {/* Dots Indicator */}
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
-              {articles.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => goToSlide(index)}
-                  className={`w-3 h-3 rounded-full transition-all duration-200 ${
-                    index === currentIndex 
-                      ? 'bg-white' 
-                      : 'bg-white bg-opacity-50 hover:bg-opacity-75'
-                  }`}
-                />
-              ))}
-            </div>
+            {showDots && (
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 hidden md:flex space-x-2 z-10">
+                {articles.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      goToSlide(index);
+                    }}
+                    className={`w-2.5 h-2.5 rounded-full transition-all duration-200 ${
+                      index === currentIndex 
+                        ? 'bg-white' 
+                        : 'bg-white bg-opacity-50 hover:bg-opacity-75'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>

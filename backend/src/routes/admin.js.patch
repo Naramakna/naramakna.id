@@ -1,0 +1,14 @@
+---
+ src/routes/admin.js |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/src/routes/admin.js
++++ b/src/routes/admin.js
+@@ -30,6 +30,7 @@
+ router.get('/settings/analytics-button', cacheMiddleware(120), AdminController.getAnalyticsButtonSetting); // 2 min
+ router.get('/settings/polling', cacheMiddleware(120), AdminController.getPollingSettings); // 2 min
+ router.get('/users', cacheMiddleware(60), AdminController.getAllUsers); // 1 min
++router.get('/dashboard-all', cacheMiddleware(60), AdminController.getDashboardAll); // Batched API - reduces connection spike
+ 
+ // Admin user management
+ router.post('/users/:userId/promote', AdminController.promoteToAdmin);

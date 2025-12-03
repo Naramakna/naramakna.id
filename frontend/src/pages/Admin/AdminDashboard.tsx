@@ -6,6 +6,11 @@ import { UserManagement } from '../../components/organisms/UserManagement';
 import { DataTable } from '../../components/organisms/DataTable';
 import { AdminPolling } from './AdminPolling';
 import { AdminAds } from './AdminAds';
+import { AdminArticles } from './AdminArticles';
+import { DeletePosts } from '../../components/organisms/DeletePosts';
+import ScheduledPosts from '../../components/organisms/ScheduledPosts/ScheduledPosts';
+import { AdminMataElang } from './AdminMataElang';
+import { buildApiUrl } from '../../config/api';
 
 
 
@@ -36,6 +41,7 @@ const AdminDashboard: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [pendingPosts, setPendingPosts] = useState<Post[]>([]);
   const [pendingWriters, setPendingWriters] = useState<User[]>([]);
+  const [scheduledPosts, setScheduledPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -48,16 +54,20 @@ const AdminDashboard: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const [usersRes, pendingPostsRes, pendingWritersRes] = await Promise.all([
-        fetch('http://dev.naramakna.id/api/users', {
+      const [usersRes, pendingPostsRes, pendingWritersRes, scheduledPostsRes] = await Promise.all([
+        fetch(buildApiUrl('users'), {
           headers: { 'Authorization': `Bearer ${token}` },
           credentials: 'include'
         }),
-        fetch('http://dev.naramakna.id/api/approval/pending', {
+        fetch(buildApiUrl('approval/pending'), {
           headers: { 'Authorization': `Bearer ${token}` },
           credentials: 'include'
         }),
-        fetch('http://dev.naramakna.id/api/users/pending-writers', {
+        fetch(buildApiUrl('users/pending-writers'), {
+          headers: { 'Authorization': `Bearer ${token}` },
+          credentials: 'include'
+        }),
+        fetch(buildApiUrl('scheduler/scheduled'), {
           headers: { 'Authorization': `Bearer ${token}` },
           credentials: 'include'
         })
@@ -66,10 +76,12 @@ const AdminDashboard: React.FC = () => {
       const usersData = await usersRes.json();
       const pendingPostsData = await pendingPostsRes.json();
       const pendingWritersData = await pendingWritersRes.json();
+      const scheduledPostsData = await scheduledPostsRes.json();
 
       if (usersData.success) setUsers(usersData.data.users);
       if (pendingPostsData.success) setPendingPosts(pendingPostsData.data.pending_posts);
       if (pendingWritersData.success) setPendingWriters(pendingWritersData.data.pending_writers);
+      if (scheduledPostsData.success) setScheduledPosts(scheduledPostsData.data.posts || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -79,7 +91,7 @@ const AdminDashboard: React.FC = () => {
 
   const approveWriter = async (userId: number, approved: boolean) => {
     try {
-      const response = await fetch(`http://dev.naramakna.id/api/users/${userId}/approve-writer`, {
+      const response = await fetch(buildApiUrl(`users/${userId}/approve-writer`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -165,8 +177,12 @@ const AdminDashboard: React.FC = () => {
                 { id: 'users', name: 'Users', count: users.length },
                 { id: 'pending-writers', name: 'Pending Writers', count: pendingWriters.length },
                 { id: 'pending-posts', name: 'Pending Posts', count: pendingPosts.length },
-                { id: 'polling', name: '📊 Polling Management' },
-                { id: 'ads', name: '🎯 Ads Management' },
+                { id: 'scheduled-posts', name: 'Scheduled Posts', count: scheduledPosts.length },
+                { id: 'articles', name: 'Articles Management' },
+                { id: 'delete-posts', name: 'Hapus Postingan' },
+                { id: 'mata-elang', name: 'Mata Elang Gallery' },
+                { id: 'polling', name: 'Polling Management' },
+                { id: 'ads', name: 'Ads Management' },
               ]}
               activeTab={activeTab}
               onTabChange={setActiveTab}
@@ -336,15 +352,42 @@ const AdminDashboard: React.FC = () => {
                         </div>
           )}
 
+          {activeTab === 'scheduled-posts' && (
+            <div className="p-6">
+              <ScheduledPosts 
+                posts={scheduledPosts}
+                onRefresh={fetchData}
+              />
+            </div>
+          )}
+
           {activeTab === 'polling' && (
             <div className="p-6">
               <AdminPolling />
             </div>
           )}
 
+          {activeTab === 'articles' && (
+            <div className="p-6">
+              <AdminArticles />
+            </div>
+          )}
+
+          {activeTab === 'delete-posts' && (
+            <div className="p-6">
+              <DeletePosts />
+            </div>
+          )}
+
           {activeTab === 'ads' && (
             <div className="p-6">
               <AdminAds />
+            </div>
+          )}
+
+          {activeTab === 'mata-elang' && (
+            <div className="p-6">
+              <AdminMataElang />
             </div>
           )}
 

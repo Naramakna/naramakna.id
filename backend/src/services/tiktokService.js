@@ -1,5 +1,6 @@
 // Service untuk integrasi dengan TikTok API
 const axios = require('axios');
+axios.defaults.timeout = 30000; // 30 second timeout
 const tiktokConfig = require('../config/tiktok');
 const logger = require('../utils/logger');
 
@@ -32,7 +33,7 @@ class TikTokService {
    */
   async getAccessToken(authCode) {
     try {
-      const response = await axios.post(this.config.tokenURL, {
+      const response = await axios.post(this.config.tokenURL, { timeout: 30000 }, {
         client_key: this.config.clientKey,
         client_secret: this.config.clientSecret,
         code: authCode,

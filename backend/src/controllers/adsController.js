@@ -19,6 +19,9 @@ class AdsController {
         campaign_name,
         start_date,
         end_date,
+        duration_hours,
+        rotation_mode = 'global', // Default to global settings
+        rotation_duration = null, // Only for manual mode
         budget,
         placement_type = 'regular',
         media_type = 'image',
@@ -30,16 +33,54 @@ class AdsController {
       } = req.body;
 
       // Validate required fields
-      if (!advertiser_id || !campaign_name || !start_date || !end_date) {
+      if (!advertiser_id || !campaign_name) {
+        // Disable caching for ads endpoints
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
         return res.status(400).json({
           success: false,
-          message: 'Missing required fields: advertiser_id, campaign_name, start_date, end_date'
+          message: 'Missing required fields: advertiser_id, campaign_name'
+        });
+      }
+
+      // Validate that either end_date or duration_hours is provided
+      if (!end_date && !duration_hours) {
+        // Disable caching for ads endpoints
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
+        return res.status(400).json({
+          success: false,
+          message: 'Either end_date or duration_hours must be provided'
+        });
+      }
+
+      // For duration_hours mode, start_date is optional (will use current time)
+      if (duration_hours && (!start_date || start_date === '')) {
+        console.log('🕒 Duration mode: Using current time as start_date');
+      } else if (!start_date) {
+        // Disable caching for ads endpoints
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
+        return res.status(400).json({
+          success: false,
+          message: 'start_date is required when not using duration_hours mode'
         });
       }
 
       // Verify advertiser exists
       const advertiser = await User.findByPk(advertiser_id);
       if (!advertiser) {
+        // Disable caching for ads endpoints
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
         return res.status(404).json({
           success: false,
           message: 'Advertiser not found'
@@ -48,6 +89,11 @@ class AdsController {
 
       // Validate media requirements
       if (media_type === 'google_ads' && !google_ads_code) {
+        // Disable caching for ads endpoints
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
         return res.status(400).json({
           success: false,
           message: 'Google Ads code is required for google_ads media type'
@@ -55,18 +101,78 @@ class AdsController {
       }
 
       if ((media_type === 'image' || media_type === 'gif' || media_type === 'video') && !media_url && !image_url) {
+        // Disable caching for ads endpoints
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
         return res.status(400).json({
           success: false,
           message: 'Media URL is required for image, gif, or video ads'
         });
       }
 
-      // Create advertisement
+      // Helper function to get current WIB time (GMT+7)
+      const getWIBTime = () => {
+        const now = new Date();
+        return new Date(now.getTime() + (7 * 60 * 60 * 1000));
+      };
+
+      // Helper function to parse WIB datetime string to UTC
+      const parseWIBToUTC = (dateTimeString) => {
+        if (dateTimeString.includes('+07:00')) {
+          // Already has timezone offset, parse directly
+          return new Date(dateTimeString);
+        } else {
+          // Assume WIB timezone, convert to UTC
+          const date = new Date(dateTimeString);
+          return new Date(date.getTime() - (7 * 60 * 60 * 1000));
+        }
+      };
+
+      // Calculate start and end dates based on different input modes
+      let calculatedStartDate, calculatedEndDate;
+      
+      if (duration_hours) {
+        // Duration mode: start immediately, calculate end date
+        if (!start_date || start_date === '') {
+          calculatedStartDate = new Date(); // Current UTC time
+        } else {
+          calculatedStartDate = parseWIBToUTC(start_date);
+        }
+        calculatedEndDate = new Date(calculatedStartDate.getTime() + (duration_hours * 60 * 60 * 1000));
+      } else {
+        // Date/datetime mode: use provided start and end dates
+        if (start_date && start_date.includes('T') && start_date.includes('+07:00')) {
+          // Datetime with timezone (from new UI)
+          calculatedStartDate = parseWIBToUTC(start_date);
+          calculatedEndDate = parseWIBToUTC(end_date);
+        } else {
+          // Legacy date-only format
+          calculatedStartDate = new Date(start_date);
+          calculatedEndDate = new Date(end_date);
+        }
+      }
+
+      // Log timezone conversion for debugging
+      console.log('🕒 Ad creation timezone info:');
+      console.log('  Input start_date:', start_date);
+      console.log('  Input end_date:', end_date);
+      console.log('  Input duration_hours:', duration_hours);
+      console.log('  Current WIB time:', getWIBTime().toISOString());
+      console.log('  Calculated start date (UTC for storage):', calculatedStartDate.toISOString());
+      console.log('  Calculated end date (UTC for storage):', calculatedEndDate.toISOString());
+      console.log('  Start date in WIB:', new Date(calculatedStartDate.getTime() + (7 * 60 * 60 * 1000)).toISOString());
+      console.log('  End date in WIB:', new Date(calculatedEndDate.getTime() + (7 * 60 * 60 * 1000)).toISOString());
+      
       const ad = await Advertisement.create({
         advertiser_id,
         campaign_name,
-        start_date: new Date(start_date),
-        end_date: new Date(end_date),
+        start_date: calculatedStartDate,
+        end_date: calculatedEndDate,
+        duration_hours: duration_hours || null,
+        rotation_mode: rotation_mode || 'global',
+        rotation_duration: rotation_mode === 'manual' ? parseInt(rotation_duration) || 30 : null,
         budget: budget || null,
         placement_type,
         media_type,
@@ -77,6 +183,11 @@ class AdsController {
         google_ads_code,
         status: 'pending'
       });
+
+      // Disable caching for ads endpoints
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
 
       res.status(201).json({
         success: true,
@@ -91,6 +202,11 @@ class AdsController {
 
     } catch (error) {
       console.error('Error creating advertisement:', error);
+      // Disable caching for ads endpoints
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
       res.status(500).json({
         success: false,
         message: 'Failed to create advertisement',
@@ -110,15 +226,18 @@ class AdsController {
         limit = 5
       } = req.query;
 
-      const now = new Date();
+      // Use current WIB time for ads comparison (convert to UTC for database comparison)
+      const nowWIB = new Date(Date.now() + (7 * 60 * 60 * 1000));
+      const nowUTC = new Date();
+      // console.log(`🎯 AdsController: Serving ads for placement "${placement}" at ${nowWIB.toISOString()} WIB (UTC: ${nowUTC.toISOString()})`);
 
-      // Get active ads for the placement
+      // Get active ads for the placement (database stores in UTC, so compare with UTC)
       const ads = await Advertisement.findAll({
         where: {
           placement_type: placement,
           status: 'active',
-          start_date: { [Op.lte]: now },
-          end_date: { [Op.gte]: now }
+          start_date: { [Op.lte]: nowUTC },
+          end_date: { [Op.gte]: nowUTC }
         },
         include: [{
           model: User,
@@ -133,6 +252,18 @@ class AdsController {
         ]
       });
 
+      // Debug: Log all ads for this placement regardless of date/status
+      const allAdsForPlacement = await Advertisement.findAll({
+        where: {
+          placement_type: placement
+        },
+        attributes: ['id', 'campaign_name', 'status', 'start_date', 'end_date', 'placement_type', 'media_type']
+      });
+      
+      // console.log(`🎯 AdsController: Found ${allAdsForPlacement.length} total ads for placement "${placement}":`,
+      
+      // console.log(`🎯 AdsController: After date/status filtering: ${ads.length} ads for "${placement}"`);
+
       // Increment impressions
       if (ads.length > 0) {
         const adIds = ads.map(ad => ad.id);
@@ -143,23 +274,109 @@ class AdsController {
         });
       }
 
-      const formattedAds = ads.map(ad => ({
-        id: ad.id,
-        campaign_name: ad.campaign_name,
-        media_type: ad.media_type,
-        media_url: ad.media_url || ad.image_url, // Prefer media_url, fallback to image_url
-        image_url: ad.image_url, // Legacy support
-        target_url: ad.target_url,
-        ad_content: ad.ad_content,
-        google_ads_code: ad.google_ads_code,
-        placement_type: ad.placement_type,
-        advertiser: ad.advertiser?.display_name,
-        start_date: ad.start_date,
-        end_date: ad.end_date,
-        status: ad.status, // Include status for frontend filtering
-        impressions: ad.impressions,
-        clicks: ad.clicks
-      }));
+      // Global rotation settings (in seconds)
+      const GLOBAL_ROTATION_SETTINGS = {
+        'hero-banner': 3,
+        'header': 5,
+        'mid-content': 5,
+        'bottom-content': 5,
+        'popup': 5,
+        'sidebar': 10,
+        'regular': 10,
+        'article-top': 10,
+        'article-mid': 10,
+        'article-bottom': 10,
+        'article-final': 10,
+        'article-ads': 10,
+        'breaking-pre': 10,
+        'breaking-post': 10
+      };
+
+      // Calculate current rotation based on time and rotation durations
+      const getRotationIndex = (ads) => {
+        if (ads.length <= 1) return 0;
+        
+        // Check if all ads use global settings
+        const allUseGlobalSettings = ads.every(ad => ad.rotation_mode === 'global' || !ad.rotation_duration);
+        
+        if (allUseGlobalSettings) {
+          // Use global rotation timing (faster rotation in seconds)
+          const globalDuration = GLOBAL_ROTATION_SETTINGS[placement] || 10;
+          const currentTime = Math.floor(Date.now() / 1000); // seconds
+          const cyclePosition = Math.floor(currentTime / globalDuration) % ads.length;
+          return cyclePosition;
+        }
+        
+        // Mixed mode: some manual, some global - use individual rotation durations (minutes)
+        const getAdDuration = (ad) => {
+          if (ad.rotation_mode === 'manual' && ad.rotation_duration) {
+            return ad.rotation_duration; // minutes
+          }
+          // Convert global seconds to minutes for consistency
+          const globalSeconds = GLOBAL_ROTATION_SETTINGS[placement] || 10;
+          return Math.max(1, Math.round(globalSeconds / 60)); // minimum 1 minute
+        };
+        
+        const totalCycleTime = ads.reduce((sum, ad) => sum + getAdDuration(ad), 0);
+        const currentTime = Math.floor(Date.now() / (1000 * 60)); // minutes
+        const cyclePosition = currentTime % totalCycleTime;
+        
+        // Find which ad should be showing based on cycle position
+        let timeAccumulator = 0;
+        for (let i = 0; i < ads.length; i++) {
+          timeAccumulator += getAdDuration(ads[i]);
+          if (cyclePosition < timeAccumulator) {
+            return i;
+          }
+        }
+        return 0; // fallback
+      };
+
+      // Sort ads by rotation timing and get current active ad
+      const rotationIndex = getRotationIndex(ads);
+      const currentAd = ads[rotationIndex];
+      
+      // Enhanced logging for hybrid rotation
+      const rotationMode = ads.every(ad => ad.rotation_mode === 'global' || !ad.rotation_duration) ? 'global' : 'mixed';
+      const currentAdMode = currentAd?.rotation_mode || 'global';
+      const currentAdDuration = currentAd?.rotation_duration || GLOBAL_ROTATION_SETTINGS[placement];
+      
+      // console.log(`🎯 AdsController: Rotation (${rotationMode}) - showing ad ${rotationIndex + 1}/${ads.length}: "${currentAd?.campaign_name}" (${currentAdMode} mode, ${currentAdDuration}${currentAdMode === 'global' ? 's' : 'min'})`);
+
+      const formattedAds = ads.length > 0 ? [{
+        id: currentAd.id,
+        campaign_name: currentAd.campaign_name,
+        media_type: currentAd.media_type,
+        media_url: currentAd.media_url || currentAd.image_url,
+        image_url: currentAd.image_url,
+        target_url: currentAd.target_url,
+        ad_content: currentAd.ad_content,
+        google_ads_code: currentAd.google_ads_code,
+        placement_type: currentAd.placement_type,
+        advertiser: currentAd.advertiser?.display_name,
+        start_date: currentAd.start_date,
+        end_date: currentAd.end_date,
+        status: currentAd.status,
+        impressions: currentAd.impressions,
+        clicks: currentAd.clicks,
+        rotation_mode: currentAd.rotation_mode,
+        rotation_duration: currentAd.rotation_duration,
+        // Debug info for rotation
+        rotation_info: {
+          current_index: rotationIndex,
+          total_ads: ads.length,
+          rotation_mode: rotationMode,
+          global_setting: GLOBAL_ROTATION_SETTINGS[placement],
+          current_ad_mode: currentAdMode,
+          current_ad_duration: currentAdDuration,
+          duration_unit: currentAdMode === 'global' ? 'seconds' : 'minutes'
+        }
+      }] : [];
+
+      // Disable caching for ads serving
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
 
       res.json({
         success: true,
@@ -171,11 +388,19 @@ class AdsController {
 
     } catch (error) {
       console.error('Error serving advertisements:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to serve advertisements',
-        error: error.message
-      });
+      // Only send error response if headers haven't been sent yet
+      if (!res.headersSent) {
+        // Disable caching for ads endpoints
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
+        res.status(500).json({
+          success: false,
+          message: 'Failed to serve advertisements',
+          error: error.message
+        });
+      }
     }
   }
 
@@ -189,6 +414,11 @@ class AdsController {
 
       const ad = await Advertisement.findByPk(id);
       if (!ad) {
+        // Disable caching for ads endpoints
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
         return res.status(404).json({
           success: false,
           message: 'Advertisement not found'
@@ -198,6 +428,11 @@ class AdsController {
       // Increment clicks
       await ad.increment('clicks');
 
+      // Disable caching for ads endpoints
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
       res.json({
         success: true,
         message: 'Click tracked successfully',
@@ -206,6 +441,11 @@ class AdsController {
 
     } catch (error) {
       console.error('Error tracking ad click:', error);
+      // Disable caching for ads endpoints
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
       res.status(500).json({
         success: false,
         message: 'Failed to track click',
@@ -271,6 +511,11 @@ class AdsController {
         created_at: ad.created_at
       }));
 
+      // Disable caching for admin ads list
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
       res.json({
         success: true,
         data: {
@@ -286,6 +531,11 @@ class AdsController {
 
     } catch (error) {
       console.error('Error fetching advertisements:', error);
+      // Disable caching for ads endpoints
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
       res.status(500).json({
         success: false,
         message: 'Failed to fetch advertisements',
@@ -311,11 +561,21 @@ class AdsController {
       });
 
       if (!ad) {
+        // Disable caching for ads endpoints
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
         return res.status(404).json({
           success: false,
           message: 'Advertisement not found'
         });
       }
+
+      // Disable caching for ads endpoints
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
 
       res.json({
         success: true,
@@ -342,6 +602,11 @@ class AdsController {
 
     } catch (error) {
       console.error('Error fetching advertisement:', error);
+      // Disable caching for ads endpoints
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
       res.status(500).json({
         success: false,
         message: 'Failed to fetch advertisement',
@@ -361,6 +626,11 @@ class AdsController {
 
       const ad = await Advertisement.findByPk(id);
       if (!ad) {
+        // Disable caching for ads endpoints
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
         return res.status(404).json({
           success: false,
           message: 'Advertisement not found'
@@ -369,6 +639,11 @@ class AdsController {
 
       // Update advertisement
       await ad.update(updateData);
+
+      // Disable caching for ads endpoints
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
 
       res.json({
         success: true,
@@ -382,6 +657,11 @@ class AdsController {
 
     } catch (error) {
       console.error('Error updating advertisement:', error);
+      // Disable caching for ads endpoints
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
       res.status(500).json({
         success: false,
         message: 'Failed to update advertisement',
@@ -400,6 +680,11 @@ class AdsController {
 
       const ad = await Advertisement.findByPk(id);
       if (!ad) {
+        // Disable caching for ads endpoints
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
         return res.status(404).json({
           success: false,
           message: 'Advertisement not found'
@@ -408,6 +693,11 @@ class AdsController {
 
       await ad.destroy();
 
+      // Disable caching for ads endpoints
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
       res.json({
         success: true,
         message: 'Advertisement deleted successfully'
@@ -415,6 +705,11 @@ class AdsController {
 
     } catch (error) {
       console.error('Error deleting advertisement:', error);
+      // Disable caching for ads endpoints
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
       res.status(500).json({
         success: false,
         message: 'Failed to delete advertisement',
@@ -441,6 +736,11 @@ class AdsController {
       const totalClicks = stats[4] || 0;
       const overallCTR = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : 0;
 
+      // Disable caching for ads endpoints
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
       res.json({
         success: true,
         data: {
@@ -455,6 +755,11 @@ class AdsController {
 
     } catch (error) {
       console.error('Error fetching advertisement stats:', error);
+      // Disable caching for ads endpoints
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
       res.status(500).json({
         success: false,
         message: 'Failed to fetch advertisement statistics',
@@ -473,6 +778,11 @@ class AdsController {
       const { status } = req.body;
 
       if (!status) {
+        // Disable caching for ads endpoints
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
         return res.status(400).json({
           success: false,
           message: 'Status is required'
@@ -481,6 +791,11 @@ class AdsController {
 
       const validStatuses = ['pending', 'active', 'paused', 'finished', 'rejected'];
       if (!validStatuses.includes(status)) {
+        // Disable caching for ads endpoints
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
         return res.status(400).json({
           success: false,
           message: 'Invalid status'
@@ -489,6 +804,11 @@ class AdsController {
 
       const ad = await Advertisement.findByPk(id);
       if (!ad) {
+        // Disable caching for ads endpoints
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
         return res.status(404).json({
           success: false,
           message: 'Advertisement not found'
@@ -496,6 +816,11 @@ class AdsController {
       }
 
       await ad.update({ status });
+
+      // Disable caching for ads endpoints
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
 
       res.json({
         success: true,
@@ -508,9 +833,221 @@ class AdsController {
 
     } catch (error) {
       console.error('Error updating advertisement status:', error);
+      // Disable caching for ads endpoints
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
       res.status(500).json({
         success: false,
         message: 'Failed to update advertisement status',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Upload advertisement image
+   * POST /api/ads/upload
+   */
+  static async uploadImage(req, res) {
+    try {
+      const multer = require('multer');
+      const path = require('path');
+      const fs = require('fs');
+
+      // Configure multer for ad images
+      const storage = multer.diskStorage({
+        destination: function (req, file, cb) {
+          const uploadPath = path.join(__dirname, '../../../public/ads');
+          // Ensure directory exists
+          if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
+          }
+          cb(null, uploadPath);
+        },
+        filename: function (req, file, cb) {
+          // Generate unique filename with timestamp
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+          const ext = path.extname(file.originalname);
+          cb(null, 'ad-' + uniqueSuffix + ext);
+        }
+      });
+
+      const fileFilter = (req, file, cb) => {
+        // Allow image, gif and video files
+        if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+          cb(null, true);
+        } else {
+          cb(new Error('Only image, gif and video files are allowed'), false);
+        }
+      };
+
+      const upload = multer({
+        storage: storage,
+        fileFilter: fileFilter,
+        limits: {
+          fileSize: 50 * 1024 * 1024 // 50MB limit
+        }
+      }).single('adImage');
+
+      upload(req, res, function (err) {
+        if (err) {
+          console.error('📸 Upload error:', err);
+          let message = err.message || 'Upload failed';
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            message = 'File too large. Maximum size is 50MB';
+          }
+          // Disable caching for ads endpoints
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+
+          return res.status(400).json({
+            success: false,
+            message: message
+          });
+        }
+
+        if (!req.file) {
+          // Disable caching for ads endpoints
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+
+          return res.status(400).json({
+            success: false,
+            message: 'No file provided'
+          });
+        }
+
+        // Generate the URL path for the uploaded image
+        const imageUrl = `/ads/${req.file.filename}`;
+        // Always use api.naramakna.id for ads images to ensure accessibility via Cloudflare tunnel
+        const fullUrl = `https://api.naramakna.id${imageUrl}`;
+
+        console.log('📸 Ad image uploaded:', {
+          filename: req.file.filename,
+          path: req.file.path,
+          url: fullUrl
+        });
+
+        // Disable caching for ads endpoints
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
+        res.json({
+          success: true,
+          message: 'Image uploaded successfully',
+          data: {
+            filename: req.file.filename,
+            imageUrl: imageUrl,
+            fullUrl: fullUrl,
+            size: req.file.size
+          }
+        });
+      });
+
+    } catch (error) {
+      console.error('📸 Upload controller error:', error);
+      // Disable caching for ads endpoints
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Get active popup advertisement for homepage
+   * GET /api/ads/popup-active
+   */
+  static async getActivePopupAd(req, res) {
+    try {
+      // console.log('🎯 Getting active popup ad for homepage');
+
+      // Use current WIB time for ads comparison (convert to UTC for database comparison)
+      const nowWIB = new Date(Date.now() + (7 * 60 * 60 * 1000));
+      const nowUTC = new Date();
+      
+      // Find active popup ads that are within date range (database stores in UTC)
+      const popupAd = await Advertisement.findOne({
+        where: {
+          status: 'active',
+          placement_type: 'popup',
+          start_date: { [Op.lte]: nowUTC },
+          end_date: { [Op.gte]: nowUTC }
+        },
+        include: [{
+          model: User,
+          as: 'advertiser',
+          attributes: ['ID', 'display_name', 'user_login']
+        }],
+        order: [['created_at', 'DESC']], // Get most recent if multiple
+        attributes: [
+          'id', 'campaign_name', 'media_type', 'media_url', 'image_url', 'target_url',
+          'google_ads_code', 'start_date', 'end_date', 'status', 'placement_type'
+        ]
+      });
+
+      if (!popupAd) {
+        // Disable caching for ads endpoints
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
+        return res.json({
+          success: true,
+          message: 'No active popup ad found',
+          data: null
+        });
+      }
+
+      // Use media_url if available, fallback to image_url for legacy support
+      const imageUrl = popupAd.media_url || popupAd.image_url;
+
+      const responseData = {
+        id: popupAd.id,
+        campaign_name: popupAd.campaign_name,
+        media_type: popupAd.media_type,
+        image_url: imageUrl,
+        media_url: popupAd.media_url,
+        target_url: popupAd.target_url || 'google-adsense',
+        google_ads_code: popupAd.google_ads_code,
+        status: popupAd.status,
+        start_date: popupAd.start_date,
+        end_date: popupAd.end_date
+      };
+
+      // console.log('🎯 Found popup ad:', responseData.title);
+
+      // Disable caching for ads endpoints
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
+      res.json({
+        success: true,
+        message: 'Active popup ad retrieved',
+        data: responseData
+      });
+
+    } catch (error) {
+      console.error('❌ Error getting popup ad:', error);
+      // Disable caching for ads endpoints
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get popup ad',
         error: error.message
       });
     }
@@ -526,5 +1063,7 @@ module.exports = {
   update: AdsController.update,
   updateStatus: AdsController.updateStatus,
   delete: AdsController.delete,
-  getStats: AdsController.getStats
+  getStats: AdsController.getStats,
+  uploadImage: AdsController.uploadImage,
+  getActivePopupAd: AdsController.getActivePopupAd
 };

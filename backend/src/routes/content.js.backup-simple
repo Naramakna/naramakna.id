@@ -1,0 +1,95 @@
+/**
+ * Universal Content Routes
+ * Handles all content types: articles, YouTube videos, TikTok videos
+ * WITH REDIS CACHING
+ */
+
+const express = require('express');
+const router = express.Router();
+const ContentController = require('../controllers/contentController');
+const { authenticate, requireWriter, requireAdmin, canEditPost, canCreateVideo } = require('../middleware/auth');
+const { uploadPostImages, handleUploadError } = require('../middleware/upload');
+const { cacheMiddleware, clearCache } = require('../middleware/cache');
+
+// Content feed and discovery - CACHED
+router.get('/feed', cacheMiddleware(180), ContentController.getFeed); // 3 min cache
+router.get('/posts', cacheMiddleware(180), ContentController.getFeed); // 3 min cache
+
+// Search functionality - CACHED
+router.get('/search/suggestions', cacheMiddleware(300), ContentController.getSearchSuggestions); // 5 min cache
+router.get('/trending', cacheMiddleware(600), ContentController.getTrending); // 10 min cache
+router.get('/stats', cacheMiddleware(120), ContentController.getStats); // 2 min cache
+router.get('/posts-with-views', cacheMiddleware(300), ContentController.getPostsWithViews); // 5 min cache
+router.get('/categories', cacheMiddleware(1800), ContentController.getCategories); // 30 min cache
+router.get('/author/:authorId', cacheMiddleware(300), ContentController.getPostsByAuthor); // 5 min cache
+
+// Content by type - CACHED
+router.get('/type/:type', cacheMiddleware(300), ContentController.getByType); // 5 min cache
+
+// Individual content CRUD - Specific routes first! - CACHED
+router.get('/posts/slug/:slug/comments', cacheMiddleware(60), ContentController.getPostCommentsBySlug); // 1 min cache
+router.get('/posts/slug/:slug', cacheMiddleware(600), ContentController.getPostBySlug); // 10 min cache
+router.get('/posts/:id', cacheMiddleware(600), ContentController.getPostById); // 10 min cache
+router.get('/:id', cacheMiddleware(600), ContentController.getById); // 10 min cache
+
+// CREATE - Clear cache after creation
+router.post('/', authenticate, uploadPostImages, handleUploadError, canCreateVideo, async (req, res, next) => {
+  try {
+    await ContentController.create(req, res);
+    await clearCache('cache:*'); // Clear all content caches
+  } catch (error) {
+    next(error);
+  }
+});
+
+// UPDATE - Clear cache after update
+router.put('/:id', authenticate, canEditPost, async (req, res, next) => {
+  try {
+    await ContentController.update(req, res);
+    await clearCache('cache:*'); // Clear all content caches
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE - Clear cache after deletion
+router.delete('/:id', authenticate, canEditPost, async (req, res, next) => {
+  try {
+    await ContentController.delete(req, res);
+    await clearCache('cache:*'); // Clear all content caches
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Admin routes - NO CACHE (admin only)
+router.delete('/admin/articles/:id', authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    await ContentController.adminDeleteArticle(req, res);
+    await clearCache('cache:*');
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/admin/articles/:id/restore', authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    await ContentController.restoreArticle(req, res);
+    await clearCache('cache:*');
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/admin/articles/trash', authenticate, requireAdmin, ContentController.getDeletedArticles);
+
+router.post('/admin/articles/bulk-delete', authenticate, requireAdmin, async (req, res, next) => {
+  try {
+    await ContentController.bulkDeleteArticles(req, res);
+    await clearCache('cache:*');
+  } catch (error) {
+    next(error);
+  }
+});
+
+module.exports = router;

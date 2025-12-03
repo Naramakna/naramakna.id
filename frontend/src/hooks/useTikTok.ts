@@ -1,262 +1,369 @@
-// Custom hook untuk TikTok API integration
 import { useState, useEffect, useCallback } from 'react';
 import { tiktokAPI } from '../services/api/tiktok';
-import type {
-  TikTokProfile,
-  TikTokVideo,
-  TikTokContent,
-  UseTikTokOptions,
-  UseTikTokReturn
-} from '../types/tiktok';
+import type { TikTokVideo, TikTokConnectionStatus, TikTokUploadRequest, TikTokAnalytics } from '../services/api/tiktok';
 
-export const useTikTok = (options: UseTikTokOptions = {}): UseTikTokReturn => {
-  const { autoSync = false, syncInterval = 3600000 } = options; // Default 1 hour
-
-  // State
-  const [profile, setProfile] = useState<TikTokProfile | null>(null);
-  const [videos, setVideos] = useState<TikTokVideo[]>([]);
-  const [content, setContent] = useState<TikTokContent[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+// Hook for TikTok connection management
+export const useTikTokConnection = () => {
+  const [status, setStatus] = useState<TikTokConnectionStatus>({ connected: false });
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [authURL, setAuthURL] = useState<string | null>(null);
-  const [stats, setStats] = useState({
-    rateLimitRemaining: 0,
-    lastSync: undefined as Date | undefined
-  });
 
-  // Clear error helper
-  const clearError = useCallback(() => {
-    setError(null);
+  const checkConnection = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await tiktokAPI.getConnectionStatus();
+      
+      if (response.success && response.data) {
+        setStatus(response.data);
+      } else {
+        setError(response.message || 'Failed to check connection');
+        setStatus({ connected: false });
+      }
+    } catch (err) {
+      console.error('Error checking TikTok connection:', err);
+      setError('Network error while checking connection');
+      setStatus({ connected: false });
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Get connection status
-  const refreshStatus = useCallback(async () => {
-    try {
-      clearError();
-      const statusResponse = await tiktokAPI.getStatus();
-      
-      setIsConnected(statusResponse.connected);
-      setStats(prev => ({
-        ...prev,
-        rateLimitRemaining: statusResponse.rateLimitRemaining
-      }));
-
-      if (statusResponse.connected) {
-        // Get profile if connected
-        try {
-          const profileResponse = await tiktokAPI.getProfile();
-          setProfile(profileResponse.profile);
-        } catch (profileError) {
-          console.warn('Failed to get TikTok profile:', profileError);
-        }
-      }
-    } catch (err: any) {
-      // Handle 403/401 errors gracefully (user not authenticated)
-      if (err.message.includes('403') || err.message.includes('401') || err.message.includes('Forbidden')) {
-        setIsConnected(false);
-        setProfile(null);
-        // Don't set this as an error since it's expected behavior
-        console.info('TikTok not connected - authentication required');
-      } else {
-        setError(err.message);
-      }
-      setIsConnected(false);
-    }
-  }, [clearError]);
-
-  // Connect to TikTok
   const connect = useCallback(async () => {
     try {
-      clearError();
-      setIsLoading(true);
+      setError(null);
       
-      const authResponse = await tiktokAPI.getAuthURL();
-      setAuthURL(authResponse.authURL || null);
+      const response = await tiktokAPI.getAuthUrl();
       
-      if (authResponse.authURL) {
-        // Open auth URL in new window
-        window.open(authResponse.authURL, 'tiktok-auth', 'width=600,height=700');
+      if (response.success && response.data) {
+        // Open TikTok auth in new window
+        const authWindow = window.open(
+          response.data.auth_url,
+          'tiktok-auth',
+          'width=600,height=700,scrollbars=yes,resizable=yes'
+        );
+        
+        // Listen for auth completion
+        const checkClosed = setInterval(() => {
+          if (authWindow?.closed) {
+            clearInterval(checkClosed);
+            // Recheck connection after auth window closes
+            setTimeout(checkConnection, 1000);
+          }
+        }, 1000);
+        
+        return true;
+      } else {
+        setError(response.message || 'Failed to get authorization URL');
+        return false;
       }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      console.error('Error connecting to TikTok:', err);
+      setError('Network error while connecting');
+      return false;
     }
-  }, [clearError]);
+  }, [checkConnection]);
 
-  // Disconnect from TikTok
   const disconnect = useCallback(async () => {
     try {
-      clearError();
-      setIsLoading(true);
+      setError(null);
       
-      await tiktokAPI.disconnect();
+      const response = await tiktokAPI.disconnect();
       
-      // Clear state
-      setProfile(null);
-      setVideos([]);
-      setIsConnected(false);
-      setAuthURL(null);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [clearError]);
-
-  // Sync content
-  const syncContent = useCallback(async () => {
-    if (!isConnected) {
-      setError('TikTok not connected');
-      return;
-    }
-
-    try {
-      clearError();
-      setIsLoading(true);
-      
-      const syncResponse = await tiktokAPI.syncContent();
-      
-      if (syncResponse.success) {
-        setStats(prev => ({
-          ...prev,
-          lastSync: new Date()
-        }));
-        
-        // Refresh content after sync
-        await loadContent();
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isConnected, clearError]);
-
-  // Get videos
-  const getVideos = useCallback(async (cursor?: string) => {
-    if (!isConnected) {
-      setError('TikTok not connected');
-      return;
-    }
-
-    try {
-      clearError();
-      setIsLoading(true);
-      
-      const videosResponse = await tiktokAPI.getVideos(cursor);
-      
-      if (cursor) {
-        // Append to existing videos (pagination)
-        setVideos(prev => [...prev, ...videosResponse.videos]);
+      if (response.success) {
+        setStatus({ connected: false });
+        return true;
       } else {
-        // Replace videos (fresh load)
-        setVideos(videosResponse.videos);
+        setError(response.message || 'Failed to disconnect');
+        return false;
       }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      console.error('Error disconnecting TikTok:', err);
+      setError('Network error while disconnecting');
+      return false;
     }
-  }, [isConnected, clearError]);
+  }, []);
 
-  // Load content from database
-  const loadContent = useCallback(async (limit = 10, offset = 0) => {
-    try {
-      clearError();
-      
-      const contentResponse = await tiktokAPI.getContent(limit, offset);
-      
-      if (offset === 0) {
-        setContent(contentResponse.content || []);
-      } else {
-        setContent(prev => [...prev, ...(contentResponse.content || [])]);
-      }
-    } catch (err: any) {
-      // Handle authentication errors gracefully for content endpoint
-      if (err.message.includes('403') || err.message.includes('401') || err.message.includes('Forbidden')) {
-        console.info('TikTok content not available - authentication may be required');
-        setContent([]); // Set empty array instead of error
-      } else {
-        setError(err.message);
-      }
-    }
-  }, [clearError]);
-
-  // Handle OAuth callback
-  const handleOAuthCallback = useCallback(async (code: string, state: string) => {
-    try {
-      clearError();
-      setIsLoading(true);
-      
-      const callbackResponse = await tiktokAPI.handleCallback(code, state);
-      
-      if (callbackResponse.success && callbackResponse.profile) {
-        setIsConnected(true);
-        setProfile(callbackResponse.profile as any);
-        setAuthURL(null);
-        
-        // Load initial content
-        await loadContent();
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [clearError, loadContent]);
-
-  // Auto sync effect
   useEffect(() => {
-    if (!autoSync || !isConnected) return;
-
-    const interval = setInterval(() => {
-      syncContent();
-    }, syncInterval);
-
-    return () => clearInterval(interval);
-  }, [autoSync, isConnected, syncInterval, syncContent]);
-
-  // Initial status check
-  useEffect(() => {
-    refreshStatus();
-    loadContent(); // Load content regardless of connection status
-  }, [refreshStatus, loadContent]);
-
-  // Listen for OAuth callback (if using postMessage)
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-      
-      if (event.data.type === 'TIKTOK_OAUTH_SUCCESS') {
-        const { code, state } = event.data;
-        handleOAuthCallback(code, state);
-      } else if (event.data.type === 'TIKTOK_OAUTH_ERROR') {
-        setError(event.data.error);
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [handleOAuthCallback]);
+    checkConnection();
+  }, [checkConnection]);
 
   return {
-    // State
-    profile,
-    videos,
-    content,
-    isConnected,
-    isLoading,
+    status,
+    loading,
     error,
-    authURL,
-    stats,
-    
-    // Actions
     connect,
     disconnect,
-    syncContent,
-    getVideos,
-    refreshStatus
+    refresh: checkConnection
   };
+};
+
+// Hook for TikTok video upload
+export const useTikTokUpload = () => {
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [publishId, setPublishId] = useState<string | null>(null);
+
+  const uploadVideo = useCallback(async (file: File, uploadData: TikTokUploadRequest) => {
+    try {
+      setUploading(true);
+      setError(null);
+      setUploadProgress(0);
+      
+      // Validate file first
+      const validation = await import('../services/api/tiktok').then(m => m.tiktokUtils.validateVideoFile(file));
+      if (!validation.valid) {
+        throw new Error(validation.error);
+      }
+      
+      const response = await tiktokAPI.uploadVideo(file, uploadData);
+      
+      if (response.success && response.data) {
+        setPublishId(response.data.publish_id);
+        setUploadProgress(100);
+        return response.data;
+      } else {
+        throw new Error(response.message || 'Upload failed');
+      }
+    } catch (err: any) {
+      console.error('Error uploading video:', err);
+      setError(err.message || 'Upload failed');
+      throw err;
+    } finally {
+      setUploading(false);
+    }
+  }, []);
+
+  const checkUploadStatus = useCallback(async (publishId: string) => {
+    try {
+      const response = await tiktokAPI.getUploadStatus(publishId);
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        throw new Error(response.message || 'Failed to check status');
+      }
+    } catch (err: any) {
+      console.error('Error checking upload status:', err);
+      setError(err.message || 'Failed to check status');
+      throw err;
+    }
+  }, []);
+
+  const reset = useCallback(() => {
+    setUploading(false);
+    setUploadProgress(0);
+    setError(null);
+    setPublishId(null);
+  }, []);
+
+  return {
+    uploading,
+    uploadProgress,
+    error,
+    publishId,
+    uploadVideo,
+    checkUploadStatus,
+    reset
+  };
+};
+
+// Hook for fetching TikTok videos
+export const useTikTokVideos = (isAdmin: boolean = false) => {
+  const [videos, setVideos] = useState<TikTokVideo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({
+    limit: 1000, // Set to high number to load all videos
+    offset: 0,
+    total: 0
+  });
+
+  const fetchVideos = useCallback(async (params?: {
+    limit?: number;
+    offset?: number;
+    status?: string;
+    search?: string;
+    category?: string;
+  }) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = isAdmin 
+        ? await tiktokAPI.getAdminVideos(params)
+        : await tiktokAPI.getVideos(params);
+      
+      if (response.success && response.data) {
+        setVideos(response.data.videos);
+        if (response.pagination) {
+          setPagination(response.pagination);
+        }
+      } else {
+        setError(response.message || 'Failed to fetch videos');
+        setVideos([]);
+      }
+    } catch (err) {
+      console.error('Error fetching TikTok videos:', err);
+      setError('Network error while fetching videos');
+      setVideos([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [isAdmin]);
+
+  const loadMore = useCallback(async () => {
+    if (loading || videos.length >= pagination.total) return;
+    
+    try {
+      const response = isAdmin 
+        ? await tiktokAPI.getAdminVideos({
+            limit: pagination.limit,
+            offset: videos.length
+          })
+        : await tiktokAPI.getVideos({
+            limit: pagination.limit,
+            offset: videos.length
+          });
+      
+      if (response.success && response.data) {
+        setVideos(prev => [...prev, ...response.data!.videos]);
+        if (response.pagination) {
+          setPagination(response.pagination);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading more videos:', err);
+      setError('Failed to load more videos');
+    }
+  }, [loading, videos.length, pagination, isAdmin]);
+
+  const refresh = useCallback(() => {
+    fetchVideos({ limit: pagination.limit, offset: 0 });
+  }, [fetchVideos, pagination.limit]);
+
+  useEffect(() => {
+    fetchVideos();
+  }, [fetchVideos]);
+
+  return {
+    videos,
+    loading,
+    error,
+    pagination,
+    fetchVideos,
+    loadMore,
+    refresh
+  };
+};
+
+// Hook for TikTok video sync (Superadmin only)
+export const useTikTokSync = () => {
+  const [syncing, setSyncing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastSyncResult, setLastSyncResult] = useState<{
+    total_fetched: number;
+    new_videos: number;
+    updated_videos: number;
+  } | null>(null);
+
+  const syncVideos = useCallback(async (limit: number = 20) => {
+    try {
+      setSyncing(true);
+      setError(null);
+      
+      const response = await tiktokAPI.syncVideos(limit);
+      
+      if (response.success && response.data) {
+        setLastSyncResult(response.data);
+        return response.data;
+      } else {
+        throw new Error(response.message || 'Sync failed');
+      }
+    } catch (err: any) {
+      console.error('Error syncing videos:', err);
+      setError(err.message || 'Sync failed');
+      throw err;
+    } finally {
+      setSyncing(false);
+    }
+  }, []);
+
+  return {
+    syncing,
+    error,
+    lastSyncResult,
+    syncVideos
+  };
+};
+
+// Hook for TikTok analytics
+export const useTikTokAnalytics = () => {
+  const [analytics, setAnalytics] = useState<TikTokAnalytics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchAnalytics = useCallback(async (params?: {
+    start_date?: string;
+    end_date?: string;
+  }) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await tiktokAPI.getAnalytics(params);
+      
+      if (response.success && response.data) {
+        setAnalytics(response.data);
+      } else {
+        setError(response.message || 'Failed to fetch analytics');
+        setAnalytics(null);
+      }
+    } catch (err) {
+      console.error('Error fetching TikTok analytics:', err);
+      setError('Network error while fetching analytics');
+      setAnalytics(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const refresh = useCallback(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
+
+  return {
+    analytics,
+    loading,
+    error,
+    fetchAnalytics,
+    refresh
+  };
+};
+
+// Hook for tracking video views
+export const useVideoViewTracking = () => {
+  const trackView = useCallback(async (
+    videoId: number,
+    viewData: {
+      view_duration?: number;
+      view_percentage?: number;
+      device_type?: 'desktop' | 'mobile' | 'tablet';
+    }
+  ) => {
+    try {
+      await tiktokAPI.trackView(videoId, viewData);
+    } catch (err) {
+      console.error('Error tracking view:', err);
+      // Don't throw error for view tracking to avoid disrupting user experience
+    }
+  }, []);
+
+  return { trackView };
 };

@@ -6,19 +6,18 @@ interface NavKategoriProps {
 }
 
 export const NavKategori: React.FC<NavKategoriProps> = ({ className = '' }) => {
-  // Kategori utama (sekarang dynamic dari API)
+  // Kategori utama dengan mapping name-to-slug yang benar
   const categories = [
-    'News',
-    'Entertainment', 
-    'Tekno & Sains',
-    'Bisnis',
-    'Bola & Sports',
-    'Otomotif',
-    'Woman',
-    'Food & Travel',
-    'Mom',
-    'Bolanita'
+      { name: 'Narapandang', slug: 'narapandang' },
+      { name: 'Pelakon', slug: 'pelakon' },
+      { name: 'Laga & Gaya', slug: 'laga-gaya' },
+      { name: 'Wahana', slug: 'wahana' },
+      { name: 'Olah Bola', slug: 'olah-bola' },
+      { name: 'Cerita Rasa', slug: 'cerita-rasa' },
+      { name: 'Horison', slug: 'horison' },
+    { name: 'Jagat Kita', slug: 'jagat-kita' },
   ];
+
 
   // Data untuk dropdown "Lainnya"
   const lainnyaItems = [
@@ -63,17 +62,25 @@ export const NavKategori: React.FC<NavKategoriProps> = ({ className = '' }) => {
 
   return (
     <div className={`bg-white border-b border-gray-200 ${className}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
         <div className="flex items-center space-x-8 h-12 overflow-x-auto scrollbar-hide">
           {categories.map((category, index) => (
             <a
               key={index}
-              href={`/kategori/${category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+              href={`/kategori/${category.slug}`}
               className="text-sm font-medium text-gray-700 hover:text-yellow-500 whitespace-nowrap transition-colors duration-200 flex-shrink-0"
             >
-              {category}
+              {category.name}
             </a>
           ))}
+          
+          {/* Menu "Mata Elang" - Simple Link */}
+          <a
+            href="/kategori/mata-elang"
+            className="text-sm font-medium text-gray-700 hover:text-yellow-500 whitespace-nowrap transition-colors duration-200 flex-shrink-0"
+          >
+            Mata Elang
+          </a>
           
           {/* Dropdown untuk "Lainnya" */}
           <NavDropdown

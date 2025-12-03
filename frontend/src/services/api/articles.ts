@@ -18,6 +18,7 @@ export interface Article {
   };
   categories: any[];
   metadata: Record<string, any>;
+  view_count?: number;
   youtube?: {
     videoId: string;
     channelTitle: string;
@@ -74,9 +75,11 @@ export const articlesAPI = {
     limit?: number;
     type?: string;
     category?: string;
+    tag?: string;
     search?: string;
     sortBy?: string;
     sortOrder?: string;
+    mainCategoriesOnly?: boolean;
   }): Promise<ApiResponse<FeedResponse>> {
     const queryParams = new URLSearchParams();
     
@@ -87,6 +90,7 @@ export const articlesAPI = {
     if (params?.search) queryParams.append('search', params.search);
     if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
     if (params?.sortOrder) queryParams.append('sortOrder', params.sortOrder);
+    if (params?.mainCategoriesOnly) queryParams.append('mainCategoriesOnly', 'true');
     
     const response = await fetch(buildApiUrl(`content/feed?${queryParams}`));
     return response.json();
@@ -126,11 +130,13 @@ export const articlesAPI = {
     limit?: number;
     minCount?: number;
     taxonomy?: string;
+    mainCategoriesOnly?: boolean;
   }): Promise<ApiResponse<CategoriesResponse>> {
     const queryParams = new URLSearchParams();
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.minCount) queryParams.append('minCount', params.minCount.toString());
     if (params?.taxonomy) queryParams.append('taxonomy', params.taxonomy);
+    if (params?.mainCategoriesOnly) queryParams.append('mainCategoriesOnly', 'true');
     
     const response = await fetch(buildApiUrl(`content/categories?${queryParams}`));
     return response.json();
@@ -146,6 +152,49 @@ export const articlesAPI = {
     if (params?.category) queryParams.append('category', params.category);
     if (params?.type) queryParams.append('type', params.type);
     
+    // Try smart trending first, fallback to old trending
+    try {
+      const smartUrl = buildApiUrl(`trending/articles?${queryParams}`);
+      // Trying smart trending API first
+      // Smart trending URL prepared
+      const smartResponse = await fetch(smartUrl);
+      // Smart trending response received
+      const smartResult = await smartResponse.json();
+      
+      // Smart trending response processed
+      
+      if (smartResult.success && smartResult.data.posts && smartResult.data.posts.length > 0) {
+        // Using smart trending data
+        // Convert smart trending format to expected format
+        return {
+          success: true,
+          data: {
+            posts: smartResult.data.posts.map((post: any) => ({
+              id: post.ID || post.id,
+              title: post.post_title || post.title,
+              slug: post.post_name || post.slug,
+              excerpt: post.post_excerpt || post.excerpt,
+              date: post.post_date || post.date,
+              author: {
+                display_name: post.author_name || post.author?.display_name
+              },
+              view_count: post.view_count || 0,
+              trending_keyword: post.trending_keyword,
+              relevance_score: post.relevance_score,
+              thumbnail_url: post.thumbnail_url // Add thumbnail_url to mapping
+            })),
+            totalItems: smartResult.data.totalItems,
+            criteria: smartResult.data.criteria
+          }
+        };
+      } else {
+        // Smart trending failed, falling back
+      }
+    } catch (smartError) {
+      // Smart trending fallback failed
+    }
+    
+    // Fallback to original trending endpoint
     const response = await fetch(buildApiUrl(`content/trending?${queryParams}`));
     return response.json();
   }

@@ -1,0 +1,53 @@
+// backend/src/config/redis.js
+const Redis = require("ioredis");
+
+const redisClient = new Redis({
+  host: process.env.REDIS_HOST || "localhost",
+  port: process.env.REDIS_PORT || 6379,
+  password: process.env.REDIS_PASSWORD || undefined,
+  retryStrategy: (times) => {
+    if (times > 10) {
+      console.log("⚠️  Redis: Max retries reached, will try again later");
+      return null;
+    }
+    const delay = Math.min(times * 50, 2000);
+    return delay;
+  },
+  maxRetriesPerRequest: 3,
+  enableReadyCheck: true,
+  lazyConnect: true,
+  showFriendlyErrorStack: true
+});
+
+let isConnected = false;
+
+redisClient.on("connect", () => {
+  console.log("✅ Redis connected successfully");
+  isConnected = true;
+});
+
+redisClient.on("error", (err) => {
+  console.error("❌ Redis connection error:", err.message);
+  isConnected = false;
+});
+
+redisClient.on("ready", () => {
+  console.log("✅ Redis is ready to accept commands");
+  isConnected = true;
+});
+
+redisClient.on("close", () => {
+  console.log("⚠️  Redis connection closed");
+  isConnected = false;
+});
+
+// Try to connect, but do not block server startup
+redisClient.connect().catch(err => {
+  console.error("❌ Failed to connect to Redis:", err.message);
+  console.log("⚠️  Server will continue without caching");
+});
+
+// Export both client and connection status
+redisClient.isConnected = () => isConnected;
+
+module.exports = redisClient;

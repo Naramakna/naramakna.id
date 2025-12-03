@@ -1,0 +1,48 @@
+{
+  "articles": [
+    {
+      "ID": 6324,
+      "post_title": "Momen Pabrik Mulai Berjalan Pergi",
+      "post_name": "momen-pabrik-mulai-berjalan-pergi",
+      "post_excerpt": "Perpindahan pabrik dari Jabar ke Jateng membawa dampak sosial besar: buruh terdampak, kota kehilangan denyut, dan arah modal makin menentukan hidup banyak orang.",
+      "post_date": "2025-11-29T01:01:00.000Z",
+      "view_count": 19,
+      "author_name": "Khaerunnisa",
+      "thumbnail_url": "http://naramakna.id/uploads/2025/11/Temenin-Gue-Aja--1764342639313-107064290.jpeg",
+      "trending_keyword": "pabrik",
+      "trending_weight": 5,
+      "trending_source": "news",
+      "relevance_score": 123
+    },
+    {
+      "ID": 6225,
+      "post_title": "Konsumsi Beras Menyusut",
+      "post_name": "konsumsi-beras-menyusut",
+      "post_excerpt": "Gaya hidup makin ngebut bikin orang jarang masak. Konsumsi beras turun, sementara pengeluaran digital dan pesan makanan justru melonjak.",
+      "post_date": "2025-11-24T07:00:00.000Z",
+      "view_count": 15,
+      "author_name": "Aas Fauziah",
+      "thumbnail_url": "http://naramakna.id/uploads/2025/11/Temenin-Gue-Aja--1763965778075-539171086.png",
+      "trending_keyword": "usut",
+      "trending_weight": 5,
+      "trending_source": "news",
+      "relevance_score": 102
+    },
+    {
+      "ID": 6230,
+      "post_title": "Singapura Terima Jelantah MBG",
+      "post_name": "singapura-terima-jelantah-mbg",
+      "post_excerpt": "Minyak jelantah dari Program Makan Bergizi Gratis kini bernilai ekonomi tinggi dan masuk rantai energi global, tapi muncul pertanyaan: siapa sebenarnya yang diuntungkan?",
+      "post_date": "2025-11-24T12:00:00.000Z",
+      "view_count": 10,
+      "author_name": "Khaerunnisa",
+      "thumbnail_url": "http://naramakna.id/uploads/2025/11/Ikatan-Emosional-Menggugah-rasa-percaya-diri-dan-k-1763982705247-745646692.jpeg",
+      "trending_keyword": "terima",
+      "trending_weight": 5,
+      "trending_source": "news",
+      "relevance_score": 101
+    }
+  ],
+  "timestamp": "2025-12-01T21:00:05.371Z",
+  "expires": "2025-12-02T21:00:05.371Z"
+}

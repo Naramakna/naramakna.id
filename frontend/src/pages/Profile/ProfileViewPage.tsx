@@ -5,6 +5,8 @@ import { ProfileAvatar } from '../../components/atoms/ProfileAvatar';
 import { SocialStats } from '../../components/molecules/SocialStats';
 import { ProfileActionButtons } from '../../components/molecules/ProfileActionButtons';
 import { ProfileTabs } from '../../components/molecules/ProfileTabs';
+import { PreviewDetailArticle } from '../../components/organisms/PreviewDetailArticle';
+import { buildApiUrl, buildBackendUrl } from '../../config/api';
 
 // Helper function to get full image URL
 const getImageUrl = (imagePath: string | null) => {
@@ -15,11 +17,11 @@ const getImageUrl = (imagePath: string | null) => {
   
   // If it's a relative path starting with /uploads, prepend backend URL
   if (imagePath.startsWith('/uploads/')) {
-    return `http://dev.naramakna.id${imagePath}`;
+    return buildBackendUrl(imagePath);
   }
   
   // Otherwise, assume it's a relative path and prepend backend URL
-  return `http://dev.naramakna.id/uploads/${imagePath}`;
+  return buildBackendUrl(`uploads/${imagePath}`);
 };
 
 interface ProfileViewPageProps {
@@ -33,31 +35,58 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
   const [activeTab, setActiveTab] = useState('konten');
   const [userArticles, setUserArticles] = useState<any[]>([]);
   const [isLoadingArticles, setIsLoadingArticles] = useState(false);
-  const [stats] = useState({
+  const [likedArticles, setLikedArticles] = useState<any[]>([]);
+  const [isLoadingLiked, setIsLoadingLiked] = useState(false);
+  const [userComments, setUserComments] = useState<any[]>([]);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [stats, setStats] = useState({
     mengikuti: 0,
     pengikut: 0
   });
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [previewArticleId, setPreviewArticleId] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
-  const isOwnProfile = !username || (user?.user_login === username) || false;
+  const isOwnProfile = !username ||
+    (user?.user_login === username) ||
+    (user?.user_nicename === username) ||
+    false;
 
   // Fetch profile data if username is provided
   useEffect(() => {
     if (username && !isOwnProfile) {
       setIsLoadingProfile(true);
-      // TODO: Implement API call to fetch user profile by username
-      // For now, we'll use mock data
-      setTimeout(() => {
-        setProfileUser({
-          display_name: 'nara makna',
-          user_login: username,
-          user_email: 'nara@example.com',
-          user_role: 'writer',
-          profile_image: null,
-          bio: null,
-          profile: null
-        });
-        setIsLoadingProfile(false);
-      }, 500);
+      
+      const fetchUserProfile = async () => {
+        try {
+          // Fetching profile for user
+          
+          // Fetch user profile by user_nicename
+          const profileResponse = await fetch(buildApiUrl(`profile/user/${encodeURIComponent(username)}`));
+          const profileData = await profileResponse.json();
+          
+          if (!profileData.success) {
+            // User not found
+            setProfileUser(null);
+            setIsLoadingProfile(false);
+            return;
+          }
+          
+          // Set profile data
+          const userData = profileData.data.user;
+          setProfileUser(userData);
+          
+          // Profile fetched successfully
+        } catch (error) {
+          console.error('❌ Error fetching user profile:', error);
+          setProfileUser(null);
+        } finally {
+          setIsLoadingProfile(false);
+        }
+      };
+      
+      fetchUserProfile();
     }
   }, [username, isOwnProfile]);
 
@@ -66,17 +95,12 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
     const fetchUserArticles = async () => {
       const targetUser = isOwnProfile ? user : profileUser;
       if (!targetUser) {
-        console.log('❌ No target user found', { isOwnProfile, user: !!user, profileUser: !!profileUser });
+        // No target user found
         return;
       }
 
       const authorId = targetUser.ID || targetUser.id;
-      console.log('🔍 Fetching articles for user:', { 
-        username: targetUser.user_login, 
-        authorId, 
-        isOwnProfile,
-        targetUserType: isOwnProfile ? 'logged-in user' : 'profile user'
-      });
+      // Fetching articles for user
 
       setIsLoadingArticles(true);
       try {
@@ -84,18 +108,18 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
 
         if (isOwnProfile) {
           // For own profile, fetch published, pending, and draft posts separately
-          console.log('🔍 Fetching published posts...');
-          const publishedResponse = await fetch(`http://dev.naramakna.id/api/content/author/${authorId}?status=publish&limit=20`, {
+          // Fetching published posts
+          const publishedResponse = await fetch(buildApiUrl(`content/author/${authorId}?status=publish&limit=20`), {
             credentials: 'include'
           });
           
-          console.log('🔍 Fetching pending posts...');
-          const pendingResponse = await fetch(`http://dev.naramakna.id/api/content/author/${authorId}?status=pending&limit=20`, {
+          // Fetching pending posts
+          const pendingResponse = await fetch(buildApiUrl(`content/author/${authorId}?status=pending&limit=20`), {
             credentials: 'include'
           });
           
-          console.log('🔍 Fetching draft posts...');
-          const draftResponse = await fetch(`http://dev.naramakna.id/api/content/author/${authorId}?status=draft&limit=20`, {
+          // Fetching draft posts
+          const draftResponse = await fetch(buildApiUrl(`content/author/${authorId}?status=draft&limit=20`), {
             credentials: 'include'
           });
 
@@ -113,13 +137,12 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
             // Sort by date descending
             allPosts.sort((a, b) => new Date(b.post_date || b.date).getTime() - new Date(a.post_date || a.date).getTime());
             
-            console.log('📄 Combined posts for', targetUser.user_login, ':', 
-              `${publishedResult.data?.posts?.length || 0} published + ${pendingResult.data?.posts?.length || 0} pending = ${allPosts.length} total`);
+            // Combined posts fetched
           }
         } else {
           // For other profiles, fetch only published posts
-          const apiUrl = `http://dev.naramakna.id/api/content/author/${authorId}?status=publish&limit=20`;
-          console.log('📡 API URL:', apiUrl);
+          const apiUrl = buildApiUrl(`content/author/${authorId}?status=publish&limit=20`);
+          // Fetching from API
           
           const response = await fetch(apiUrl, {
             credentials: 'include'
@@ -128,7 +151,7 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
           if (response.ok) {
             const result = await response.json();
             allPosts = result.data?.posts || [];
-            console.log('📄 Published posts for', targetUser.user_login, ':', allPosts.length, 'articles');
+            // Published posts fetched
           }
         }
 
@@ -144,20 +167,101 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
     fetchUserArticles();
   }, [isOwnProfile, user, profileUser]);
 
+  // Fetch liked articles for current user (only for own profile)
+  const fetchLikedArticles = async () => {
+    if (!isOwnProfile) return; // Only show liked posts for own profile
+
+    setIsLoadingLiked(true);
+    try {
+      const response = await fetch(buildApiUrl('likes/user/liked-posts'), {
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setLikedArticles(result.data.posts);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching liked articles:', error);
+    } finally {
+      setIsLoadingLiked(false);
+    }
+  };
+
+  // Fetch user comments for current user (only for own profile)
+  const fetchUserComments = async () => {
+    if (!isOwnProfile) return; // Only show comments for own profile
+
+    setIsLoadingComments(true);
+    try {
+      const response = await fetch(buildApiUrl('comments/user/my-comments'), {
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setUserComments(result.data.comments);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user comments:', error);
+    } finally {
+      setIsLoadingComments(false);
+    }
+  };
+
+  // Fetch data when tab changes
+  useEffect(() => {
+    if (activeTab === 'suka' && isOwnProfile) {
+      fetchLikedArticles();
+    } else if (activeTab === 'komentar' && isOwnProfile) {
+      fetchUserComments();
+    }
+  }, [activeTab, isOwnProfile]);
+
+  // Handler for preview modal
+  const handlePreviewArticle = (articleId: string) => {
+    setPreviewArticleId(articleId);
+    setIsPreviewOpen(true);
+  };
+
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false);
+    setPreviewArticleId(null);
+  };
+
   const displayUser = isOwnProfile ? user : profileUser;
 
   if (isLoading || isLoadingProfile) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <div className="max-w-md mx-auto bg-white min-h-screen">
-          <div className="animate-pulse p-6">
-            <div className="w-24 h-24 bg-gray-200 rounded-full mx-auto mb-4"></div>
-            <div className="h-4 bg-gray-200 rounded mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded mb-4 w-3/4"></div>
-            <div className="flex space-x-4 mb-4">
-              <div className="h-8 bg-gray-200 rounded flex-1"></div>
-              <div className="h-8 bg-gray-200 rounded flex-1"></div>
+        <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div className="px-6 py-8 sm:px-8 sm:py-10 text-center">
+              <div className="animate-pulse">
+                <div className="w-24 h-24 bg-gray-200 rounded-full mx-auto mb-4"></div>
+                <div className="h-6 bg-gray-200 rounded mb-2 w-1/2 mx-auto"></div>
+                <div className="h-4 bg-gray-200 rounded mb-4 w-1/3 mx-auto"></div>
+                <div className="flex justify-center space-x-4 mb-4">
+                  <div className="h-10 bg-gray-200 rounded w-24"></div>
+                  <div className="h-10 bg-gray-200 rounded w-24"></div>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 sm:p-8">
+              <div className="animate-pulse space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="border rounded-lg p-4">
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded mb-2 w-3/4"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -169,16 +273,25 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <div className="max-w-md mx-auto bg-white min-h-screen">
-          <div className="p-6 text-center">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Akses Ditolak</h2>
-            <p className="text-gray-600 mb-4">Anda harus login untuk melihat profil.</p>
-            <a 
-              href="/login" 
-              className="inline-block bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-            >
-              Login
-            </a>
+        <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div className="p-8 text-center">
+              <div className="max-w-md mx-auto">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">Akses Ditolak</h2>
+                <p className="text-gray-600 mb-6">Anda harus login untuk melihat profil.</p>
+                <a 
+                  href="/login" 
+                  className="inline-block bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+                >
+                  Login
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -189,16 +302,25 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <div className="max-w-md mx-auto bg-white min-h-screen">
-          <div className="p-6 text-center">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Profil Tidak Ditemukan</h2>
-            <p className="text-gray-600 mb-4">User @{username} tidak ditemukan.</p>
-            <a 
-              href="/" 
-              className="inline-block bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-            >
-              Kembali ke Beranda
-            </a>
+        <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div className="p-8 text-center">
+              <div className="max-w-md mx-auto">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">Profil Tidak Ditemukan</h2>
+                <p className="text-gray-600 mb-6">User @{username} tidak ditemukan.</p>
+                <a 
+                  href="/" 
+                  className="inline-block bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+                >
+                  Kembali ke Beranda
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -248,15 +370,15 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
                   <div className="flex-1 min-w-0">
                     <a 
                       href={`/artikel/${article.slug}`}
-                      className="block hover:text-blue-600 transition-colors"
+                      className="block hover:text-blue-600 transition-colors text-left"
                     >
-                      <h3 className="text-base font-medium text-gray-900 line-clamp-2">
+                      <h3 className="text-base font-medium text-gray-900 line-clamp-2 text-left">
                         {article.title}
                       </h3>
-                      <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                      <p className="text-sm text-gray-500 mt-1 line-clamp-2 text-left">
                         {article.excerpt}
                       </p>
-                      <div className="flex items-center mt-2 text-xs text-gray-400 space-x-4">
+                      <div className="flex items-center justify-start mt-2 text-xs text-gray-400 space-x-4">
                         <span>{new Date(article.date).toLocaleDateString('id-ID')}</span>
                         {article.view_count !== undefined && (
                           <span>{article.view_count} views</span>
@@ -265,9 +387,21 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
                       </div>
                     </a>
                     
-                    {/* Edit button - show for own articles or admin */}
+                    {/* Action buttons - show for own articles or admin */}
                     {(isOwnProfile || user?.user_role === 'admin' || user?.user_role === 'superadmin') && (
                       <div className="flex items-center mt-3 space-x-2">
+                        {/* Preview Button */}
+                        <button
+                          onClick={() => handlePreviewArticle(article.id)}
+                          className="inline-flex items-center px-3 py-1 text-xs font-medium bg-green-50 text-green-700 border border-green-200 rounded-md hover:bg-green-100 transition-colors"
+                        >
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          Preview
+                        </button>
+
                         {(() => {
                           const isPending = article.status === 'pending' || article.post_status === 'pending';
                           const isWriter = user?.user_role === 'writer';
@@ -324,27 +458,128 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
           </div>
         );
       case 'komentar':
-        return (
-          <div className="p-6 text-center">
-            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
+        if (!isOwnProfile) {
+          return (
+            <div className="p-6 text-center">
+              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Privat</h3>
+              <p className="text-gray-500 text-sm">Komentar hanya dapat dilihat oleh pemilik akun</p>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Belum ada komentar</h3>
-            <p className="text-gray-500 text-sm">Sudah ditampilkan semua</p>
+          );
+        }
+
+        if (isLoadingComments) {
+          return (
+            <div className="p-6 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mx-auto mb-4"></div>
+              <p className="text-gray-600">Memuat komentar...</p>
+            </div>
+          );
+        }
+
+        if (userComments.length === 0) {
+          return (
+            <div className="p-6 text-center">
+              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Belum ada komentar</h3>
+              <p className="text-gray-500 text-sm">Komentar Anda akan muncul di sini</p>
+            </div>
+          );
+        }
+
+        return (
+          <div className="space-y-4">
+            {userComments.map((comment) => (
+              <div key={comment.id} className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="mb-2">
+                      <p className="text-gray-800 text-sm mb-2">{comment.content}</p>
+                      <h4 className="text-sm font-medium text-gray-900 hover:text-yellow-600 cursor-pointer">
+                        <a href={`/artikel/${comment.post.slug}`} target="_blank" rel="noopener noreferrer">
+                          Pada: {comment.post.title}
+                        </a>
+                      </h4>
+                    </div>
+                    <div className="flex items-center text-xs text-gray-500 space-x-4">
+                      <span>Komentar: {new Date(comment.date).toLocaleDateString('id-ID')}</span>
+                      <span>Artikel: {new Date(comment.post.date).toLocaleDateString('id-ID')}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         );
       case 'suka':
-        return (
-          <div className="p-6 text-center">
-            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
+        if (!isOwnProfile) {
+          return (
+            <div className="p-6 text-center">
+              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Privat</h3>
+              <p className="text-gray-500 text-sm">Artikel yang disukai hanya dapat dilihat oleh pemilik akun</p>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Belum ada yang disukai</h3>
-            <p className="text-gray-500 text-sm">Sudah ditampilkan semua</p>
+          );
+        }
+
+        if (isLoadingLiked) {
+          return (
+            <div className="p-6 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mx-auto mb-4"></div>
+              <p className="text-gray-600">Memuat artikel yang disukai...</p>
+            </div>
+          );
+        }
+
+        if (likedArticles.length === 0) {
+          return (
+            <div className="p-6 text-center">
+              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Belum ada yang disukai</h3>
+              <p className="text-gray-500 text-sm">Artikel yang Anda sukai akan muncul di sini</p>
+            </div>
+          );
+        }
+
+        return (
+          <div className="space-y-4">
+            {likedArticles.map((article) => (
+              <div key={article.id} className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2 hover:text-yellow-600 cursor-pointer">
+                      <a href={`/artikel/${article.slug}`} target="_blank" rel="noopener noreferrer">
+                        {article.title}
+                      </a>
+                    </h3>
+                    <p className="text-gray-600 text-sm mb-2 line-clamp-2">{article.excerpt}</p>
+                    <div className="flex items-center text-xs text-gray-500 space-x-4">
+                      <span>Oleh {article.author.name}</span>
+                      <span>{new Date(article.date).toLocaleDateString('id-ID')}</span>
+                      <span>{article.like_count} suka</span>
+                      <span>{article.view_count} dilihat</span>
+                      <span className="text-red-500">❤️ Disukai {new Date(article.liked_at).toLocaleDateString('id-ID')}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         );
       default:
@@ -356,41 +591,69 @@ const ProfileViewPage: React.FC<ProfileViewPageProps> = ({ username }) => {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      {/* Social Media Style Profile */}
-      <div className="max-w-md mx-auto bg-white min-h-screen">
-        {/* Profile Header */}
-        <div className="p-6 text-center">
-          {/* Profile Picture */}
-          <div className="relative inline-block mb-4">
-            <ProfileAvatar
-              profileImage={displayUser.profile_image}
-              displayName={displayUser.display_name}
-              getImageUrl={getImageUrl}
+      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          {/* Profile Header */}
+          <div className="px-6 py-8 sm:px-8 sm:py-10 text-center">
+            {/* Profile Picture */}
+            <div className="relative inline-block mb-4">
+              <ProfileAvatar
+                profileImage={displayUser.profile_image}
+                displayName={displayUser.display_name}
+                getImageUrl={getImageUrl}
+              />
+            </div>
+            
+            {/* User Name */}
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{displayUser.display_name}</h1>
+            
+            {/* Follow Stats */}
+            <div className="mb-6">
+              <SocialStats 
+                mengikuti={stats.mengikuti}
+                pengikut={stats.pengikut}
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <ProfileActionButtons 
+              isOwnProfile={isOwnProfile}
+              userId={displayUser?.ID}
+              isFollowing={isFollowing}
+              onFollowChange={(newFollowState) => {
+                setIsFollowing(newFollowState);
+                // Update follower count
+                setStats(prev => ({
+                  ...prev,
+                  pengikut: prev.pengikut + (newFollowState ? 1 : -1)
+                }));
+              }}
             />
           </div>
-          
-          {/* User Name */}
-          <h1 className="text-xl font-semibold text-gray-900 mb-1">{displayUser.display_name}</h1>
-          
-          {/* Follow Stats */}
-          <SocialStats 
-            mengikuti={stats.mengikuti}
-            pengikut={stats.pengikut}
-          />
 
-          {/* Action Buttons */}
-          <ProfileActionButtons isOwnProfile={isOwnProfile} />
+          {/* Tabs */}
+          <div className="border-b border-gray-200">
+            <ProfileTabs 
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+            />
+          </div>
+
+          {/* Tab Content */}
+          <div className="p-6 sm:p-8">
+            {renderTabContent()}
+          </div>
         </div>
-
-        {/* Tabs */}
-        <ProfileTabs 
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
-
-        {/* Tab Content */}
-        {renderTabContent()}
       </div>
+      
+      {/* Preview Article Modal */}
+      {previewArticleId && (
+        <PreviewDetailArticle
+          articleId={previewArticleId}
+          isOpen={isPreviewOpen}
+          onClose={handleClosePreview}
+        />
+      )}
     </div>
   );
 };

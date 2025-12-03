@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext/AuthContext';
+import { buildApiUrl, buildBackendUrl } from '../../../config/api';
 
 interface Comment {
   id: number;
@@ -31,17 +32,29 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ postId }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [replyingTo, setReplyingTo] = useState<number | null>(null);
   const [replyContent, setReplyContent] = useState('');
+  const [deletingComment, setDeletingComment] = useState<number | null>(null);
 
   // Fetch comments
   useEffect(() => {
     const fetchComments = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`http://dev.naramakna.id/api/comments/post/${postId}`);
+        // Check if postId is numeric (ID) or string (slug)
+        const isNumeric = /^\d+$/.test(postId.toString());
+        const endpoint = isNumeric
+          ? `comments/post/${postId}`
+          : `comments/post/slug/${postId}`;
+
+        const response = await fetch(buildApiUrl(endpoint));
         
         if (response.ok) {
           const result = await response.json();
+          console.log('🔍 Comments API Response:', result);
           if (result.success) {
+            console.log('📝 Comments data:', result.data.comments);
+            result.data.comments?.forEach((comment: any, index: number) => {
+              console.log(`📸 Comment ${index + 1} - User: ${comment.author.name}, Profile Image: ${comment.author.user?.profile_image}`);
+            });
             setComments(result.data.comments || []);
           }
         } else {
@@ -71,7 +84,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ postId }) => {
 
     try {
       setIsSubmitting(true);
-      const response = await fetch('http://dev.naramakna.id/api/comments', {
+      const response = await fetch(buildApiUrl('comments'), {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -110,7 +123,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ postId }) => {
     }
 
     try {
-      const response = await fetch('http://dev.naramakna.id/api/comments', {
+      const response = await fetch(buildApiUrl('comments'), {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -148,6 +161,49 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ postId }) => {
     }
   };
 
+  // Delete comment
+  const handleDeleteComment = async (commentId: number) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus komentar ini?')) {
+      return;
+    }
+
+    try {
+      setDeletingComment(commentId);
+
+      // Check if user is super admin to use admin delete endpoint
+      const endpoint = user?.user_role === 'superadmin'
+        ? `comments/admin/${commentId}`
+        : `comments/${commentId}`;
+
+      const response = await fetch(buildApiUrl(endpoint), {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        // Remove comment from local state
+        setComments(prev => prev.filter(comment => {
+          if (comment.id === commentId) {
+            return false;
+          }
+          // Also remove from replies
+          comment.replies = comment.replies?.filter(reply => reply.id !== commentId) || [];
+          return true;
+        }));
+
+        alert('Komentar berhasil dihapus');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || 'Gagal menghapus komentar');
+      }
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      alert('Gagal menghapus komentar');
+    } finally {
+      setDeletingComment(null);
+    }
+  };
+
   // Format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -168,8 +224,8 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ postId }) => {
       <div className="comment-header flex items-center space-x-3 mb-3">
         <div className="avatar w-8 h-8 rounded-full overflow-hidden bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
           {comment.author.user?.profile_image ? (
-            <img 
-              src={comment.author.user.profile_image} 
+            <img
+              src={comment.author.user.profile_image.startsWith('/') ? buildBackendUrl(comment.author.user.profile_image) : comment.author.user.profile_image}
               alt={comment.author.name}
               className="w-full h-full object-cover"
               onError={(e) => {
@@ -193,12 +249,40 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ postId }) => {
       </div>
       
       {!isReply && (
-        <div className="comment-actions">
-          <button 
+        <div className="comment-actions flex items-center space-x-4">
+          <button
             onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
             className="text-sm text-blue-600 hover:text-blue-800 font-medium"
           >
             {replyingTo === comment.id ? 'Batal' : 'Balas'}
+          </button>
+
+          {/* Show delete button if user owns comment or is super admin */}
+          {isAuthenticated && (
+            (comment.author.user?.id === user?.ID || user?.user_role === 'superadmin')
+          ) && (
+            <button
+              onClick={() => handleDeleteComment(comment.id)}
+              disabled={deletingComment === comment.id}
+              className="text-sm text-red-600 hover:text-red-800 font-medium disabled:opacity-50"
+            >
+              {deletingComment === comment.id ? 'Menghapus...' : 'Hapus'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Show delete button for replies too */}
+      {isReply && isAuthenticated && (
+        (comment.author.user?.id === user?.ID || user?.user_role === 'superadmin')
+      ) && (
+        <div className="comment-actions mt-2">
+          <button
+            onClick={() => handleDeleteComment(comment.id)}
+            disabled={deletingComment === comment.id}
+            className="text-sm text-red-600 hover:text-red-800 font-medium disabled:opacity-50"
+          >
+            {deletingComment === comment.id ? 'Menghapus...' : 'Hapus'}
           </button>
         </div>
       )}
@@ -260,7 +344,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ postId }) => {
               <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
                 {user?.profile_image ? (
                   <img 
-                    src={user.profile_image.startsWith('/') ? `http://dev.naramakna.id${user.profile_image}` : user.profile_image} 
+                    src={user.profile_image.startsWith('/') ? buildBackendUrl(user.profile_image) : user.profile_image} 
                     alt={user.display_name || 'User'}
                     className="w-full h-full object-cover"
                     onError={(e) => {

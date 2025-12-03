@@ -12,13 +12,14 @@ const tiktokConfig = {
   authURL: 'https://www.tiktok.com/v2/auth/authorize',
   tokenURL: 'https://open.tiktokapis.com/v2/oauth/token',
   
-  // Scopes required for integration
+  // Scopes required for integration - must match TikTok Developer Portal
   scopes: [
     'user.info.basic',
     'user.info.profile', 
     'user.info.stats',
     'video.list',
-    'video.upload'
+    'video.upload',
+    'video.publish'
   ],
   
   // Rate limiting

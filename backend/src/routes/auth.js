@@ -54,6 +54,14 @@ router.put('/profile', authenticate, AuthController.updateProfile);
 router.post('/request-reset', authRateLimit(3, 60 * 60 * 1000), AuthController.requestPasswordReset);
 
 /**
+ * @route   POST /api/auth/verify-otp
+ * @desc    Verify OTP code for password reset
+ * @access  Public
+ * @body    { user_email, otp_code }
+ */
+router.post('/verify-otp', authRateLimit(5, 60 * 60 * 1000), AuthController.verifyOTP);
+
+/**
  * @route   POST /api/auth/reset-password
  * @desc    Reset password with token
  * @access  Public
@@ -67,5 +75,40 @@ router.post('/reset-password', authRateLimit(5, 60 * 60 * 1000), AuthController.
  * @access  Public
  */
 router.get('/verify-email/:token', AuthController.verifyEmail);
+
+/**
+ * @route   GET /api/auth/google
+ * @desc    Get Google OAuth URL
+ * @access  Public
+ */
+router.get('/google', AuthController.getGoogleAuthUrl);
+
+/**
+ * @route   GET /api/auth/google/callback
+ * @desc    Handle Google OAuth callback
+ * @access  Public
+ */
+router.get('/google/callback', AuthController.handleGoogleCallback);
+
+/**
+ * @route   GET /api/auth/google/admin
+ * @desc    Get Google OAuth URL for admin with Google Ads access
+ * @access  Public
+ */
+router.get('/google/admin', AuthController.getGoogleAdminAuthUrl);
+
+/**
+ * @route   GET /api/auth/google/admin/callback
+ * @desc    Handle Google OAuth admin callback for Google Ads
+ * @access  Public
+ */
+router.get('/google/admin/callback', AuthController.handleGoogleAdminCallback);
+
+/**
+ * @route   GET /api/auth/google-ads/test
+ * @desc    Test Google Ads connection
+ * @access  Private (Admin only)
+ */
+router.get('/google-ads/test', authenticate, AuthController.testGoogleAdsConnection);
 
 module.exports = router;

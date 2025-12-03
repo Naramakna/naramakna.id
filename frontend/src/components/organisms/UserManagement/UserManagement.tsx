@@ -79,7 +79,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     label: 'Actions',
     render: (_: any, user: User) => (
       <div className="text-sm space-x-1 flex flex-wrap gap-1">
-        {onPromoteToAdmin && user.user_role === 'user' && (
+        {onPromoteToAdmin && (user.user_role === 'user' || user.user_role === 'writer') && (
           <button 
             onClick={() => onPromoteToAdmin(user.ID)}
             className="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded text-xs font-medium"

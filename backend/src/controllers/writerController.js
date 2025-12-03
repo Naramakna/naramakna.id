@@ -2,6 +2,7 @@ const { Post, PostMeta, User, sequelize } = require('../models');
 const { QueryTypes } = require('sequelize');
 const { Op } = require('sequelize');
 const path = require('path');
+const ContentController = require('./contentController');
 
 class WriterController {
   /**
@@ -26,14 +27,17 @@ class WriterController {
         publish_date,
         location,
         mark_as_18_plus,
-        status = 'draft',
-        featured_image
+        status = req.body.status || ((req.user.user_role === 'admin' || req.user.user_role === 'superadmin') ? 'published' : 'draft'),
+        featured_image,
+        featured_image_caption,
+        image_captions
       } = req.body;
 
 
 
       // Validate required fields - relaxed for drafts
       if (!title || !content || !channel) {
+        await transaction.rollback();
         return res.status(400).json({
           success: false,
           message: 'Title, content, and channel are required'
@@ -42,6 +46,7 @@ class WriterController {
       
       // For published posts, require additional fields
       if (status === 'published' && (!description || !summary_social)) {
+        await transaction.rollback();
         return res.status(400).json({
           success: false,
           message: 'Description and summary social are required for published posts'
@@ -54,6 +59,108 @@ class WriterController {
         .replace(/[^a-z0-9\s-]/g, '')
         .replace(/\s+/g, '-')
         .substring(0, 50);
+
+      // Check for duplicate submissions within last 2 minutes to prevent race conditions
+      // This prevents users from accidentally submitting the same post multiple times
+      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+      const existingRecent = await Post.findOne({
+        where: {
+          post_author: req.user.ID,
+          post_title: title,
+          post_type: 'post',
+          post_status: {
+            [Op.in]: ['draft', 'pending', 'future']
+          },
+          post_date: {
+            [Op.gte]: twoMinutesAgo
+          }
+        },
+        order: [['post_date', 'DESC']]
+      });
+
+      if (existingRecent) {
+        // Update existing post instead of creating duplicate
+        console.log('🔄 Preventing duplicate - updating existing post:', existingRecent.ID);
+
+        await existingRecent.update({
+          post_content: content,
+          post_excerpt: description || '',
+          post_modified: new Date(),
+          post_date_gmt: new Date()
+        });
+
+        // Helper function to update post metadata
+        const updatePostMeta = async (postId, metaKey, metaValue) => {
+          await PostMeta.upsert({
+            post_id: postId,
+            meta_key: metaKey,
+            meta_value: metaValue
+          });
+        };
+
+        // Update metadata
+        if (summary_social) {
+          await updatePostMeta(existingRecent.ID, '_summary_social', summary_social);
+        }
+        if (channel) {
+          await updatePostMeta(existingRecent.ID, '_channel', channel);
+        }
+        if (publish_date) {
+          await updatePostMeta(existingRecent.ID, '_publish_date', publish_date);
+          // Also store scheduled_publish_date for scheduler
+          const scheduledDate = new Date(publish_date);
+          if (scheduledDate > new Date()) {
+            await updatePostMeta(existingRecent.ID, '_scheduled_publish_date', publish_date);
+          }
+        }
+        if (location) {
+          await updatePostMeta(existingRecent.ID, '_location', location);
+        }
+        if (mark_as_18_plus !== undefined) {
+          await updatePostMeta(existingRecent.ID, '_mark_as_18_plus', mark_as_18_plus ? '1' : '0');
+        }
+        if (featured_image) {
+          // Find attachment post by GUID to get the correct ID
+          const attachment = await Post.findOne({
+            where: { guid: featured_image, post_type: 'attachment' }
+          });
+
+          if (attachment) {
+            await updatePostMeta(existingRecent.ID, '_thumbnail_id', attachment.ID);
+            console.log(`🖼️ Featured image set for post ${existingRecent.ID}: ${attachment.ID}`);
+          }
+        }
+        if (featured_image_caption !== undefined) {
+          await updatePostMeta(existingRecent.ID, '_thumbnail_caption', featured_image_caption || '');
+
+          if (featured_image) {
+            const existingAttachment = await Post.findOne({
+              where: { guid: featured_image, post_type: 'attachment' }
+            });
+
+            if (existingAttachment && featured_image_caption) {
+              await existingAttachment.update({
+                post_title: featured_image_caption,
+                post_excerpt: featured_image_caption
+              });
+            }
+          }
+        }
+        if (image_captions && typeof image_captions === 'object') {
+          await updatePostMeta(existingRecent.ID, '_image_captions', JSON.stringify(image_captions));
+        }
+
+        return res.status(200).json({
+          success: true,
+          message: 'Post updated successfully (duplicate prevented)',
+          data: {
+            id: existingRecent.ID,
+            title: existingRecent.post_title,
+            status: existingRecent.post_status,
+            isUpdate: true
+          }
+        });
+      }
 
       // For drafts, check if user already has a draft with the same title
       // If found, update instead of creating duplicate
@@ -104,7 +211,35 @@ class WriterController {
             await updatePostMeta(existingDraft.ID, '_mark_as_18_plus', mark_as_18_plus ? '1' : '0');
           }
           if (featured_image) {
-            await updatePostMeta(existingDraft.ID, '_thumbnail_id', featured_image);
+            // Find attachment post by GUID to get the correct ID
+            const attachment = await Post.findOne({
+              where: { guid: featured_image, post_type: 'attachment' }
+            });
+            
+            if (attachment) {
+              // Save attachment ID, not the URL
+              await updatePostMeta(existingDraft.ID, '_thumbnail_id', attachment.ID);
+              console.log(`🖼️ Featured image set for draft ${existingDraft.ID}: ${attachment.ID} (${featured_image})`);
+            } else {
+              console.warn(`❌ Attachment not found for URL: ${featured_image}`);
+            }
+          }
+          if (featured_image_caption !== undefined) {
+            await updatePostMeta(existingDraft.ID, '_thumbnail_caption', featured_image_caption || '');
+            
+            // Also update attachment post if exists
+            if (featured_image) {
+              const existingAttachment = await Post.findOne({
+                where: { guid: featured_image, post_type: 'attachment' }
+              });
+              
+              if (existingAttachment && featured_image_caption) {
+                await existingAttachment.update({
+                  post_title: featured_image_caption,
+                  post_excerpt: featured_image_caption
+                });
+              }
+            }
           }
 
           return res.status(200).json({
@@ -120,22 +255,68 @@ class WriterController {
         }
       }
 
+      // Debug: Check publish_date
+      console.log('📅 WriterController: Creating article with publish_date:', {
+        publish_date_raw: publish_date,
+        publish_date_parsed: publish_date ? new Date(publish_date) : 'using current date',
+        current_time: new Date()
+      });
+
+      // Determine post status and scheduled date
+      // Parse publish_date treating it as WIB (UTC+7) if no timezone specified
+      let publishDate;
+      if (publish_date) {
+        publishDate = new Date(publish_date);
+        // If no timezone in string, assume it's WIB and convert to UTC
+        if (!publish_date.includes('Z') && !publish_date.match(/[+-]\d{2}:?\d{2}$/)) {
+          const wibOffset = 7 * 60; // WIB is UTC+7
+          const localOffset = publishDate.getTimezoneOffset(); // Server timezone offset
+          const adjustmentMinutes = wibOffset + localOffset;
+          publishDate = new Date(publishDate.getTime() + (adjustmentMinutes * 60 * 1000));
+        }
+      } else {
+        publishDate = new Date();
+      }
+      const now = new Date();
+      const isFuturePost = publishDate > now;
+
+      let postStatus;
+      let scheduledPublishDate = null;
+
+      // Admin and SuperAdmin can publish/schedule directly
+      if (req.user.user_role === 'admin' || req.user.user_role === 'superadmin') {
+        if (status === 'published') {
+          if (isFuturePost) {
+            postStatus = 'future';
+            scheduledPublishDate = publishDate;
+          } else {
+            postStatus = 'publish';
+          }
+        } else {
+          postStatus = 'draft';
+        }
+      } else {
+        // Writers need approval for publishing
+        if (status === 'published') {
+          postStatus = 'pending'; // Always pending for writers, regardless of date
+          if (isFuturePost) {
+            scheduledPublishDate = publishDate; // Store scheduled date for after approval
+          }
+        } else {
+          postStatus = 'draft';
+        }
+      }
+
       // Create post
       const post = await Post.create({
         post_author: req.user.ID,
-        post_date: publish_date ? new Date(publish_date) : new Date(),
-        post_date_gmt: publish_date ? new Date(publish_date) : new Date(),
+        post_date: isFuturePost ? publishDate : new Date(), // Use scheduled date or now
+        post_date_gmt: isFuturePost ? publishDate : new Date(),
         post_content: content,
         post_title: title,
         post_excerpt: description,
-        post_status: (() => {
-          // Admin and SuperAdmin can publish directly
-          if (req.user.user_role === 'admin' || req.user.user_role === 'superadmin') {
-            return status === 'published' ? 'publish' : 'draft';
-          }
-          // Writers need approval for publishing
-          return status === 'published' ? 'pending' : 'draft';
-        })(), // Role-based publishing
+        post_status: postStatus,
+        scheduled_publish_date: scheduledPublishDate, // Store in DB for scheduler
         comment_status: 'closed',
         ping_status: 'closed',
         post_name: slug,
@@ -160,6 +341,14 @@ class WriterController {
 
           if (existingAttachment) {
             thumbnailId = existingAttachment.ID;
+            
+            // Update existing attachment with caption if provided
+            if (featured_image_caption) {
+              await existingAttachment.update({
+                post_title: featured_image_caption,
+                post_excerpt: featured_image_caption
+              }, { transaction });
+            }
           } else {
             // Create new attachment post
             const attachmentPost = await Post.create({
@@ -167,8 +356,8 @@ class WriterController {
               post_date: new Date(),
               post_date_gmt: new Date(),
               post_content: '',
-              post_title: `Attachment for ${title}`,
-              post_excerpt: '',
+              post_title: featured_image_caption || `Featured image for ${title}`,
+              post_excerpt: featured_image_caption || '',
               post_status: 'inherit',
               comment_status: 'closed',
               ping_status: 'closed',
@@ -203,9 +392,31 @@ class WriterController {
         { post_id: post.ID, meta_key: '_edit_last', meta_value: req.user.ID.toString() }
       ];
 
+      // Store scheduled date in metadata if exists
+      if (scheduledPublishDate) {
+        metaData.push({
+          post_id: post.ID,
+          meta_key: '_scheduled_publish_date',
+          meta_value: scheduledPublishDate.toISOString()
+        });
+      }
+
       // Add thumbnail ID if we have featured image
       if (thumbnailId) {
         metaData.push({ post_id: post.ID, meta_key: '_thumbnail_id', meta_value: thumbnailId.toString() });
+      }
+      
+      // Add thumbnail caption if provided
+      if (featured_image_caption !== undefined) {
+        metaData.push({ post_id: post.ID, meta_key: '_thumbnail_caption', meta_value: featured_image_caption || '' });
+      }
+
+      // Add image captions if provided
+      if (image_captions && typeof image_captions === 'object') {
+        console.log(`📸 [CREATE] Saving image captions for post ${post.ID}:`, Object.keys(image_captions).length, 'images');
+        metaData.push({ post_id: post.ID, meta_key: '_image_captions', meta_value: JSON.stringify(image_captions) });
+      } else {
+        console.log(`📸 [CREATE] No image captions provided for post ${post.ID}. Type:`, typeof image_captions, 'Value:', image_captions);
       }
 
       await PostMeta.bulkCreate(metaData, { transaction });
@@ -239,9 +450,7 @@ class WriterController {
    * PUT /api/writer/articles/:id
    */
   static async updateArticle(req, res) {
-    console.log('🚀 Debug: updateArticle method called for ID:', req.params.id);
-    console.log('🚀 Debug: Request method:', req.method);
-    console.log('🚀 Debug: User:', req.user?.ID, req.user?.user_login);
+    // Update article method
     
     const transaction = await sequelize.transaction();
     
@@ -262,11 +471,13 @@ class WriterController {
         location,
         mark_as_18_plus,
         status,
-        featured_image
+        featured_image,
+        featured_image_caption,
+        image_captions
       } = req.body;
 
       // Debug log untuk featured image
-      console.log('🔧 Debug Update Article - featured_image:', featured_image);
+      // Process featured image if provided
 
       // Find article - Admin and SuperAdmin can edit any post
       const whereClause = { 
@@ -293,28 +504,30 @@ class WriterController {
       // Update slug if title changed
       let slug = post.post_name;
       if (title && title !== post.post_title) {
-        slug = title
-          .toLowerCase()
-          .replace(/[^a-z0-9\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .substring(0, 50);
+        slug = await ContentController.generateUniqueSlug(title, post.ID);
       }
 
       // Determine new status based on user role and current post status
       let newStatus;
+      
+      // Check if this is scheduled for future
+      const publishDate = publish_date ? new Date(publish_date) : post.post_date;
+      const now = new Date();
+      const isFuturePost = publishDate > now;
+      
       if (req.user.user_role === 'writer') {
         // Writer logic: published posts go back to pending when edited
         if (post.post_status === 'publish') {
           newStatus = 'pending'; // Published posts edited by writer need re-approval
         } else if (status === 'published') {
-          newStatus = 'pending'; // Writers can't publish directly, goes to pending
+          newStatus = isFuturePost ? 'future' : 'pending'; // Writers can't publish directly, goes to pending or future
         } else {
           newStatus = post.post_status; // Keep current status (draft, pending)
         }
       } else {
         // Admin/SuperAdmin can publish directly
         if (status === 'published') {
-          newStatus = 'publish';
+          newStatus = isFuturePost ? 'future' : 'publish';
         } else if (status === 'draft') {
           newStatus = 'draft';
         } else if (status === 'pending') {
@@ -324,6 +537,13 @@ class WriterController {
           newStatus = post.post_status;
         }
       }
+
+      // Debug: Check publish_date for update
+      console.log('📅 WriterController: Updating article with publish_date:', {
+        publish_date_raw: publish_date,
+        publish_date_parsed: publish_date ? new Date(publish_date) : 'keeping existing date',
+        existing_post_date: post.post_date
+      });
 
       // Update post
       await post.update({
@@ -338,10 +558,9 @@ class WriterController {
       }, { transaction });
 
       // Handle featured image for update
-      console.log('🖼️ Debug: Checking featured_image:', featured_image);
       let thumbnailId = null;
       if (featured_image) {
-        console.log('🖼️ Debug: Processing featured_image:', featured_image);
+        // Process featured image
         // Find or create attachment post for the image
         const existingAttachment = await Post.findOne({
           where: { guid: featured_image, post_type: 'attachment' }
@@ -349,6 +568,14 @@ class WriterController {
 
         if (existingAttachment) {
           thumbnailId = existingAttachment.ID;
+          
+          // Update existing attachment with caption if provided
+          if (featured_image_caption) {
+            await existingAttachment.update({
+              post_title: featured_image_caption,
+              post_excerpt: featured_image_caption
+            }, { transaction });
+          }
         } else {
           // Create new attachment post
           const attachmentPost = await Post.create({
@@ -356,8 +583,8 @@ class WriterController {
             post_date: new Date(),
             post_date_gmt: new Date(),
             post_content: '',
-            post_title: `Attachment for ${title}`,
-            post_excerpt: '',
+            post_title: featured_image_caption || `Attachment for ${title}`,
+            post_excerpt: featured_image_caption || '',
             post_status: 'inherit',
             comment_status: 'closed',
             ping_status: 'closed',
@@ -388,10 +615,22 @@ class WriterController {
       ].filter(item => item.value !== undefined);
 
       // Add thumbnail ID if we have featured image
-      console.log('🖼️ Debug: thumbnailId result:', thumbnailId);
+      // Set thumbnail meta if image provided
       if (thumbnailId) {
-        console.log('🖼️ Debug: Adding _thumbnail_id to metaUpdates:', thumbnailId);
         metaUpdates.push({ key: '_thumbnail_id', value: thumbnailId.toString() });
+      }
+      
+      // Add thumbnail caption if provided
+      if (featured_image_caption !== undefined) {
+        metaUpdates.push({ key: '_thumbnail_caption', value: featured_image_caption || '' });
+      }
+
+      // Add image captions if provided
+      if (image_captions && typeof image_captions === 'object') {
+        console.log(`📸 [UPDATE] Saving image captions for post ${post.ID}:`, Object.keys(image_captions).length, 'images');
+        metaUpdates.push({ key: '_image_captions', value: JSON.stringify(image_captions) });
+      } else {
+        console.log(`📸 [UPDATE] No image captions provided for post ${post.ID}. Type:`, typeof image_captions, 'Value:', image_captions);
       }
 
       for (const meta of metaUpdates) {
@@ -584,6 +823,20 @@ class WriterController {
         }
       }
 
+      // Get selected categories for this post
+      const categoriesQuery = `
+        SELECT t.name, t.slug
+        FROM terms t
+        JOIN term_taxonomy tt ON t.term_id = tt.term_id
+        JOIN term_relationships tr ON tt.term_taxonomy_id = tr.term_taxonomy_id
+        WHERE tr.object_id = ? AND tt.taxonomy = 'category'
+      `;
+      
+      const selectedCategories = await sequelize.query(categoriesQuery, {
+        replacements: [post.ID],
+        type: sequelize.QueryTypes.SELECT
+      });
+
       // console.log('🔧 Debug: Found post for edit:', {
       //   ID: post.ID,
       //   title: post.post_title,
@@ -604,7 +857,7 @@ class WriterController {
           date: post.post_date,
           modified: post.post_modified,
           author_id: post.post_author,
-          publish_date: post.post_date,
+          publish_date: post.post_date ? new Date(post.post_date).toISOString().slice(0, 16) : null,
           location: metadata._location || '',
           channel: metadata._channel || 'news',
           topic: metadata._topic || '',
@@ -612,6 +865,16 @@ class WriterController {
           summary_social: metadata._summary_social || '',
           mark_as_18_plus: metadata._mark_as_18_plus === '1' || false,
           featured_image: featuredImageUrl,
+          featured_image_caption: metadata._thumbnail_caption || '',
+          image_captions: (() => {
+            try {
+              return metadata._image_captions ? JSON.parse(metadata._image_captions) : {};
+            } catch (error) {
+              console.warn('Failed to parse image captions:', error);
+              return {};
+            }
+          })(),
+          selected_categories: selectedCategories.map(cat => cat.name),
           metadata
         }
       });
@@ -629,8 +892,11 @@ class WriterController {
    * POST /api/writer/upload-image
    */
   static async uploadImage(req, res) {
+    const transaction = await sequelize.transaction();
+
     try {
       if (!req.files || !req.files.image) {
+        await transaction.rollback();
         return res.status(400).json({
           success: false,
           message: 'No image file provided'
@@ -646,18 +912,66 @@ class WriterController {
         imageFile.path
       );
       const imageUrl = `${baseUrl}/${relativePath.replace(/\\/g, '/')}`;
+      
+      // Get caption from request body (if provided)
+      const caption = req.body.caption || `Image attachment for article`;
+      
+      // Save image as attachment post in database
+      const attachmentPost = await Post.create({
+        post_author: req.user.ID,
+        post_date: new Date(),
+        post_date_gmt: new Date(),
+        post_content: '',
+        post_title: caption,
+        post_excerpt: caption,
+        post_status: 'inherit', // Standard WordPress attachment status
+        comment_status: 'closed',
+        ping_status: 'closed',
+        post_password: '',
+        post_name: imageFile.filename.split('.')[0], // Slug without extension
+        to_ping: '',
+        pinged: '',
+        post_modified: new Date(),
+        post_modified_gmt: new Date(),
+        post_content_filtered: '',
+        post_parent: 0,
+        guid: imageUrl,
+        menu_order: 0,
+        post_type: 'attachment',
+        post_mime_type: imageFile.mimetype,
+        comment_count: 0
+      }, { transaction });
+      
+      // Add metadata for the attachment
+      await PostMeta.create({
+        post_id: attachmentPost.ID,
+        meta_key: '_wp_attached_file',
+        meta_value: relativePath.replace(/\\/g, '/')
+      }, { transaction });
+      
+      await PostMeta.create({
+        post_id: attachmentPost.ID,
+        meta_key: '_wp_attachment_image_alt',
+        meta_value: caption
+      }, { transaction });
+      
+      await transaction.commit();
 
       res.status(200).json({
         success: true,
         message: 'Image uploaded successfully',
         data: {
+          id: attachmentPost.ID,
           url: imageUrl,
           filename: imageFile.filename,
           originalName: imageFile.originalname,
-          size: imageFile.size
+          size: imageFile.size,
+          caption: caption,
+          alt: caption
         }
       });
     } catch (error) {
+      await transaction.rollback();
       console.error('Error uploading image:', error);
       res.status(500).json({
         success: false,
@@ -665,6 +979,7 @@ class WriterController {
       });
     }
   }
+
 
   /**
    * Delete article
@@ -704,7 +1019,15 @@ class WriterController {
 
       res.status(200).json({
         success: true,
-        message: 'Article deleted successfully'
+        message: 'Article moved to trash successfully',
+        data: {
+          deletedArticle: {
+            id: post.ID,
+            title: post.post_title,
+            deletionType: 'soft',
+            deleted_at: post.deleted_at
+          }
+        }
       });
     } catch (error) {
       await transaction.rollback();
@@ -712,6 +1035,106 @@ class WriterController {
       res.status(500).json({
         success: false,
         message: 'Internal server error'
+      });
+    }
+  }
+
+  /**
+   * Get writer's deleted articles (trash)
+   * GET /api/writer/articles/trash
+   */
+  static async getDeletedArticles(req, res) {
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const offset = (page - 1) * limit;
+
+      const { count, rows: deletedArticles } = await Post.findAndCountAll({
+        where: {
+          post_author: req.user.ID,
+          post_type: 'post',
+          deleted_at: { [require('sequelize').Op.ne]: null }
+        },
+        order: [['deleted_at', 'DESC']],
+        limit,
+        offset
+      });
+
+      res.json({
+        success: true,
+        data: {
+          articles: deletedArticles,
+          pagination: {
+            currentPage: page,
+            totalPages: Math.ceil(count / limit),
+            totalItems: count,
+            itemsPerPage: limit
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Get writer deleted articles error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch deleted articles'
+      });
+    }
+  }
+
+  /**
+   * Restore writer's deleted article
+   * POST /api/writer/articles/:id/restore
+   */
+  static async restoreArticle(req, res) {
+    const transaction = await sequelize.transaction();
+    
+    try {
+      const { id } = req.params;
+
+      // Find soft deleted article owned by the writer
+      const article = await Post.findOne({
+        where: {
+          ID: id,
+          post_author: req.user.ID,
+          post_type: 'post',
+          deleted_at: { [require('sequelize').Op.ne]: null }
+        }
+      });
+
+      if (!article) {
+        return res.status(404).json({
+          success: false,
+          message: 'Deleted article not found'
+        });
+      }
+
+      // Restore the article
+      await article.update({
+        deleted_at: null,
+        deleted_by: null,
+        post_status: 'draft' // Writers restore to draft for review
+      }, { transaction });
+
+      await transaction.commit();
+
+      res.json({
+        success: true,
+        message: `Article "${article.post_title}" has been restored to drafts.`,
+        data: {
+          restoredArticle: {
+            id: article.ID,
+            title: article.post_title
+          }
+        }
+      });
+
+    } catch (error) {
+      await transaction.rollback();
+      console.error('Restore article error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to restore article'
       });
     }
   }

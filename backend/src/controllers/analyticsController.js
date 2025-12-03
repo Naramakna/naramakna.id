@@ -10,6 +10,44 @@ const sequelize = require('../config/database');
 class AnalyticsController {
 
   /**
+   * Test analytics API
+   * GET /api/analytics/test
+   */
+  static async test(req, res) {
+    try {
+      // Simple query to test connectivity
+      const count = await Analytics.count();
+      
+      // Get basic stats
+      const recentViews = await Analytics.count({
+        where: {
+          event_type: 'view',
+          timestamp: {
+            [Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+          }
+        }
+      });
+
+      res.json({
+        success: true,
+        message: 'Analytics API is working',
+        data: {
+          total_records: count,
+          recent_views_24h: recentViews,
+          database_connected: true
+        }
+      });
+    } catch (error) {
+      console.error('❌ Analytics test error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Analytics API test failed',
+        error: error.message
+      });
+    }
+  }
+
+  /**
    * Track user interaction
    * POST /api/analytics/track
    */
@@ -30,8 +68,28 @@ class AnalyticsController {
         });
       }
 
+      // Resolve content_id (could be numeric ID or slug)
+      let actualContentId = content_id;
+      
+      // If content_id is not numeric, treat it as a slug and find the actual ID
+      if (isNaN(content_id)) {
+        const post = await Post.findOne({
+          where: { post_name: content_id },
+          attributes: ['ID']
+        });
+        
+        if (!post) {
+          return res.status(404).json({
+            success: false,
+            message: 'Content not found'
+          });
+        }
+        
+        actualContentId = post.ID;
+      }
+
       // Verify content exists
-      const content = await Post.findByPk(content_id);
+      const content = await Post.findByPk(actualContentId);
       if (!content) {
         return res.status(404).json({
           success: false,
@@ -41,7 +99,7 @@ class AnalyticsController {
 
       // Create analytics record
       const analyticsData = {
-        content_id,
+        content_id: actualContentId,
         content_type,
         event_type,
         user_ip: req.location?.ip || req.ip || req.connection.remoteAddress,
@@ -62,6 +120,13 @@ class AnalyticsController {
       }
 
       await Analytics.create(analyticsData);
+
+      // If this is a view event, also increment the view_count in the posts table
+      if (event_type === 'view') {
+        await Post.increment('view_count', {
+          where: { ID: actualContentId }
+        });
+      }
 
       res.json({
         success: true,
@@ -213,109 +278,46 @@ class AnalyticsController {
     try {
       const { period = 'month' } = req.query;
 
-      // Calculate date range
-      const endDate = new Date();
-      const startDate = new Date();
-      
-      switch (period) {
-        case 'week':
-          startDate.setDate(endDate.getDate() - 7);
-          break;
-        case 'month':
-          startDate.setMonth(endDate.getMonth() - 1);
-          break;
-        case 'year':
-          startDate.setFullYear(endDate.getFullYear() - 1);
-          break;
-        default:
-          startDate.setMonth(endDate.getMonth() - 1);
-      }
+      console.log('📊 Getting dashboard analytics...');
 
-      // Get content type performance
-      const contentTypeMetrics = await Analytics.findAll({
-        where: {
-          timestamp: {
-            [Op.between]: [startDate, endDate]
-          }
-        },
-        attributes: [
-          'content_type',
-          'event_type',
-          [sequelize.fn('COUNT', sequelize.col('id')), 'count']
-        ],
-        group: ['content_type', 'event_type'],
-        raw: true
-      });
+      // Get all stats in single query (optimized)
+      const { QueryTypes } = require('sequelize');
+      const [stats] = await sequelize.query(`
+        SELECT
+          (SELECT COUNT(*) FROM analytics WHERE event_type = 'view') as totalViews,
+          (SELECT COUNT(*) FROM posts WHERE post_type = 'post' AND post_status = 'publish') as totalPosts,
+          (SELECT COUNT(*) FROM users) as totalUsers,
+          (SELECT COUNT(DISTINCT content_id) FROM analytics WHERE event_type = 'view') as postsWithViews
+      `, { type: QueryTypes.SELECT });
 
-      // Get top performing content
-      const topContent = await Analytics.findAll({
-        where: {
-          event_type: 'view',
-          timestamp: {
-            [Op.between]: [startDate, endDate]
-          }
-        },
-        attributes: [
-          'content_id',
-          'content_type',
-          [sequelize.fn('COUNT', sequelize.col('Analytics.id')), 'views']
-        ],
-        include: [{
-          model: Post,
-          as: 'content',
-          attributes: ['post_title', 'post_type']
-        }],
-        group: ['content_id'],
-        order: [[sequelize.fn('COUNT', sequelize.col('Analytics.id')), 'DESC']],
-        limit: 10,
-        raw: true
-      });
+      const totalViews = parseInt(stats.totalViews) || 0;
+      const totalPosts = parseInt(stats.totalPosts) || 0;
+      const totalUsers = parseInt(stats.totalUsers) || 0;
+      const postsWithViews = parseInt(stats.postsWithViews) || 0;
 
-      // Get daily activity
-      const dailyActivity = await Analytics.findAll({
-        where: {
-          timestamp: {
-            [Op.between]: [startDate, endDate]
-          }
-        },
-        attributes: [
-          [sequelize.fn('DATE', sequelize.col('timestamp')), 'date'],
-          [sequelize.fn('COUNT', sequelize.col('id')), 'total_events']
-        ],
-        group: [sequelize.fn('DATE', sequelize.col('timestamp'))],
-        order: [[sequelize.fn('DATE', sequelize.col('timestamp')), 'ASC']],
-        raw: true
-      });
+      console.log('📊 Basic totals:', { totalViews, totalPosts, totalUsers });
 
-      // Get user engagement metrics
-      const engagementMetrics = await Analytics.findAll({
-        where: {
-          timestamp: {
-            [Op.between]: [startDate, endDate]
-          }
-        },
-        attributes: [
-          'event_type',
-          [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
-          [sequelize.fn('COUNT', sequelize.fn('DISTINCT', sequelize.col('user_ip'))), 'unique_users']
-        ],
-        group: ['event_type'],
-        raw: true
-      });
+      const avgViewsPerPost = postsWithViews > 0 ? Math.round(totalViews / postsWithViews) : 0;
+
+      // Get regional breakdown from the custom report table
+      const [regionalStats, metadata] = await sequelize.query("SELECT city, region, views FROM top_regions_report ORDER BY views DESC");
+
+      console.log('📊 Regional stats:', regionalStats.slice(0, 5));
 
       res.json({
         success: true,
         data: {
           period,
-          contentTypes: this.formatContentTypeMetrics(contentTypeMetrics),
-          topContent: topContent.map(item => ({
-            id: item.content_id,
-            title: item['content.post_title'],
-            type: item.content_type,
-            views: parseInt(item.views)
-          })),
-          dailyActivity,
-          engagement: engagementMetrics
+          totalViews,
+          totalPosts,
+          totalUsers,
+          postsWithViews,
+          avgViewsPerPost,
+          regionalStats,
+          contentTypes: {},
+          topContent: [],
+          dailyActivity: [],
+          engagement: []
         }
       });
 
@@ -361,7 +363,7 @@ class AnalyticsController {
         },
         include: [{
           model: Post,
-          as: 'content',
+          as: 'post',
           attributes: ['post_title', 'post_type']
         }],
         order: [['timestamp', 'DESC']],
@@ -380,7 +382,7 @@ class AnalyticsController {
           recentEvents: recentEvents.map(event => ({
             id: event.id,
             contentId: event.content_id,
-            contentTitle: event.content?.post_title,
+            contentTitle: event.post?.post_title,
             contentType: event.content_type,
             eventType: event.event_type,
             timestamp: event.timestamp,

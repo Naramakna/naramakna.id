@@ -37,7 +37,9 @@ export const Logo: React.FC<LogoProps> = ({
       <img
         src={LogoImage}
         alt="Naramakna"
-        className={`${getSizeClasses()} object-contain`}
+        className={`${getSizeClasses()} object-contain select-none pointer-events-none`}
+        draggable={false}
+        onContextMenu={(e) => e.preventDefault()}
       />
     </div>
   );

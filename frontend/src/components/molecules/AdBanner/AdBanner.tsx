@@ -1,6 +1,13 @@
 // Komponen untuk display banner iklan
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Advertisement } from '../../../services/api';
+
+// Global type declaration for AdSense
+declare global {
+  interface Window {
+    adsbygoogle: any[];
+  }
+}
 
 interface AdBannerProps {
   className?: string;
@@ -8,13 +15,15 @@ interface AdBannerProps {
   altText?: string;
   href?: string;
   isPlaceholder?: boolean;
-  size?: 'header' | 'regular'; // header: 970x250, regular: 728x90
+  size?: 'header' | 'regular' | 'sidebar' | 'article'; // header: 970x250, regular: 728x90, sidebar: 300x250, article: bigger for article content
   // New props for advanced ads
   advertisement?: Advertisement;
   onAdClick?: (adId: string) => void;
   // Animation props
   isVisible?: boolean;
   showTransition?: boolean;
+  // Fallback props
+  hasActiveAds?: boolean; // If true, don't show AdSense fallback
 }
 
 export const AdBanner: React.FC<AdBannerProps> = ({
@@ -27,7 +36,8 @@ export const AdBanner: React.FC<AdBannerProps> = ({
   advertisement,
   onAdClick,
   isVisible = true,
-  showTransition = true
+  showTransition = true,
+  hasActiveAds = false
 }) => {
   // Check if we have real advertisement data
   const hasRealAd = advertisement && !isPlaceholder;
@@ -35,53 +45,268 @@ export const AdBanner: React.FC<AdBannerProps> = ({
   const adTargetUrl = advertisement?.target_url || href;
   const adMediaType = advertisement?.media_type || 'image';
 
-  const handleClick = () => {
+  // Generate unique ID for AdSense ads - use useMemo to regenerate when advertisement changes
+  const [randomSuffix] = useState(() => Math.random().toString(36).substr(2, 9));
+  const adUniqueId = React.useMemo(() => {
+    if (adMediaType === 'google_adsense' && advertisement?.id) {
+      return `adsense-${advertisement.id}-${randomSuffix}`;
+    }
+    return `adsense-fallback-${size}-${randomSuffix}`;
+  }, [adMediaType, advertisement?.id, size, randomSuffix]);
+
+  // Show AdSense fallback only if:
+  // 1. No real ad data AND
+  // 2. No active ads in the system (hasActiveAds = false) AND
+  // 3. Not explicitly showing placeholder
+  const shouldShowAdSenseFallback = !hasRealAd && !hasActiveAds && !isPlaceholder;
+
+  // Debug log for fallback logic - ALWAYS log for debugging
+  useEffect(() => {
+    console.log('🔍 AdBanner Debug:', {
+      size,
+      hasRealAd,
+      hasActiveAds,
+      isPlaceholder,
+      shouldShowAdSenseFallback,
+      adMediaType,
+      adMediaUrl,
+      advertisementId: advertisement?.id,
+      campaignName: advertisement?.campaign_name
+    });
+  }, [size, hasRealAd, hasActiveAds, isPlaceholder, shouldShowAdSenseFallback, adMediaType, adMediaUrl, advertisement?.id, advertisement?.campaign_name]);
+
+  // useEffect for AdSense fallback - must be at top level
+  useEffect(() => {
+    if (!shouldShowAdSenseFallback) return;
+
+    const adElement = document.getElementById(adUniqueId);
+
+    // Only push if element exists and hasn't been filled yet
+    if (!adElement || adElement.getAttribute('data-adsbygoogle-status')) {
+      return; // Skip if already initialized
+    }
+
+    const timer = setTimeout(() => {
+      try {
+        // Check if AdSense script is blocked
+        if (!window.adsbygoogle) {
+          console.warn('⚠️ AdSense script not loaded - might be blocked by AdBlocker');
+          return;
+        }
+
+        // Check again if this specific ad slot is already filled
+        if (adElement.getAttribute('data-adsbygoogle-status')) {
+          return;
+        }
+
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      } catch (e) {
+        // Only log real errors, not "already filled" errors
+        if (e instanceof Error && !e.message.includes('already have ads')) {
+          console.error('❌ AdSense fallback error:', e);
+        }
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [shouldShowAdSenseFallback, adUniqueId]);
+
+  // useEffect for AdSense ads (google_adsense type) - must be at top level
+  useEffect(() => {
+    if (adMediaType !== 'google_adsense' || !hasRealAd) return;
+
+    const adElement = document.getElementById(adUniqueId);
+
+    // Only push if element exists and hasn't been filled yet
+    if (!adElement || adElement.getAttribute('data-adsbygoogle-status')) {
+      return; // Skip if already initialized
+    }
+
+    let retryTimer: number | undefined;
+    let isCancelled = false;
+    const currentPlacement = advertisement?.placement_type || size || 'regular';
+
+    // Wait longer for AdSense script to load
+    const timer = window.setTimeout(() => {
+      if (isCancelled) return;
+
+      try {
+        // Check if AdSense script is available
+        if (typeof window.adsbygoogle === 'undefined') {
+          // Retry after 1 second if AdSense script hasn't loaded yet
+          retryTimer = window.setTimeout(() => {
+            if (isCancelled) return;
+
+            if (typeof window.adsbygoogle !== 'undefined' && !adElement.getAttribute('data-adsbygoogle-status')) {
+              console.log('🎯 Pushing AdSense ad (retry):', adUniqueId, 'Placement:', currentPlacement);
+              (window.adsbygoogle = window.adsbygoogle || []).push({});
+            } else if (typeof window.adsbygoogle === 'undefined') {
+              console.warn('⚠️ AdSense script not loaded - might be blocked by AdBlocker');
+            }
+          }, 1000);
+        } else if (!adElement.getAttribute('data-adsbygoogle-status')) {
+          // AdSense is available, push immediately
+          console.log('🎯 Pushing AdSense ad:', adUniqueId, 'Placement:', currentPlacement);
+          (window.adsbygoogle = window.adsbygoogle || []).push({});
+        }
+      } catch (e) {
+        // Only log real errors, not "already filled" errors
+        if (e instanceof Error && !e.message.includes('already have ads')) {
+          console.error('❌ AdSense initialization error:', e);
+        }
+      }
+    }, 800);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+      if (retryTimer) clearTimeout(retryTimer);
+    };
+  }, [adMediaType, hasRealAd, adUniqueId, advertisement?.placement_type, size]);
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Skip click handling for Google AdSense - they handle their own clicks
+    if (adMediaType === 'google_adsense') {
+      return; // Let AdSense handle the click
+    }
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔗 Ad clicked:', {
+        campaign: advertisement?.campaign_name,
+        targetUrl: adTargetUrl,
+        hasRealAd,
+        adId: advertisement?.id
+      });
+    }
+    
     if (hasRealAd && advertisement && onAdClick) {
       onAdClick(advertisement.id);
     }
     
-    if (adTargetUrl) {
-      window.open(adTargetUrl, '_blank');
+    if (adTargetUrl && adTargetUrl.trim() && adTargetUrl !== 'google-adsense') {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🚀 Opening URL:', adTargetUrl);
+      }
+      window.open(adTargetUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      console.warn('⚠️ No target URL found for ad:', advertisement?.campaign_name);
+      // Show alert to inform user
+      alert(`Iklan "${advertisement?.campaign_name || 'Unknown'}" belum memiliki target URL. Silakan set target URL di admin panel.`);
     }
   };
 
   const getSizeClasses = () => {
     const baseClasses = showTransition 
-      ? 'transition-all duration-700 ease-in-out transform hover:scale-105 hover:shadow-lg' 
+      ? 'transition-all duration-700 ease-in-out hover:shadow-lg' 
       : '';
     const visibilityClasses = isVisible 
-      ? 'opacity-100 scale-100' 
-      : 'opacity-0 scale-95';
+      ? 'opacity-100' 
+      : 'opacity-0';
     
     switch (size) {
       case 'header':
-        return `w-full max-w-[970px] h-[250px] md:w-[970px] ${baseClasses} ${visibilityClasses}`;
+        // Mobile: w-[90%] h-[100px], Tablet: w-[95%] h-[150px], Desktop: max-w-[970px] h-[250px]
+        return `w-[90%] sm:w-[95%] md:w-full lg:w-full xl:max-w-[970px] h-[100px] sm:h-[150px] md:h-[180px] lg:h-[200px] xl:h-[250px] ${baseClasses} ${visibilityClasses}`;
+      case 'sidebar':
+        // Fixed sidebar size: 300x250px
+        return `w-[300px] h-[250px] ${baseClasses} ${visibilityClasses}`;
+      case 'article':
+        // Article ads: Bigger size for article content container
+        // Mobile: w-full h-[100px], Tablet: w-full h-[130px], Desktop: w-full h-[180px] (lebih besar dari regular)
+        return `w-full h-[100px] sm:h-[130px] md:h-[150px] lg:h-[180px] max-w-full ${baseClasses} ${visibilityClasses}`;
       case 'regular':
       default:
-        return `w-full max-w-[728px] h-[90px] md:w-[728px] ${baseClasses} ${visibilityClasses}`;
+        // Mobile: w-[95%] h-[70px], Tablet: w-[98%] h-[80px], Desktop: w-[728px] h-[120px] (responsive, tidak kepotong)
+        return `w-[95%] sm:w-[98%] md:w-full lg:w-[728px] xl:w-[728px] h-[70px] sm:h-[80px] md:h-[90px] lg:h-[120px] xl:h-[120px] max-w-full ${baseClasses} ${visibilityClasses}`;
     }
   };
 
   const getPlaceholderText = () => {
     switch (size) {
       case 'header':
-        return '970 x 250';
+        return {
+          mobile: '100% x 100px',
+          tablet: '100% x 180px',
+          desktop: '970 x 250px'
+        };
+      case 'sidebar':
+        return {
+          mobile: '300 x 250px',
+          tablet: '300 x 250px',
+          desktop: '300 x 250px'
+        };
+      case 'article':
+        return {
+          mobile: '100% x 100px',
+          tablet: '100% x 130px',
+          desktop: '100% x 180px'
+        };
       case 'regular':
       default:
-        return '728 x 90';
+        return {
+          mobile: '100% x 60px',
+          tablet: '100% x 70px',
+          desktop: '728 x 120px'
+        };
     }
   };
 
-  // Render placeholder if no real ad data
+  // TEMPORARILY DISABLED: AdSense fallback - untuk testing custom ads
+  // if (shouldShowAdSenseFallback) {
+  //   return (
+  //     <div className={`${getSizeClasses()} relative rounded-lg overflow-hidden ${className}`}>
+  //       <ins id={adUniqueId}
+  //            className="adsbygoogle"
+  //            style={{
+  //              display: 'block',
+  //              width: '100%',
+  //              height: '100%',
+  //              border: 'none',
+  //              outline: 'none',
+  //              position: 'static',
+  //              left: 'auto',
+  //              right: 'auto',
+  //              top: 'auto',
+  //              bottom: 'auto'
+  //            }}
+  //            data-ad-client="ca-pub-5027382595607261"
+  //            data-ad-format="auto"
+  //            data-full-width-responsive="true">
+  //       </ins>
+  //
+  //       {/* Fallback indicator */}
+  //       <div className="absolute top-1 right-1 bg-blue-500 bg-opacity-70 text-white text-xs px-1.5 py-0.5 rounded z-10">
+  //         AdSense
+  //       </div>
+  //     </div>
+  //   );
+  // }
+  
+  // Render placeholder if no real ad data and not showing AdSense
   if (!hasRealAd || isPlaceholder) {
+    const placeholderSizes = getPlaceholderText();
+    
     return (
       <div className={`${getSizeClasses()} bg-gray-200 border-2 border-dashed border-gray-400 flex items-center justify-center ${className}`}>
-        <div className="text-center">
-          <div className="text-gray-500 font-medium">Advertisement Banner</div>
-          <div className="text-gray-400 text-sm">{getPlaceholderText()}</div>
-          <div className="text-gray-400 text-xs mt-1">
-            Placeholder: {adMediaUrl || 'No image specified'}
+        <div className="text-center px-4">
+          <div className="text-gray-500 font-medium text-sm sm:text-base">Advertisement Banner</div>
+          
+          {/* Responsive size display */}
+          <div className="text-gray-400 text-xs sm:text-sm">
+            <span className="block sm:hidden">{placeholderSizes.mobile}</span>
+            <span className="hidden sm:block lg:hidden">{placeholderSizes.tablet}</span>
+            <span className="hidden lg:block">{placeholderSizes.desktop}</span>
           </div>
+          
+          {/* Image source info */}
+          {adMediaUrl && (
+            <div className="text-gray-400 text-xs mt-1 truncate max-w-full">
+              Placeholder: {adMediaUrl}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -96,8 +321,12 @@ export const AdBanner: React.FC<AdBannerProps> = ({
           <img 
             src={adMediaUrl} 
             alt={altText}
-            className="w-full h-full object-cover"
+            className="h-full object-fill rounded-lg bg-gray-50"
             loading="lazy"
+            style={{ 
+              aspectRatio: 'auto',
+              width: size === 'regular' ? '728px' : '100%'
+            }}
           />
         );
       
@@ -105,61 +334,139 @@ export const AdBanner: React.FC<AdBannerProps> = ({
         return (
           <video 
             src={adMediaUrl}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-fill rounded-lg bg-gray-50"
             autoPlay 
             muted 
             loop
             playsInline
+            onError={(e) => {
+              console.error('Video ad failed to load:', adMediaUrl, e);
+            }}
+            onLoadStart={() => {
+              console.log('Video ad loading:', adMediaUrl);
+            }}
           />
         );
       
       case 'html':
         return (
           <div 
-            className="w-full h-full"
+            className="w-full h-full rounded-lg overflow-hidden"
             dangerouslySetInnerHTML={{ __html: advertisement?.ad_content || '' }}
           />
         );
       
       case 'google_ads':
+        // Check if we have google_ads_code or ad_content or media_url as fallback
+        const googleAdsContent = advertisement?.google_ads_code || advertisement?.ad_content;
+        
+        if (googleAdsContent && googleAdsContent.trim()) {
+          return (
+            <div 
+              className="w-full h-full flex items-center justify-center rounded-lg overflow-hidden"
+              dangerouslySetInnerHTML={{ __html: googleAdsContent }}
+            />
+          );
+        } else if (adMediaUrl) {
+          // Fallback to image if google ads code is empty but media_url exists
+          return (
+            <img 
+              src={adMediaUrl} 
+              alt={altText}
+              className="h-full object-fill rounded-lg bg-gray-50"
+              loading="lazy"
+              style={{ 
+                aspectRatio: 'auto',
+                width: size === 'regular' ? '728px' : '100%'
+              }}
+            />
+          );
+        } else {
+          // Show placeholder with debug info
+          return (
+            <div className="w-full h-full bg-yellow-100 flex items-center justify-center text-yellow-800 rounded-lg border-2 border-yellow-300">
+              <div className="text-center p-4">
+                <div className="text-sm font-medium">Google Ads - No Content</div>
+                <div className="text-xs mt-1">Missing google_ads_code or ad_content</div>
+                {advertisement && (
+                  <div className="text-xs mt-2 opacity-75">
+                    Ad ID: {advertisement.id}<br/>
+                    Campaign: {advertisement.campaign_name}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
+      
+      case 'google_adsense':
+        // Google AdSense - initialized by useEffect at top level
         return (
-          <div 
-            className="w-full h-full flex items-center justify-center"
-            dangerouslySetInnerHTML={{ __html: advertisement?.google_ads_code || advertisement?.ad_content || '' }}
-          />
+          <div className="w-full h-full flex items-center justify-center rounded-lg overflow-hidden relative">
+            <ins id={adUniqueId}
+                 className="adsbygoogle"
+                 style={{
+                   display: 'block',
+                   width: '100%',
+                   height: '100%',
+                   minWidth: '250px',
+                   minHeight: '90px'
+                 }}
+                 data-ad-client="ca-pub-5027382595607261"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true">
+            </ins>
+          </div>
         );
       
       default:
         return (
-          <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-500">
-            Unsupported media type: {adMediaType}
+          <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-500 rounded-lg">
+            <div className="text-center">
+              <div className="text-sm">Unsupported media type</div>
+              <div className="text-xs mt-1">{adMediaType}</div>
+            </div>
           </div>
         );
     }
   };
 
   return (
-    <div className={`${getSizeClasses()} relative ${className}`}>
-      {adTargetUrl ? (
-        <a 
-          href={adTargetUrl} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          onClick={handleClick}
-          className="block w-full h-full cursor-pointer"
-        >
+    <div className={`${getSizeClasses()} relative rounded-lg overflow-hidden shadow-sm ${className}`}>
+      {/* Use click handler only for non-AdSense ads */}
+      {adMediaType === 'google_adsense' ? (
+        // AdSense handles its own clicks - no wrapper needed
+        <div className="w-full h-full">
           {renderMediaContent()}
-        </a>
+        </div>
       ) : (
-        <div onClick={handleClick} className="w-full h-full cursor-pointer">
+        // Regular ads with click handler
+        <div 
+          onClick={handleClick} 
+          className="w-full h-full cursor-pointer hover:opacity-95 transition-opacity"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              handleClick(e as any);
+            }
+          }}
+        >
           {renderMediaContent()}
         </div>
       )}
       
-      {/* Ad attribution */}
+      {/* Ad attribution - Responsive positioning */}
       {hasRealAd && (
-        <div className="absolute top-1 right-1 bg-black bg-opacity-50 text-white text-xs px-1 py-0.5 rounded z-10">
+        <div className="absolute top-1 right-1 sm:top-2 sm:right-2 bg-black bg-opacity-60 text-white text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded z-10">
           Ad
+        </div>
+      )}
+      
+      {/* Optional: Responsive loading indicator - Skip for google_adsense */}
+      {!adMediaUrl && hasRealAd && adMediaType !== 'google_adsense' && (
+        <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-orange-500"></div>
         </div>
       )}
     </div>

@@ -3,10 +3,10 @@ const cron = require('node-cron');
 const tiktokService = require('../src/services/tiktokService');
 const ContentHelpers = require('../src/models/ContentHelpers');
 const logger = require('../src/utils/logger');
+const RedisLock = require('../src/services/redisLock');
 
 class TikTokSync {
   constructor() {
-    this.isRunning = false;
     this.lastSync = null;
     this.syncStats = {
       totalSyncs: 0,
@@ -22,7 +22,7 @@ class TikTokSync {
    */
   start(cronExpression = '0 */6 * * *') {
     logger.info('Starting TikTok sync cron job...');
-    
+
     // Schedule the sync job
     cron.schedule(cronExpression, async () => {
       await this.performSync();
@@ -33,7 +33,7 @@ class TikTokSync {
 
     // Also run an immediate sync on startup if needed
     this.performInitialSync();
-    
+
     logger.info(`TikTok sync cron job scheduled with expression: ${cronExpression}`);
   }
 
@@ -56,24 +56,27 @@ class TikTokSync {
    * Main sync function
    */
   async performSync() {
-    if (this.isRunning) {
-      logger.warn('TikTok sync already running, skipping this cycle');
+    const lockKey = 'cron:sync-tiktok';
+    const lockValue = await RedisLock.acquire(lockKey, 300); // 5 min lock (heavy operation)
+
+    if (!lockValue) {
+      logger.warn('⏭️  TikTok sync already running (lock held), skipping this cycle');
       return;
     }
 
     if (!tiktokService.isTokenValid()) {
       logger.warn('TikTok access token not available or expired, skipping sync');
+      await RedisLock.release(lockKey, lockValue);
       return;
     }
 
-    this.isRunning = true;
     this.lastSync = new Date();
-    
+
     try {
       logger.info('Starting TikTok content sync...');
-      
+
       const syncResult = await tiktokService.syncUserContent();
-      
+
       // Process and save videos to database
       let savedCount = 0;
       let updatedCount = 0;
@@ -83,7 +86,7 @@ class TikTokSync {
       for (const video of syncResult.videos) {
         try {
           const existingPost = await this.checkExistingVideo(video.id);
-          
+
           if (existingPost) {
             // Update existing video stats
             await this.updateVideoStats(existingPost, video);
@@ -108,7 +111,7 @@ class TikTokSync {
               width: video.width,
               height: video.height
             };
-            
+
             // Use system user ID (1) for automated content
             await ContentHelpers.createTikTokVideo(videoData, 1);
             savedCount++;
@@ -146,9 +149,9 @@ class TikTokSync {
     } catch (error) {
       this.syncStats.failedSyncs++;
       this.syncStats.lastError = error.message;
-      
+
       logger.error('TikTok sync failed:', error.message);
-      
+
       // Store failed sync for reporting
       await this.storeSyncResults({
         timestamp: this.lastSync,
@@ -156,7 +159,7 @@ class TikTokSync {
         success: false
       });
     } finally {
-      this.isRunning = false;
+      await RedisLock.release(lockKey, lockValue);
     }
   }
 
@@ -166,7 +169,7 @@ class TikTokSync {
   async checkExistingVideo(tiktokVideoId) {
     try {
       const { Post, PostMeta } = require('../src/models');
-      
+
       const existingPost = await Post.findOne({
         where: {
           post_type: ContentHelpers.CONTENT_TYPES.TIKTOK_VIDEO,
@@ -195,7 +198,7 @@ class TikTokSync {
   async updateVideoStats(existingPost, videoData) {
     try {
       const { PostMeta } = require('../src/models');
-      
+
       // Update post metadata with latest stats
       const updates = [
         { key: ContentHelpers.META_KEYS.TIKTOK_PLAY_COUNT, value: videoData.view_count?.toString() || '0' },
@@ -240,13 +243,16 @@ class TikTokSync {
    * Manual sync trigger (for API endpoints)
    */
   async triggerManualSync() {
-    if (this.isRunning) {
+    const lockKey = 'cron:sync-tiktok';
+    const lockExists = await RedisLock.exists(lockKey);
+
+    if (lockExists) {
       throw new Error('Sync is already running');
     }
-    
+
     logger.info('Manual TikTok sync triggered');
     await this.performSync();
-    
+
     return {
       success: true,
       timestamp: this.lastSync,
@@ -257,10 +263,13 @@ class TikTokSync {
   /**
    * Get sync statistics
    */
-  getStats() {
+  async getStats() {
+    const lockKey = 'cron:sync-tiktok';
+    const isRunning = await RedisLock.exists(lockKey);
+
     return {
       ...this.syncStats,
-      isRunning: this.isRunning,
+      isRunning,
       lastSync: this.lastSync
     };
   }

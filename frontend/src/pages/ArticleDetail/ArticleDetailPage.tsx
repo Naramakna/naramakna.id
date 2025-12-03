@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from '../../components/organisms/Navbar';
+import { Footer } from '../../components/organisms/Footer';
 import { ArticleHeader } from '../../components/molecules/ArticleHeader';
 import { ArticleContent } from '../../components/organisms/ArticleContent';
 import { ArticleTags } from '../../components/molecules/ArticleTags';
 import { CommentsSection } from '../../components/organisms/CommentsSection';
 import { RelatedArticles } from '../../components/organisms/RelatedArticles';
 import { AdSection } from '../../components/organisms/AdSection';
+import { useSEO, generateDescription, extractKeywords, formatStructuredDataDate } from '../../hooks/useSEO';
+import { useAnalytics } from '../../hooks/useAnalytics';
+import { buildApiUrl } from '../../config/api';
 import 'quill/dist/quill.snow.css'; // Import Quill CSS for alignment classes
 
 interface ArticleDetailPageProps {
@@ -24,7 +28,10 @@ interface Article {
     alt?: string;
   };
   author: {
+    id?: string | number;
     name: string;
+    login?: string;
+    user_nicename?: string;
     isVerified: boolean;
     avatar?: string;
   };
@@ -32,20 +39,25 @@ interface Article {
   readTime: string;
   likes: number;
   comments: number;
+  views: number;
   category: string;
   tags: Array<{
     id: string;
     name: string;
     slug: string;
   }>;
+  imageCaptions?: Record<string, string>;
 }
 
 export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId, articleSlug }) => {
+  // ArticleDetailPage rendering
   const [article, setArticle] = useState<Article | null>(null);
   const [relatedArticles, setRelatedArticles] = useState([]);
-  const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+  const [viewTracked, setViewTracked] = useState(false);
+  const { trackArticleRead } = useAnalytics();
 
   // Extract article identifier from URL or props
   const currentArticleId = articleId || (articleSlug ? null : window.location.pathname.split('/').pop());
@@ -62,10 +74,29 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
       fetchCommentsBySlug(currentArticleSlug);
     }
   }, [currentArticleId, currentArticleSlug]);
+  
+  // Separate useEffect for tracking views to ensure it only happens once per article
+  useEffect(() => {
+    if (article && !viewTracked && article.id) {
+      // Track internal view (existing system)
+      trackView(article.id);
+      
+      // Track Google Analytics article read
+      trackArticleRead({
+        title: article.title,
+        slug: currentArticleSlug || article.id,
+        category: article.category || 'Article',
+        author: article.author?.name || 'Unknown',
+        readTime: article.readTime
+      });
+      
+      setViewTracked(true);
+    }
+  }, [article, viewTracked, trackArticleRead, currentArticleSlug]);
 
   const fetchArticleById = async (id: string) => {
     try {
-      const response = await fetch(`http://dev.naramakna.id/api/content/posts/${id}`, {
+      const response = await fetch(buildApiUrl(`content/posts/${id}`), {
         credentials: 'include'
       });
       
@@ -84,22 +115,26 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
               alt: result.data.post_title || 'Article image'
             } : undefined,
             author: {
+              id: result.data.author?.ID,
               name: result.data.author?.display_name || result.data.author?.user_login || 'Anonymous',
+              login: result.data.author?.user_login,
+              user_nicename: result.data.author?.user_nicename,
               isVerified: result.data.author?.user_role === 'admin' || result.data.author?.user_role === 'writer',
               avatar: result.data.author?.profile_image || undefined
             },
-            publishedDate: formatDate(result.data.post_date || result.data.published_date),
+            publishedDate: formatDate(result.data.date || result.data.post_date || result.data.published_date),
             readTime: calculateReadTime(result.data.post_content || result.data.content || ''),
             likes: result.data.likes || 0,
             comments: result.data.comment_count || 0,
+            views: result.data.view_count || result.data.views || 0,
             category: result.data.category || 'News',
-            tags: result.data.tags || []
+            tags: result.data.tags || [],
+            imageCaptions: result.data.image_captions || {}
           };
           
-          setArticle(transformedArticle);
+          // Article data transformed
           
-          // Track view analytics
-          trackView(id);
+          setArticle(transformedArticle);
         } else {
           setError('Article not found');
         }
@@ -116,7 +151,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
 
   const fetchArticleBySlug = async (slug: string) => {
     try {
-      const response = await fetch(`http://dev.naramakna.id/api/content/posts/slug/${slug}`, {
+      const response = await fetch(buildApiUrl(`content/posts/slug/${slug}`), {
         credentials: 'include'
       });
       
@@ -130,29 +165,31 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
             content: result.data.post_content || result.data.content || '',
             excerpt: result.data.post_excerpt || result.data.excerpt || '',
             featuredImage: result.data.featured_image ? {
-              url: result.data.featured_image.url,
+              url: result.data.featured_image.url || result.data.featured_image,
               caption: result.data.featured_image.caption || result.data.featured_image.title || '',
               alt: result.data.post_title || 'Article image'
             } : undefined,
             author: {
+              id: result.data.author?.ID,
               name: result.data.author?.display_name || result.data.author?.user_login || 'Anonymous',
+              login: result.data.author?.user_login,
+              user_nicename: result.data.author?.user_nicename,
               isVerified: result.data.author?.user_role === 'admin' || result.data.author?.user_role === 'writer',
               avatar: result.data.author?.profile_image || undefined
             },
-            publishedDate: formatDate(result.data.post_date || result.data.published_date),
+            publishedDate: formatDate(result.data.date || result.data.post_date || result.data.published_date),
             readTime: calculateReadTime(result.data.post_content || result.data.content || ''),
             likes: result.data.likes || 0,
             comments: result.data.comment_count || 0,
+            views: result.data.view_count || result.data.views || 0,
             category: result.data.category || 'News',
-            tags: result.data.tags || []
+            tags: result.data.tags || [],
+            imageCaptions: result.data.image_captions || {}
           };
           
-          setArticle(transformedArticle);
+          // Article data transformed
           
-          // Track view analytics using the actual ID
-          if (result.data.ID) {
-            trackView(result.data.ID.toString());
-          }
+          setArticle(transformedArticle);
         } else {
           setError('Article not found');
         }
@@ -169,7 +206,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
 
   const fetchRelatedArticles = async (excludeId: string) => {
     try {
-      const response = await fetch(`http://dev.naramakna.id/api/content/posts?limit=6&exclude=${excludeId}`, {
+      const response = await fetch(buildApiUrl(`content/posts?limit=6&exclude=${excludeId}`), {
         credentials: 'include'
       });
       
@@ -186,7 +223,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
 
   const fetchRelatedArticlesBySlug = async (excludeSlug: string) => {
     try {
-      const response = await fetch(`http://dev.naramakna.id/api/content/posts?limit=6&excludeSlug=${excludeSlug}`, {
+      const response = await fetch(buildApiUrl(`content/posts?limit=6&excludeSlug=${excludeSlug}`), {
         credentials: 'include'
       });
       
@@ -203,14 +240,15 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
 
   const fetchComments = async (postId: string) => {
     try {
-      const response = await fetch(`http://dev.naramakna.id/api/content/posts/${postId}/comments`, {
+      const response = await fetch(buildApiUrl(`content/posts/${postId}/comments`), {
         credentials: 'include'
       });
-      
+
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.data) {
-          setComments(result.data);
+          // Comments are handled by CommentsSection component
+          console.log('Comments loaded:', result.data.length);
         }
       }
     } catch (err) {
@@ -220,14 +258,15 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
 
   const fetchCommentsBySlug = async (slug: string) => {
     try {
-      const response = await fetch(`http://dev.naramakna.id/api/content/posts/slug/${slug}/comments`, {
+      const response = await fetch(buildApiUrl(`content/posts/slug/${slug}/comments`), {
         credentials: 'include'
       });
-      
+
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.data) {
-          setComments(result.data);
+          // Comments are handled by CommentsSection component
+          console.log('Comments loaded:', result.data.length);
         }
       }
     } catch (err) {
@@ -237,47 +276,29 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
 
   const trackView = async (postId: string) => {
     try {
-      await fetch('http://dev.naramakna.id/api/analytics/track', {
+      const response = await fetch(buildApiUrl('analytics/track'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
         body: JSON.stringify({
-          content_id: parseInt(postId),
+          content_id: postId, // Send as string - backend will handle slug lookup
           content_type: 'post',
           event_type: 'view'
         })
       });
+      
+      if (!response.ok) {
+        console.error('Analytics tracking failed:', response.status, response.statusText);
+      }
     } catch (err) {
       console.error('Error tracking view:', err);
     }
   };
 
-  const handleAddComment = async (content: string) => {
-    if (!article) return;
-    
-    try {
-      const response = await fetch(`http://dev.naramakna.id/api/content/posts/${article.id}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({ content })
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          // Refresh comments
-          fetchComments(article.id);
-        }
-      }
-    } catch (err) {
-      console.error('Error adding comment:', err);
-      throw err;
-    }
+  const handleAnalyticsClick = () => {
+    setShowAnalyticsModal(true);
   };
 
   const formatDate = (dateString: string): string => {
@@ -298,11 +319,26 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
     return `${minutes} menit`;
   };
 
+  // SEO optimization
+  useSEO({
+    title: article ? `${article.title} | Naramakna` : 'Loading... | Naramakna',
+    description: article ? generateDescription(article.content) : 'Berita terkini dan artikel menarik dari Naramakna',
+    keywords: article ? extractKeywords(article.title, article.content, article.tags.map(tag => typeof tag === 'string' ? tag : tag.name)) : ['berita', 'artikel', 'naramakna'],
+    image: article?.featuredImage?.url,
+    url: typeof window !== 'undefined' ? window.location.href : undefined,
+    type: 'article',
+    author: article?.author.name,
+    publishedTime: article?.publishedDate ? formatStructuredDataDate(article.publishedDate) : undefined,
+    section: article?.category,
+    tags: article?.tags.map(tag => typeof tag === 'string' ? tag : tag.name),
+    locale: 'id_ID'
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <div className="max-w-4xl mx-auto py-8 px-4">
+        <div className="max-w-6xl mx-auto py-8 px-4">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
             <div className="h-4 bg-gray-200 rounded w-1/2 mb-6"></div>
@@ -322,7 +358,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <div className="max-w-4xl mx-auto py-8 px-4 text-center">
+        <div className="max-w-6xl mx-auto py-8 px-4 text-center">
           <div className="bg-white rounded-lg shadow-lg p-8">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Article Not Found</h1>
             <p className="text-gray-600 mb-6">{error || 'The article you are looking for does not exist.'}</p>
@@ -340,6 +376,21 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Google Subscribe with Google (SWG) Script */}
+      <script async type="application/javascript"
+              src="https://news.google.com/swg/js/v1/swg-basic.js"></script>
+      <script dangerouslySetInnerHTML={{
+        __html: `
+          (self.SWG_BASIC = self.SWG_BASIC || []).push( basicSubscriptions => {
+            basicSubscriptions.init({
+              type: "NewsArticle",
+              isPartOfType: ["Product"],
+              isPartOfProductId: "CAowofy8DA",
+              clientOptions: { theme: "light", lang: "id" },
+            });
+          });
+        `
+      }} />
       <Navbar />
       
       {/* Top Article Ad */}
@@ -349,7 +400,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
         rotationInterval={8000}
       />
       
-      <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <main className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="p-6 lg:p-8">
             {/* Article Header */}
@@ -361,12 +412,17 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
               likes={article.likes}
               comments={article.comments}
               categoryName={article.category}
+              articleId={article.id}
+              viewCount={article.views}
+              onAnalyticsClick={handleAnalyticsClick}
             />
 
             {/* Article Content */}
             <ArticleContent
               content={article.content}
+              title={article.title}
               featuredImage={article.featuredImage}
+              imageCaptions={article.imageCaptions}
             />
 
             {/* Mid Article Ad */}
@@ -388,12 +444,12 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
           </div>
         </div>
 
-        {/* Before Related Articles Ad */}
-        <div className="my-8">
+        {/* Content Advertisement */}
+        <div className="my-12">
           <AdSection 
             placement="article-bottom" 
             size="header" 
-            rotationInterval={12000}
+            rotationInterval={7000}
           />
         </div>
 
@@ -409,6 +465,9 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
           />
         </div>
       </main>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

@@ -11,12 +11,20 @@ interface FilterState {
   sortOrder: string;
 }
 
+interface User {
+  ID: number;
+  display_name: string;
+  user_login: string;
+  user_email?: string;
+}
+
 interface FilterPanelProps {
   filters: FilterState;
   onFilterChange: (key: string, value: string) => void;
   onResetFilters: () => void;
   onClose: () => void;
   isVisible: boolean;
+  users?: User[]; // Add users prop for dropdown
 }
 
 export const FilterPanel: React.FC<FilterPanelProps> = ({
@@ -24,7 +32,8 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
   onFilterChange,
   onResetFilters,
   onClose,
-  isVisible
+  isVisible,
+  users = []
 }) => {
   if (!isVisible) return null;
 
@@ -34,13 +43,18 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
         {/* Author Filter */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Author</label>
-          <input
-            type="text"
-            placeholder="Search by author..."
+          <select
             value={filters.author}
             onChange={(e) => onFilterChange('author', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
-          />
+          >
+            <option value="">All Authors</option>
+            {users.map((user) => (
+              <option key={user.ID} value={user.user_login}>
+                {user.display_name} (@{user.user_login})
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Status Filter */}

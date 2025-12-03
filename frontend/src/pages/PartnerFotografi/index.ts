@@ -1,0 +1,1 @@
+export { default as PartnerFotografiDashboard } from './PartnerFotografiDashboard';

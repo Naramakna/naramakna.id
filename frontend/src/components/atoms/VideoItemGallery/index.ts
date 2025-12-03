@@ -1,0 +1,1 @@
+export { VideoItemGallery } from './VideoItemGallery';

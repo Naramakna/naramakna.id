@@ -12,7 +12,7 @@ export interface RegisterRequest {
   user_email: string;
   user_pass: string;
   display_name?: string;
-  role_request?: string;
+  role_request?: 'user' | 'writer';
 }
 
 export interface AuthResponse {
@@ -126,17 +126,15 @@ class AuthAPI {
   }
 
   /**
-   * Get current user profile - WITH TOKEN SUPPORT
+   * Get current user profile
    */
   async getProfile(): Promise<ProfileResponse> {
     try {
-      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl('auth/profile'), {
         method: 'GET',
         credentials: 'include',
         headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          'Content-Type': 'application/json'
         }
       });
 
@@ -162,7 +160,7 @@ class AuthAPI {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ user_email: email })
       });
 
       if (!response.ok) {
@@ -177,6 +175,31 @@ class AuthAPI {
   }
 
   /**
+   * Verify OTP for password reset
+   */
+  async verifyOTP(email: string, otpCode: string): Promise<{ success: boolean; message: string; data?: { reset_token: string } }> {
+    try {
+      const response = await fetch(buildApiUrl('auth/verify-otp'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ user_email: email, otp_code: otpCode })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'OTP verification failed');
+      }
+
+      return await response.json();
+    } catch (error: any) {
+      throw new Error(error.message || 'OTP verification failed');
+    }
+  }
+
+  /**
    * Reset password with token
    */
   async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
@@ -187,7 +210,7 @@ class AuthAPI {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ token, password: newPassword })
+        body: JSON.stringify({ token, new_password: newPassword })
       });
 
       if (!response.ok) {
@@ -204,7 +227,13 @@ class AuthAPI {
   /**
    * Update user profile
    */
-  async updateProfile(profileData: any): Promise<ProfileResponse> {
+  async updateProfile(profileData: {
+    display_name?: string;
+    user_email?: string;
+    bio?: string;
+    current_password?: string;
+    new_password?: string;
+  }): Promise<{ success: boolean; message: string; data?: { user: any } }> {
     try {
       const response = await fetch(buildApiUrl('auth/profile'), {
         method: 'PUT',
@@ -227,5 +256,5 @@ class AuthAPI {
   }
 }
 
+// Create singleton instance
 export const authAPI = new AuthAPI();
-export default authAPI;

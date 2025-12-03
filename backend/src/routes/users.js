@@ -12,6 +12,13 @@ const { authenticate, requireAdmin, requireSuperAdmin } = require('../middleware
 router.get('/', authenticate, requireAdmin, UserController.getUsers);
 
 /**
+ * @route   GET /api/users/check/:username
+ * @desc    Check if username exists (public endpoint for routing)
+ * @access  Public
+ */
+router.get('/check/:username', UserController.checkUserExists);
+
+/**
  * @route   GET /api/users/stats
  * @desc    Get user statistics
  * @access  Admin+
@@ -62,5 +69,40 @@ router.post('/:id/approve-writer', authenticate, requireAdmin, UserController.ap
  * @body    { user_ids, action, value? }
  */
 router.post('/bulk-action', authenticate, requireAdmin, UserController.bulkUserAction);
+
+/**
+ * @route   POST /api/users/:id/follow
+ * @desc    Follow a user
+ * @access  Private
+ */
+router.post('/:id/follow', authenticate, UserController.followUser);
+
+/**
+ * @route   DELETE /api/users/:id/follow
+ * @desc    Unfollow a user
+ * @access  Private
+ */
+router.delete('/:id/follow', authenticate, UserController.unfollowUser);
+
+/**
+ * @route   GET /api/users/:id/follow-status
+ * @desc    Check if current user follows the specified user
+ * @access  Private
+ */
+router.get('/:id/follow-status', authenticate, UserController.getFollowStatus);
+
+/**
+ * @route   GET /api/users/:id/followers
+ * @desc    Get user's followers
+ * @access  Public
+ */
+router.get('/:id/followers', UserController.getFollowers);
+
+/**
+ * @route   GET /api/users/:id/following
+ * @desc    Get users that this user follows
+ * @access  Public
+ */
+router.get('/:id/following', UserController.getFollowing);
 
 module.exports = router;

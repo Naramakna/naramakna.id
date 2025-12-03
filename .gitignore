@@ -78,4 +78,4 @@ cookies*.txt
 *cookies*.txt
 
 # Homebrew (if Brewfile is used)
-Brewfile.lock.json
+Brewfile.lock.jsonbackend/.env.backup-redis

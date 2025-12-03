@@ -28,13 +28,30 @@ const Advertisement = sequelize.define('Advertisement', {
     type: DataTypes.DATE,
     allowNull: false
   },
+  duration_hours: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Duration in hours (alternative to end_date)'
+  },
+  rotation_mode: {
+    type: DataTypes.ENUM('global', 'manual'),
+    allowNull: false,
+    defaultValue: 'global',
+    comment: 'Rotation mode: global settings or manual duration'
+  },
+  rotation_duration: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: null,
+    comment: 'Duration in minutes for manual rotation mode (null = use global settings)'
+  },
   placement_type: {
-    type: DataTypes.ENUM('header', 'sidebar', 'inline', 'footer', 'popup', 'regular'),
+    type: DataTypes.ENUM('header', 'sidebar', 'inline', 'footer', 'popup', 'regular', 'hero-banner', 'mid-content', 'bottom-content', 'article-top', 'article-mid', 'article-bottom', 'article-final', 'article-ads', 'breaking-pre', 'breaking-post'),
     allowNull: false,
     defaultValue: 'regular'
   },
   media_type: {
-    type: DataTypes.ENUM('image', 'gif', 'video', 'html', 'google_ads'),
+    type: DataTypes.ENUM('image', 'gif', 'video', 'html', 'google_ads', 'google_adsense'),
     allowNull: false,
     defaultValue: 'image'
   },

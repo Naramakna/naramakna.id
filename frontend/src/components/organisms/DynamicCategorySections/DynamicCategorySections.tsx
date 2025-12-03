@@ -18,11 +18,25 @@ export const DynamicCategorySections: React.FC<DynamicCategorySectionsProps> = (
 }) => {
   // ALL HOOKS MUST BE CALLED FIRST - React Rules of Hooks
   const { categories, loading, error } = useCategories();
-  const [visibleSections, setVisibleSections] = useState(10); // Start with 10 sections
+  const [visibleSections, setVisibleSections] = useState(3); // Start with 3 sections for faster initial load
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Filter and sort categories - safe to compute even if categories is empty
-  const eligibleCategories = categories
+  // De-duplicate categories based on slug, preferring the more descriptive name.
+  const uniqueCategories = Object.values(
+    (categories || []).reduce((acc, category) => {
+      const existing = acc[category.slug];
+      // If it doesn't exist, or if the new one has more posts, or if the new one has a "better" name (not identical to slug) and same post count
+      if (!existing ||
+          category.count > existing.count ||
+          (category.count === existing.count && category.name !== category.slug && existing.name === existing.slug)) {
+        acc[category.slug] = category;
+      }
+      return acc;
+    }, {} as Record<string, typeof categories[0]>)
+  );
+
+  const eligibleCategories = uniqueCategories
     .filter(cat => 
       cat.count >= minPostCount && 
       !excludeCategories.includes(cat.slug)
@@ -65,7 +79,7 @@ export const DynamicCategorySections: React.FC<DynamicCategorySectionsProps> = (
         {/* Loading skeleton */}
         {Array.from({ length: 3 }).map((_, index) => (
           <div key={index} className="bg-gray-50 py-8">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
               <div className="animate-pulse">
                 <div className="h-6 bg-gray-300 rounded w-48 mb-6"></div>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -81,7 +95,7 @@ export const DynamicCategorySections: React.FC<DynamicCategorySectionsProps> = (
     );
   }
 
-  if (error || !categories.length || eligibleCategories.length === 0) {
+  if (error || !categories || !categories.length || !eligibleCategories || eligibleCategories.length === 0) {
     return null; // Silent fail, no sections
   }
 
@@ -109,16 +123,6 @@ export const DynamicCategorySections: React.FC<DynamicCategorySectionsProps> = (
           <span className="ml-3 text-gray-600">Memuat kategori lainnya...</span>
         </div>
       )}
-      
-      {/* End indicator when all categories are loaded */}
-      {!hasMoreCategories && eligibleCategories.length > 10 && (
-        <div className="text-center py-8">
-          <p className="text-gray-500">Semua kategori telah dimuat ({eligibleCategories.length} kategori)</p>
-        </div>
-      )}
-      
-      {/* Final ad section at the bottom */}
-      <AdSection position="bottom" size="header" />
     </div>
   );
 };

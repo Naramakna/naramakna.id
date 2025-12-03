@@ -127,7 +127,7 @@ export const CategorySection: React.FC<CategorySectionProps> = ({
 
   return (
     <div className={`bg-gray-50 py-8 ${className}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* News Column (Left) */}

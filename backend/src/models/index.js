@@ -17,6 +17,8 @@ const Option = require('./Option');
 const Link = require('./Link');
 const Advertisement = require('./Advertisement');
 const Analytics = require('./Analytics');
+const PostLikes = require('./PostLikes');
+const Follow = require('./Follow');
 
 // Define associations/relationships
 // User relationships
@@ -28,6 +30,9 @@ UserProfile.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 User.hasMany(Post, { foreignKey: 'post_author', as: 'posts' });
 Post.belongsTo(User, { foreignKey: 'post_author', as: 'author' });
+
+// Soft delete relationship
+Post.belongsTo(User, { foreignKey: 'deleted_by', as: 'deleter' });
 
 User.hasMany(Comment, { foreignKey: 'user_id', as: 'comments' });
 Comment.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
@@ -77,6 +82,19 @@ Analytics.belongsTo(Post, { foreignKey: 'content_id', as: 'post' });
 User.hasMany(Analytics, { foreignKey: 'user_id', as: 'analytics' });
 Analytics.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
+// Post Likes relationships
+Post.hasMany(PostLikes, { foreignKey: 'post_id', as: 'likes' });
+PostLikes.belongsTo(Post, { foreignKey: 'post_id', as: 'post' });
+
+User.hasMany(PostLikes, { foreignKey: 'user_id', as: 'likes' });
+PostLikes.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+// Follow relationships
+User.hasMany(Follow, { foreignKey: 'follower_id', as: 'following' }); // Users that this user follows
+User.hasMany(Follow, { foreignKey: 'following_id', as: 'followers' }); // Users that follow this user
+Follow.belongsTo(User, { foreignKey: 'follower_id', as: 'follower' });
+Follow.belongsTo(User, { foreignKey: 'following_id', as: 'following' });
+
 // Many-to-many relationship between Posts and Terms through TermRelationship - TODO: Implement
 // Post.belongsToMany(TermTaxonomy, {
 //   through: TermRelationship,
@@ -110,5 +128,7 @@ module.exports = {
   Option,
   Link,
   Advertisement,
-  Analytics
+  Analytics,
+  PostLikes,
+  Follow
 };

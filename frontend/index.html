@@ -1,13 +1,154 @@
 <!doctype html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+    <title>Naramakna - Cerdas Memaknai</title>
+    <meta name="description" content="Naramakna.id - Platform media digital yang menghadirkan informasi berkualitas dan perspektif mendalam untuk membantu Anda cerdas dalam memaknai berbagai peristiwa dan isu terkini." />
+    <meta name="keywords" content="naramakna, cerdas memaknai, media digital, informasi berkualitas, perspektif mendalam, analisis berita, wawasan, edukasi" />
+    
+    <!-- Critical resource preloading -->
+    <link rel="dns-prefetch" href="https://api.naramakna.id" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://api.naramakna.id" crossorigin />
+    <link rel="preload" as="image" href="/LogoNaramakna.png" fetchpriority="high" />
+    
+    <!-- Google AdSense Manual Ad Units Only -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5027382595607261"
+         crossorigin="anonymous"></script>
+    
+    <!-- Non-critical resources with proper attributes -->
+    <link rel="preconnect" href="https://api.naramakna.id" />
+    <link rel="icon" type="image/png" href="https://api.naramakna.id/uploads/2025/07/cropped-IKON-LOGO-180x180.png" />
+    <link rel="shortcut icon" href="https://api.naramakna.id/uploads/favico/favicon.ico" />
+    <link rel="apple-touch-icon" href="https://api.naramakna.id/uploads/2025/07/cropped-IKON-LOGO-180x180.png" />
+    
+    <!-- Critical CSS inline to prevent render blocking -->
+    <style>
+        #root { min-height: 100vh; }
+        .loading-skeleton { 
+            background: #f0f0f0;
+            border-radius: 4px;
+            animation: skeleton-loading 1s infinite alternate;
+        }
+        @keyframes skeleton-loading {
+            0% { opacity: 1; }
+            100% { opacity: 0.4; }
+        }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; }
+        
+        /* Ensure minimum touch target sizes for mobile */
+        @media (max-width: 768px) {
+            button, a[role="button"], input[type="button"], input[type="submit"] {
+                min-height: 44px;
+                min-width: 44px;
+            }
+            
+            /* Improve tap targets spacing */
+            button + button, a + button, button + a {
+                margin-left: 8px;
+            }
+        }
+        
+        /* Prevent layout shift and improve loading */
+        img {
+            height: auto;
+            max-width: 100%;
+        }
+        
+        /* Ensure stable layout during font loading */
+        * {
+            font-display: swap;
+        }
+        
+        /* Fixed dimensions untuk prevent CLS */
+        .hero-banner-skeleton {
+            height: 200px;
+            width: 100%;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        
+        /* Prevent CLS for ads containers */
+        [class*="ad-"], [class*="advertisement"] {
+            min-height: 250px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+        }
+        
+        /* Block auto ads outside designated areas */
+        body {
+            data-ad-frequency-hint: "0s";
+        }
+        
+        /* Prevent auto ads in specific areas */
+        header, nav, .header, .navigation, 
+        .sidebar:not(.ad-sidebar), 
+        .footer:not(.ad-footer),
+        .menu, .nav-menu {
+            data-ad-frequency-hint: "0s";
+        }
+        
+        /* Responsive ads aspect ratios */
+        .ad-banner, .ad-header {
+            aspect-ratio: 970/250;
+            max-height: 250px;
+            min-height: 250px;
+        }
+        
+        .ad-sidebar {
+            aspect-ratio: 300/250;
+            max-height: 250px;
+            min-height: 250px;
+        }
+        
+        /* Prevent main content area shifts */
+        .max-w-7xl {
+            min-height: 800px;
+        }
+        
+        /* Card list stable sizing */
+        .md\\.col-span-3 {
+            min-height: 600px;
+        }
+        
+        .video-section-skeleton {
+            height: 400px;
+            width: 100%;
+        }
+        
+        .polling-skeleton {
+            height: 300px;
+            width: 100%;
+        }
+        
+        .category-skeleton {
+            height: 600px;
+            width: 100%;
+        }
+        
+        .footer-skeleton {
+            height: 250px;
+            width: 100%;
+            background: #1a1a1a;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        
+        /* Remove unnecessary transforms */
+        img, video {
+            contain: layout;
+        }
+    </style>
+    </head>
+<body>
+<div id="root"></div>
+<script type="module" src="/src/main.tsx"></script>
+</body>
 </html>

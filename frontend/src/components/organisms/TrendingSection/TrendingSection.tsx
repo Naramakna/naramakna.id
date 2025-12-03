@@ -1,8 +1,9 @@
 import React from 'react';
 import { TrendingList } from '../../molecules/TrendingList';
 import { useTrending } from '../../../hooks/useTrending.ts';
-import { useTikTok } from '../../../hooks/useTikTok';
+import { useTikTokVideos } from '../../../hooks/useTikTok';
 import type { Article } from '../../../services/api/articles';
+import { getCategorySlug } from '../../../utils/categorySlugMapping';
 
 interface TrendingArticle {
   id: string;
@@ -11,6 +12,7 @@ interface TrendingArticle {
   timeAgo: string;
   imageSrc?: string;
   href?: string;
+  views?: number;
 }
 
 interface TrendingSectionProps {
@@ -42,29 +44,59 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({
   const criteria = apiResponse?.criteria || 'most_viewed';
 
   // TikTok content integration
-  const { content: rawTiktokContent } = useTikTok();
+  const { videos: rawTiktokContent } = useTikTokVideos();
   
   // Memoize tiktokContent to prevent unnecessary re-renders
   const tiktokContent = React.useMemo(() => rawTiktokContent || [], [rawTiktokContent]);
 
   // Helper function untuk convert API data ke format TrendingArticle
-  const convertToTrendingArticle = React.useCallback((article: Article): TrendingArticle => {
-    const timeAgo = new Date(article.date).toLocaleString('id-ID', {
+  const convertToTrendingArticle = React.useCallback((article: any): TrendingArticle => {
+    // Handle both smart trending format and regular article format
+    const articleDate = article.post_date || article.date;
+    const articleTitle = article.post_title || article.title;
+    const articleSlug = article.post_name || article.slug;
+    const articleId = article.ID || article.id;
+    const authorName = article.author_name || article.author?.display_name;
+    
+    const timeAgo = new Date(articleDate).toLocaleString('id-ID', {
       hour: '2-digit',
       minute: '2-digit',
       day: '2-digit',
       month: '2-digit'
     });
 
+
+    // Try multiple image source fields (smart trending has thumbnail_url directly)
+    const imageSrc = 
+      article.thumbnail_url ||  // Smart trending format (from backend query)
+      article.metadata?.thumbnail_url || 
+      article.metadata?._thumbnail_url || 
+      article.metadata?.featured_image ||
+      article.post_thumbnail ||
+      article.featured_image_url ||
+      article.thumbnail ||
+      undefined;
+
+    // Debug: log image source for troubleshooting
+    if (articleId === apiArticles[0]?.ID) {
+      console.log('🖼️ First article image debug:', {
+        title: articleTitle,
+        thumbnail_url: article.thumbnail_url,
+        imageSrc,
+        article
+      });
+    }
+
     return {
-      id: article.id,
-      title: article.title,
-      source: article.author?.display_name || 'naramaknaNEWS',
+      id: String(articleId),
+      title: articleTitle,
+      source: authorName || 'naramaknaNEWS',
       timeAgo,
-      imageSrc: article.metadata?.thumbnail_url || article.metadata?._thumbnail_url,
-      href: `/artikel/${article.slug}`
+      imageSrc,
+      href: `/artikel/${articleSlug}`,
+      views: article.view_count || 0
     };
-  }, []);
+  }, [apiArticles]);
 
   // Helper function untuk convert TikTok content ke format TrendingArticle
   const convertTikTokToTrendingArticle = React.useCallback((tiktokItem: any): TrendingArticle => {
@@ -81,7 +113,8 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({
       source: `📱 ${tiktokItem.metadata?.tiktok_author_display_name || 'TikTok'}`,
       timeAgo,
       imageSrc: tiktokItem.metadata?.tiktok_cover_url,
-      href: tiktokItem.metadata?.source_url || tiktokItem.guid
+      href: tiktokItem.metadata?.source_url || tiktokItem.guid,
+      views: tiktokItem.metadata?.tiktok_view_count || 0
     };
   }, []);
 
@@ -171,7 +204,8 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({
     displayArticles = articles.slice(0, 5);
   } else if (mixedContent && includeTikTok && combinedMemoContent.length > 0) {
     displayArticles = combinedMemoContent.slice(0, 5);
-  } else if (!loading && !error && apiArticles.length > 0) {
+  } else if (!loading && apiArticles.length > 0) {
+    // Convert API articles (including smart trending) to display format
     displayArticles = apiArticles.map(convertToTrendingArticle).slice(0, 5);
   } else {
     displayArticles = defaultArticles;
@@ -221,7 +255,7 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({
           </h2>
         </div>
         <a 
-          href={category ? `/kategori/${category}` : "#"} 
+          href={category ? `/kategori/${getCategorySlug(category)}` : "#"} 
           className="text-sm text-blue-600 hover:text-blue-800 flex items-center space-x-1 transition-colors duration-200"
         >
           <span>Lihat lainnya</span>

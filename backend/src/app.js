@@ -1,13 +1,18 @@
 // backend/src/app.js
 
+// Load environment variables
+require('dotenv').config({ path: '/var/www/naramakna.id/backend/.env' });
+
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const sequelize = require('./config/database'); // Memuat koneksi database kita
 const models = require('./models'); // Load all models
 const errorHandler = require('./middleware/errorHandler');
 const ipTracker = require('./middleware/ipTracker');
+const requestDeduplication = require('./middleware/requestDeduplication');
 
 const app = express();
 
@@ -17,8 +22,9 @@ app.set('trust proxy', true);
 // Middleware dasar - CORS configuration for development and production
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    // Allow requests with no origin (like mobile apps, curl requests, direct navigation)
+    // Also allow origin 'null' (some browsers/bots send this as a string)
+    if (!origin || origin === 'null') return callback(null, true);
     
     const allowedOrigins = [
       // Development
@@ -31,11 +37,14 @@ const corsOptions = {
       'https://dev.naramakna.id:3001',
       'http://app.dev.naramakna.id:5173',
       'https://app.dev.naramakna.id:5173',
+      'https://app.dev.naramakna.id',
       // Production - add your domains here
       'https://naramakna.id',
       'https://www.naramakna.id',
-      // Add your Cloudflare tunnel domain when you get it
-      // 'https://your-tunnel-domain.cloudflareaccess.com'
+      // Cloudflare tunnel domains
+      'https://fenarmak.naramakna.id',
+      'https://api.naramakna.id',
+      'https://ujife.naramakna.id'
     ];
 
     // If CORS_ORIGIN is set in environment, use it (for production flexibility)
@@ -52,32 +61,45 @@ const corsOptions = {
     }
   },
   credentials: true, // Allow cookies for authentication
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], // Explicitly allow PATCH method
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
   preflightContinue: false, // Pass control to next handler
-    credentials: true,
-  optionsSuccessStatus: 204 // For legacy browser support
+  optionsSuccessStatus: 200 // For legacy browser support
 };
 
 app.use(cors(corsOptions));
+// Response Compression (gzip/brotli) - reduces response size by 60-80%
+app.use(compression({
+  filter: (req, res) => {
+    // Compress all responses except already compressed or streaming
+    if (req.headers["x-no-compression"]) {
+      return false;
+    }
+    return compression.filter(req, res);
+  },
+  level: 6, // Compression level 0-9 (6 is balanced speed/size)
+  threshold: 1024 // Only compress responses larger than 1KB
+}));
 
-// Increase payload limits for file uploads
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ 
-  limit: '50mb', 
-  extended: true, 
-  parameterLimit: 50000 
+// Payload limits for file uploads (reduced from 50mb to 10mb for memory optimization)
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({
+  limit: '10mb',
+  extended: true,
+  parameterLimit: 10000
 }));
 app.use(cookieParser());
 
-// Set timeout for all requests (30 seconds)
+// Set timeout for all requests (60 seconds)
 app.use((req, res, next) => {
-  res.setTimeout(30000, () => {
+  res.setTimeout(60000, () => {
     console.log('⏰ Request timeout');
-    res.status(408).json({
-      success: false,
-      message: 'Request timeout'
-    });
+    if (!res.headersSent) {
+      res.status(408).json({
+        success: false,
+        message: 'Request timeout'
+      });
+    }
   });
   next();
 });
@@ -85,11 +107,24 @@ app.use((req, res, next) => {
 // IP and Location tracking middleware
 app.use(ipTracker);
 
-// Serve static files from project root public directory
-app.use(express.static('../public'));
+// Request Deduplication Middleware (CPU Spike Prevention)
+// DISABLED - causing pending request issues when errors occur
+// app.use(requestDeduplication(1000)); // 1 second deduplication window
 
-// Serve uploads directory for profile images
-app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
+// Serve static files from project root public directory
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Serve uploads directory for profile images (from project root public)
+app.use('/uploads', express.static(path.join(__dirname, '../../public/uploads')));
+
+// Serve ads directory for advertisement images
+app.use('/ads', express.static(path.join(__dirname, '../../public/ads')));
+
+// Serve ads.txt file for AdSense verification
+app.get('/ads.txt', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain');
+  res.sendFile(path.join(__dirname, '../public/ads.txt'));
+});
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -100,12 +135,36 @@ const approvalRoutes = require('./routes/approval');
 const analyticsRoutes = require('./routes/analytics');
 const adsRoutes = require('./routes/ads');
 const tiktokRoutes = require('./routes/tiktok');
+// const youtubeRoutes = require('./routes/youtube');
+const seoRoutes = require('./routes/seo');
+const seoController = require('./controllers/seoController');
+const metaTagsController = require('./controllers/metaTagsController');
 const writerRoutes = require('./routes/writer');
+const likesRoutes = require('./routes/likes');
 const commentRoutes = require('./routes/comments');
 const adminRoutes = require('./routes/admin');
+const superadminRoutes = require('./routes/superadmin');
 const categoryRoutes = require('./routes/category');
 const pollingRoutes = require('./routes/polling');
+const schedulerRoutes = require('./routes/scheduler');
+const settingsRoutes = require('./routes/settings');
+const imageManagerRoutes = require('./routes/imageManager');
+const sitemapRoutes = require('./routes/sitemap');
+const googleAdsRoutes = require('./routes/googleAds');
+const trendingRoutes = require('./routes/trending');
+const aboutRoutes = require('./routes/about');
+const mataElangRoutes = require('./routes/mataElang');
+const batchRoutes = require('./routes/batch');
 // const taxonomyRoutes = require('./routes/taxonomy'); // TODO: Implement
+
+// Initialize background jobs (scheduler, TikTok sync)
+if (process.env.NODE_ENV !== 'test') {
+  // DISABLED - Using BullMQ instead:   require('../cron/scheduler');
+  // DISABLED - Using BullMQ instead:   require('../cron/syncTikTok');
+}
+
+// Meta tags route for articles (must be before API routes)
+app.get('/artikel/:slug', metaTagsController.generateArticleHTML);
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -115,12 +174,28 @@ app.use('/api/content', contentRoutes);
 app.use('/api/approval', approvalRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/ads', adsRoutes);
+app.use('/api/google-ads', googleAdsRoutes);
 app.use('/api/tiktok', tiktokRoutes);
+// app.use('/api/youtube', youtubeRoutes);
+app.use('/api/seo', seoRoutes);
+app.use('/api/likes', likesRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/trending', trendingRoutes);
+app.use('/api/about', aboutRoutes);
+app.use('/api/mata-elang', mataElangRoutes);
+app.use('/api/batch', batchRoutes);
+
+// SEO routes at root level
+app.use('/', sitemapRoutes);
+app.get('/robots.txt', seoController.generateRobotsTxt);
 app.use('/api/writer', writerRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/superadmin', superadminRoutes);
 app.use('/api/category', categoryRoutes);
 app.use('/api/polling', pollingRoutes);
+app.use('/api/scheduler', schedulerRoutes);
+app.use('/api/image-manager', imageManagerRoutes);
 // app.use('/api/taxonomy', taxonomyRoutes); // TODO: Implement
 
 // Halaman utama API
@@ -131,16 +206,27 @@ app.get('/api', (req, res) => {
         endpoints: {
             content: '/api/content',
             analytics: '/api/analytics', 
-            ads: '/api/ads'
+            ads: '/api/ads',
+            tiktok: '/api/tiktok'
         },
         features: [
             'Universal Content System (Articles, YouTube, TikTok)',
             'Advanced Analytics Tracking',
             'Advertisement Management',
             'Real-time Metrics',
-            'Hybrid Database Architecture'
+            'Hybrid Database Architecture',
+            'TikTok Integration'
         ]
     });
+});
+
+// Static pages for TikTok app requirements
+app.get('/terms', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/terms.html'));
+});
+
+app.get('/privacy', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/privacy.html'));
 });
 
 // Global error handler (must be last)

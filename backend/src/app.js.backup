@@ -1,5 +1,8 @@
 // backend/src/app.js
 
+// Load environment variables
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
@@ -31,11 +34,14 @@ const corsOptions = {
       'https://dev.naramakna.id:3001',
       'http://app.dev.naramakna.id:5173',
       'https://app.dev.naramakna.id:5173',
+      'https://app.dev.naramakna.id',
       // Production - add your domains here
       'https://naramakna.id',
       'https://www.naramakna.id',
-      // Add your Cloudflare tunnel domain when you get it
-      // 'https://your-tunnel-domain.cloudflareaccess.com'
+      // Cloudflare tunnel domains
+      'https://fenarmak.naramakna.id',
+      'https://api.naramakna.id',
+      'https://ujife.naramakna.id'
     ];
 
     // If CORS_ORIGIN is set in environment, use it (for production flexibility)
@@ -55,7 +61,7 @@ const corsOptions = {
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], // Explicitly allow PATCH method
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
   preflightContinue: false, // Pass control to next handler
-  optionsSuccessStatus: 204 // For legacy browser support
+  optionsSuccessStatus: 200 // For legacy browser support
 };
 
 app.use(cors(corsOptions));
@@ -73,10 +79,12 @@ app.use(cookieParser());
 app.use((req, res, next) => {
   res.setTimeout(30000, () => {
     console.log('⏰ Request timeout');
-    res.status(408).json({
-      success: false,
-      message: 'Request timeout'
-    });
+    if (!res.headersSent) {
+      res.status(408).json({
+        success: false,
+        message: 'Request timeout'
+      });
+    }
   });
   next();
 });
@@ -85,10 +93,19 @@ app.use((req, res, next) => {
 app.use(ipTracker);
 
 // Serve static files from project root public directory
-app.use(express.static('../public'));
+app.use(express.static(path.join(__dirname, '../public')));
 
-// Serve uploads directory for profile images
-app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
+// Serve uploads directory for profile images (from project root public)
+app.use('/uploads', express.static(path.join(__dirname, '../../public/uploads')));
+
+// Serve ads directory for advertisement images
+app.use('/ads', express.static(path.join(__dirname, '../../public/ads')));
+
+// Serve ads.txt file for AdSense verification
+app.get('/ads.txt', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain');
+  res.sendFile(path.join(__dirname, '../public/ads.txt'));
+});
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -99,12 +116,31 @@ const approvalRoutes = require('./routes/approval');
 const analyticsRoutes = require('./routes/analytics');
 const adsRoutes = require('./routes/ads');
 const tiktokRoutes = require('./routes/tiktok');
+const youtubeRoutes = require('./routes/youtube');
+const seoRoutes = require('./routes/seo');
+const seoController = require('./controllers/seoController');
+const metaTagsController = require('./controllers/metaTagsController');
 const writerRoutes = require('./routes/writer');
+const likesRoutes = require('./routes/likes');
 const commentRoutes = require('./routes/comments');
 const adminRoutes = require('./routes/admin');
 const categoryRoutes = require('./routes/category');
 const pollingRoutes = require('./routes/polling');
+const schedulerRoutes = require('./routes/scheduler');
+const settingsRoutes = require('./routes/settings');
+const imageManagerRoutes = require('./routes/imageManager');
+const sitemapRoutes = require('./routes/sitemap');
+const googleAdsRoutes = require('./routes/googleAds');
+const trendingRoutes = require('./routes/trending');
 // const taxonomyRoutes = require('./routes/taxonomy'); // TODO: Implement
+
+// Initialize scheduler for auto-publishing posts
+if (process.env.NODE_ENV !== 'test') {
+  require('../cron/scheduler');
+}
+
+// Meta tags route for articles (must be before API routes)
+app.get('/artikel/:slug', metaTagsController.generateArticleHTML);
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -114,12 +150,24 @@ app.use('/api/content', contentRoutes);
 app.use('/api/approval', approvalRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/ads', adsRoutes);
+app.use('/api/google-ads', googleAdsRoutes);
 app.use('/api/tiktok', tiktokRoutes);
+app.use('/api/youtube', youtubeRoutes);
+app.use('/api/seo', seoRoutes);
+app.use('/api/likes', likesRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/trending', trendingRoutes);
+
+// SEO routes at root level
+app.use('/', sitemapRoutes);
+app.get('/robots.txt', seoController.generateRobotsTxt);
 app.use('/api/writer', writerRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/category', categoryRoutes);
 app.use('/api/polling', pollingRoutes);
+app.use('/api/scheduler', schedulerRoutes);
+app.use('/api/image-manager', imageManagerRoutes);
 // app.use('/api/taxonomy', taxonomyRoutes); // TODO: Implement
 
 // Halaman utama API
@@ -130,16 +178,27 @@ app.get('/api', (req, res) => {
         endpoints: {
             content: '/api/content',
             analytics: '/api/analytics', 
-            ads: '/api/ads'
+            ads: '/api/ads',
+            tiktok: '/api/tiktok'
         },
         features: [
             'Universal Content System (Articles, YouTube, TikTok)',
             'Advanced Analytics Tracking',
             'Advertisement Management',
             'Real-time Metrics',
-            'Hybrid Database Architecture'
+            'Hybrid Database Architecture',
+            'TikTok Integration'
         ]
     });
+});
+
+// Static pages for TikTok app requirements
+app.get('/terms', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/terms.html'));
+});
+
+app.get('/privacy', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/privacy.html'));
 });
 
 // Global error handler (must be last)

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
+import { buildBackendUrl, buildUploadsUrl } from '../../../config/api';
 
 // Helper function to get full image URL
 const getImageUrl = (imagePath: string | null) => {
@@ -8,13 +9,13 @@ const getImageUrl = (imagePath: string | null) => {
   // If it's already a full URL, return as is
   if (imagePath.startsWith('http')) return imagePath;
   
-  // If it's a relative path starting with /uploads, prepend backend URL
+  // If it's a relative path starting with /uploads, use backend URL
   if (imagePath.startsWith('/uploads/')) {
-    return `http://dev.naramakna.id${imagePath}`;
+    return buildBackendUrl(imagePath);
   }
   
-  // Otherwise, assume it's a relative path and prepend backend URL
-  return `http://dev.naramakna.id/uploads/${imagePath}`;
+  // Otherwise, assume it's a relative path and use uploads URL
+  return buildUploadsUrl(imagePath);
 };
 
 interface ProfileBadgeProps {
@@ -43,8 +44,18 @@ export const ProfileBadge: React.FC<ProfileBadgeProps> = ({ className = '' }) =>
   if (!user) return null;
 
   const handleLogout = async () => {
-    await logout();
-    window.location.href = '/';
+    try {
+      // Starting logout process
+      await logout();
+      // Logout successful
+      window.location.href = '/';
+    } catch (error) {
+      console.error('❌ Logout failed:', error);
+      // Still redirect even if logout fails
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      window.location.href = '/';
+    }
   };
 
   const getInitials = (name: string) => {
@@ -60,6 +71,8 @@ export const ProfileBadge: React.FC<ProfileBadgeProps> = ({ className = '' }) =>
     switch (role) {
       case 'user': return 'User';
       case 'writer': return 'Writer';
+      case 'partner_fotografi': return 'Partner Fotografi';
+      case 'mata_elang': return 'Mata Elang Admin';
       case 'admin': return 'Admin';
       case 'superadmin': return 'Super Admin';
       default: return 'User';
@@ -70,6 +83,8 @@ export const ProfileBadge: React.FC<ProfileBadgeProps> = ({ className = '' }) =>
     switch (role) {
       case 'user': return 'bg-gray-100 text-gray-800';
       case 'writer': return 'bg-blue-100 text-blue-800';
+      case 'partner_fotografi': return 'bg-yellow-100 text-yellow-800';
+      case 'mata_elang': return 'bg-orange-100 text-orange-800';
       case 'admin': return 'bg-green-100 text-green-800';
       case 'superadmin': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -84,17 +99,17 @@ export const ProfileBadge: React.FC<ProfileBadgeProps> = ({ className = '' }) =>
       {/* Profile Badge Button */}
       <button
         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-        className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+        className="flex items-center space-x-1 p-1 rounded hover:bg-gray-100 transition-colors"
       >
         {/* Avatar */}
-        <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+        <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
           {user.profile_image ? (
             <img 
               src={getImageUrl(user.profile_image) || ''} 
               alt={user.display_name}
               className="w-full h-full rounded-full object-cover"
               onError={(e) => {
-                console.log('ProfileBadge image failed to load:', user.profile_image);
+                // Profile image failed to load
                 e.currentTarget.style.display = 'none';
               }}
             />
@@ -105,7 +120,7 @@ export const ProfileBadge: React.FC<ProfileBadgeProps> = ({ className = '' }) =>
         
         {/* Name & Role */}
         <div className="hidden md:block text-left">
-          <div className="text-sm font-medium text-gray-900">
+          <div className="text-xs font-medium text-gray-900">
             {user.display_name}
           </div>
           <div className="text-xs text-gray-500">
@@ -139,7 +154,7 @@ export const ProfileBadge: React.FC<ProfileBadgeProps> = ({ className = '' }) =>
                     alt={user.display_name}
                     className="w-full h-full rounded-full object-cover"
                     onError={(e) => {
-                      console.log('ProfileBadge dropdown image failed to load:', user.profile_image);
+                      // Dropdown image failed to load
                       e.currentTarget.style.display = 'none';
                     }}
                   />
@@ -191,7 +206,7 @@ export const ProfileBadge: React.FC<ProfileBadgeProps> = ({ className = '' }) =>
           {/* Menu Items */}
           <div className="py-2">
             <a
-              href={`/${user.user_login}`}
+              href={`/${user.user_nicename || user.user_login.replace(/\s+/g, '-').replace(/\./g, '-').toLowerCase()}`}
               onClick={() => setIsDropdownOpen(false)}
               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >
@@ -203,9 +218,13 @@ export const ProfileBadge: React.FC<ProfileBadgeProps> = ({ className = '' }) =>
               </div>
             </a>
 
-            {(user.user_role === 'writer' || user.user_role === 'admin' || user.user_role === 'superadmin') && (
+            {(user.user_role === 'writer' || user.user_role === 'admin' || user.user_role === 'superadmin' || user.user_role === 'partner_fotografi' || user.user_role === 'mata_elang') && (
               <a
-                href={`/${user.user_role}/dashboard`}
+                href={
+                  user.user_role === 'partner_fotografi' ? '/partner-fotografi/dashboard' :
+                  user.user_role === 'mata_elang' ? '/mata-elang/dashboard' :
+                  `/${user.user_role}/dashboard`
+                }
                 onClick={() => setIsDropdownOpen(false)}
                 className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
               >

@@ -1,4 +1,4 @@
-const { User, Post, Comment, UserProfile, Analytics, sequelize } = require('../models');
+const {User, Post, Comment, UserProfile, Analytics, Advertisement, Image, Option, sequelize} = require('../models');
 const { Op } = require('sequelize');
 
 class AdminController {
@@ -50,10 +50,10 @@ class AdminController {
         transaction
       });
 
-      // Update user's posts to mark as deleted author
+      // Update user's posts to mark as deleted author (assign to admin user ID 1)
       await Post.update(
-        { 
-          post_author: null,
+        {
+          post_author: 1, // Assign to admin instead of null
           post_title: `[DELETED USER] ${new Date().toISOString().split('T')[0]} - ` + sequelize.col('post_title')
         },
         { 
@@ -62,12 +62,12 @@ class AdminController {
         }
       );
 
-      // Update user's comments to mark as deleted author
+      // Update user's comments to mark as deleted author (assign to admin)
       await Comment.update(
-        { 
+        {
           comment_author: '[DELETED USER]',
           comment_author_email: 'deleted@example.com',
-          user_id: null
+          user_id: 1 // Assign to admin instead of null
         },
         { 
           where: { user_id: id },
@@ -238,7 +238,7 @@ class AdminController {
         role: user.user_role,
         status: user.user_status || 'active',
         registered: user.user_registered,
-        profile_image: user.profile?.profile_image ? `http://localhost:3001${user.profile.profile_image}` : null,
+        profile_image: user.profile?.profile_image ? `${process.env.BACKEND_URL}${user.profile.profile_image}` : null,
         profile_complete: !!(user.profile?.birth_date && user.profile?.gender && user.profile?.city)
       }));
 
@@ -699,6 +699,792 @@ class AdminController {
       });
     }
   }
+
+  /**
+   * Get analytics button visibility setting
+   * GET /api/admin/settings/analytics-button
+   */
+  static async getAnalyticsButtonSetting(req, res) {
+    try {
+      // Check if user is superadmin
+      if (!req.user || req.user.user_role !== 'superadmin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. SuperAdmin privileges required.'
+        });
+      }
+
+      const setting = await Option.findOne({
+        where: { option_name: 'show_analytics_button' }
+      });
+
+      const showAnalyticsButton = setting ? setting.option_value === 'true' : true;
+
+      res.json({
+        success: true,
+        data: {
+          show_analytics_button: showAnalyticsButton
+        }
+      });
+
+    } catch (error) {
+      console.error('Get analytics button setting error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  /**
+   * Toggle analytics button visibility setting
+   * POST /api/admin/settings/analytics-button/toggle
+   */
+  static async toggleAnalyticsButtonSetting(req, res) {
+    try {
+      // Check if user is superadmin
+      if (!req.user || req.user.user_role !== 'superadmin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. SuperAdmin privileges required.'
+        });
+      }
+
+      const { enabled } = req.body;
+
+      // Find or create the setting
+      const [setting, created] = await Option.findOrCreate({
+        where: { option_name: 'show_analytics_button' },
+        defaults: {
+          option_name: 'show_analytics_button',
+          option_value: 'true',
+          autoload: 'yes'
+        }
+      });
+
+      // Update the setting
+      await setting.update({
+        option_value: enabled ? 'true' : 'false'
+      });
+
+      console.log(`📊 Analytics button ${enabled ? 'enabled' : 'disabled'} by ${req.user.user_login}`);
+
+      res.json({
+        success: true,
+        message: `Analytics button ${enabled ? 'enabled' : 'disabled'} successfully`,
+        data: {
+          show_analytics_button: enabled,
+          updated_by: req.user.user_login,
+          updated_at: new Date()
+        }
+      });
+
+    } catch (error) {
+      console.error('Toggle analytics button setting error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  /**
+   * Get polling settings
+   * GET /api/admin/settings/polling
+   */
+  static async getPollingSettings(req, res) {
+    try {
+      // Check if user is superadmin
+      if (!req.user || req.user.user_role !== 'superadmin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. SuperAdmin privileges required.'
+        });
+      }
+
+      const setting = await Option.findOne({
+        where: { option_name: 'enable_polling' }
+      });
+
+      const enablePolling = setting ? setting.option_value === 'true' : true;
+
+      res.json({
+        success: true,
+        data: {
+          enable_polling: enablePolling
+        }
+      });
+
+    } catch (error) {
+      console.error('Get polling setting error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  /**
+   * Toggle polling settings
+   * POST /api/admin/settings/polling/toggle
+   */
+  static async togglePollingSettings(req, res) {
+    try {
+      // Check if user is superadmin
+      if (!req.user || req.user.user_role !== 'superadmin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. SuperAdmin privileges required.'
+        });
+      }
+
+      const { enabled } = req.body;
+
+      // Find or create the setting
+      const [setting, created] = await Option.findOrCreate({
+        where: { option_name: 'enable_polling' },
+        defaults: {
+          option_name: 'enable_polling',
+          option_value: 'true',
+          autoload: 'yes'
+        }
+      });
+
+      // Update the setting
+      await setting.update({
+        option_value: enabled ? 'true' : 'false'
+      });
+
+      console.log(`📊 Polling ${enabled ? 'enabled' : 'disabled'} by ${req.user.user_login}`);
+
+      res.json({
+        success: true,
+        message: `Polling ${enabled ? 'enabled' : 'disabled'} successfully`,
+        data: {
+          enable_polling: enabled,
+          updated_by: req.user.user_login,
+          updated_at: new Date()
+        }
+      });
+
+    } catch (error) {
+      console.error('Toggle polling setting error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  /**
+   * Get site settings for public use (no auth required)
+   * GET /api/admin/settings/public
+   */
+  static async getPublicSettings(req, res) {
+    try {
+      const analyticsButtonSetting = await Option.findOne({
+        where: { option_name: 'show_analytics_button' }
+      });
+
+      const pollingSettings = await Option.findOne({
+        where: { option_name: 'enable_polling' }
+      });
+
+      const viewsCountSetting = await Option.findOne({
+        where: { option_name: 'show_views_count' }
+      });
+
+      const showAnalyticsButton = analyticsButtonSetting ?
+        analyticsButtonSetting.option_value === 'true' : true;
+
+      const enablePolling = pollingSettings ?
+        pollingSettings.option_value === 'true' : true;
+
+      const showViewsCount = viewsCountSetting ?
+        viewsCountSetting.option_value === 'true' : true;
+
+      return res.json({
+        success: true,
+        data: {
+          show_analytics_button: showAnalyticsButton,
+          enable_polling: enablePolling,
+          show_views_count: showViewsCount
+        }
+      });
+
+    } catch (error) {
+      console.error('Get public settings error:', error);
+      // Check if response was already sent
+      if (!res.headersSent) {
+        return res.status(500).json({
+          success: false,
+          message: 'Internal server error',
+          error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+      }
+    }
+  }
+
+  /**
+   * Toggle views count display setting
+   * POST /api/settings/toggle-views-count
+   */
+  static async toggleViewsCount(req, res) {
+    try {
+      const { enabled } = req.body;
+
+      // Find or create the views count setting
+      const [setting, created] = await Option.findOrCreate({
+        where: { option_name: 'show_views_count' },
+        defaults: {
+          option_name: 'show_views_count',
+          option_value: 'true'
+        }
+      });
+
+      // Update the setting
+      setting.option_value = enabled ? 'true' : 'false';
+      await setting.save();
+
+      res.json({
+        success: true,
+        data: {
+          views_count_enabled: enabled
+        },
+        message: `Views count display ${enabled ? 'enabled' : 'disabled'} successfully`
+      });
+
+    } catch (error) {
+      console.error('Toggle views count error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  /**
+   * Bulk categorize articles
+   * POST /api/admin/bulk-categorize
+   */
+  static async bulkCategorizeArticles(req, res) {
+    const transaction = await sequelize.transaction();
+    
+    try {
+      const { article_ids, category_slug } = req.body;
+
+      // Check if user is admin or superadmin
+      if (!req.user || (req.user.user_role !== 'admin' && req.user.user_role !== 'superadmin')) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. Admin privileges required.'
+        });
+      }
+
+      // Validate input
+      if (!article_ids || !Array.isArray(article_ids) || article_ids.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Article IDs array is required'
+        });
+      }
+
+      if (!category_slug) {
+        return res.status(400).json({
+          success: false,
+          message: 'Category slug is required'
+        });
+      }
+
+      // Find the category by slug
+      const categoryQuery = `
+        SELECT tt.term_taxonomy_id 
+        FROM terms t
+        JOIN term_taxonomy tt ON t.term_id = tt.term_id
+        WHERE t.slug = ? AND tt.taxonomy = 'category'
+        LIMIT 1
+      `;
+      
+      const categoryResult = await sequelize.query(categoryQuery, {
+        replacements: [category_slug],
+        type: sequelize.QueryTypes.SELECT,
+        transaction
+      });
+
+      if (!categoryResult || categoryResult.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: `Category with slug '${category_slug}' not found`
+        });
+      }
+
+      const categoryId = categoryResult[0].term_taxonomy_id;
+
+      // First, remove existing categories for these articles
+      const deleteQuery = `
+        DELETE FROM term_relationships 
+        WHERE object_id IN (${article_ids.map(() => '?').join(',')})
+        AND term_taxonomy_id IN (
+          SELECT term_taxonomy_id FROM term_taxonomy WHERE taxonomy = 'category'
+        )
+      `;
+
+      await sequelize.query(deleteQuery, {
+        replacements: article_ids,
+        type: sequelize.QueryTypes.DELETE,
+        transaction
+      });
+
+      // Add new category relationships
+      const insertData = article_ids.map(articleId => ({
+        object_id: articleId,
+        term_taxonomy_id: categoryId,
+        term_order: 0
+      }));
+
+      const insertQuery = `
+        INSERT INTO term_relationships (object_id, term_taxonomy_id, term_order)
+        VALUES ${insertData.map(() => '(?, ?, ?)').join(', ')}
+      `;
+
+      const insertReplacements = insertData.flatMap(item => [
+        item.object_id,
+        item.term_taxonomy_id,
+        item.term_order
+      ]);
+
+      await sequelize.query(insertQuery, {
+        replacements: insertReplacements,
+        type: sequelize.QueryTypes.INSERT,
+        transaction
+      });
+
+      // Update category count
+      const updateCountQuery = `
+        UPDATE term_taxonomy SET count = (
+          SELECT COUNT(*) FROM term_relationships 
+          WHERE term_taxonomy_id = ?
+        ) WHERE term_taxonomy_id = ?
+      `;
+
+      await sequelize.query(updateCountQuery, {
+        replacements: [categoryId, categoryId],
+        type: sequelize.QueryTypes.UPDATE,
+        transaction
+      });
+
+      await transaction.commit();
+
+      res.json({
+        success: true,
+        message: `Successfully categorized ${article_ids.length} articles`,
+        data: {
+          categorized_count: article_ids.length,
+          category_slug: category_slug
+        }
+      });
+
+    } catch (error) {
+      await transaction.rollback();
+      console.error('Bulk categorize articles error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to categorize articles',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  /**
+   * SuperAdmin: Demote admin to user
+   * POST /api/superadmin/demote-admin/:userId
+   */
+  static async demoteAdmin(req, res) {
+    try {
+      const { userId } = req.params;
+
+      // Check if user is superadmin
+      if (!req.user || req.user.user_role !== 'superadmin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied. SuperAdmin privileges required.'
+        });
+      }
+
+      // Find the target user
+      const targetUser = await User.findByPk(userId);
+      if (!targetUser) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      // Check if target user is actually an admin
+      if (targetUser.user_role !== 'admin') {
+        return res.status(400).json({
+          success: false,
+          message: 'User is not an admin'
+        });
+      }
+
+      // Prevent demoting self
+      if (parseInt(userId) === req.user.ID) {
+        return res.status(400).json({
+          success: false,
+          message: 'You cannot demote yourself'
+        });
+      }
+
+      // Demote admin to user
+      await targetUser.update({
+        user_role: 'user'
+      });
+
+      res.json({
+        success: true,
+        message: `Admin ${targetUser.display_name} has been demoted to user`,
+        data: {
+          user_id: targetUser.ID,
+          display_name: targetUser.display_name,
+          previous_role: 'admin',
+          new_role: 'user'
+        }
+      });
+
+    } catch (error) {
+      console.error('Demote admin error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to demote admin',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+  /**
+   * Get all admin dashboard data in one call
+   * Reduces connection spike by batching multiple queries
+   * GET /api/admin/dashboard-all
+   */
+  /**
+   * Get all admin dashboard data in one call
+   * Reduces connection spike by batching multiple queries
+   * GET /api/admin/dashboard-all
+   */
+  static async getDashboardAll(req, res) {
+    try {
+      const { page = 1, limit = 20, ...filters } = req.query;
+      const offset = (page - 1) * limit;
+
+      console.log('📊 Loading complete admin dashboard...');
+
+      // Execute all queries in parallel using Promise.all (8 queries)
+      const [usersData, userStatsData, contentStatsData, categoriesData, postsData, pendingPostsData, adminUsersData, scheduledPostsData] = await Promise.all([
+        // 1. Get users with LIMIT (optimized)
+        User.findAndCountAll({
+          where: {},
+          attributes: ['ID', 'user_login', 'user_email', 'display_name', 'user_role', 'user_status', 'user_registered'],
+          include: [{
+            model: UserProfile,
+            as: 'profile',
+            attributes: ['profile_image'],
+            required: false
+          }],
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          order: [['user_registered', 'DESC']]
+        }),
+
+        // 2. Get user stats (optimized - single GROUP BY query)
+        (async () => {
+          const { QueryTypes } = require('sequelize');
+          const roleStats = await sequelize.query(`
+            SELECT user_role, COUNT(*) as count
+            FROM users
+            GROUP BY user_role
+          `, { type: QueryTypes.SELECT });
+
+          const roles = { users: 0, writers: 0, admins: 0, superadmins: 0 };
+          let total = 0;
+          roleStats.forEach(r => {
+            if (r.user_role === 'user') roles.users = parseInt(r.count);
+            else if (r.user_role === 'writer') roles.writers = parseInt(r.count);
+            else if (r.user_role === 'admin') roles.admins = parseInt(r.count);
+            else if (r.user_role === 'superadmin') roles.superadmins = parseInt(r.count);
+            total += parseInt(r.count);
+          });
+          return { roles, total };
+        })(),
+
+        // 3. Get content stats (optimized - single GROUP BY query)
+        (async () => {
+          const { QueryTypes } = require('sequelize');
+          const stats = await sequelize.query(`
+            SELECT post_status, COUNT(*) as count
+            FROM posts
+            WHERE post_type = 'post'
+            GROUP BY post_status
+          `, { type: QueryTypes.SELECT });
+
+          let total_published = 0, total_draft = 0, total_pending = 0, articles = 0;
+          stats.forEach(s => {
+            const count = parseInt(s.count);
+            articles += count;
+            if (s.post_status === 'publish') total_published = count;
+            else if (s.post_status === 'draft') total_draft = count;
+            else if (s.post_status === 'pending') total_pending = count;
+          });
+          return { total_published, total_draft, total_pending, articles };
+        })(),
+
+        // 4. Get categories (using raw SQL - lightweight)
+        (async () => {
+          const { QueryTypes } = require('sequelize');
+          const categories = await sequelize.query(`
+            SELECT t.term_id, t.name, t.slug, tt.count, tt.taxonomy
+            FROM terms t
+            JOIN term_taxonomy tt ON t.term_id = tt.term_id
+            WHERE tt.taxonomy = 'category' AND tt.count >= 1
+            ORDER BY tt.count DESC
+            LIMIT 100
+          `, { type: QueryTypes.SELECT });
+
+          return {
+            categories: categories.map(cat => ({
+              term_id: cat.term_id,
+              name: cat.name,
+              slug: cat.slug,
+              count: cat.count,
+              taxonomy: cat.taxonomy
+            })),
+            total: categories.length
+          };
+        })(),
+
+        // 5. Get posts (optimized - removed expensive view_count subquery)
+        (async () => {
+          const whereClause = { post_type: 'post' };
+
+          // Apply filters if provided
+          if (filters.status) whereClause.post_status = filters.status;
+          if (filters.author) whereClause.post_author = filters.author;
+
+          const sortOrder = filters.sortOrder || 'DESC';
+
+          const { rows, count } = await Post.findAndCountAll({
+            where: whereClause,
+            attributes: [
+              'ID', 'post_title', 'post_excerpt', 'post_status', 'post_date',
+              'post_author', 'comment_count', 'view_count'
+            ],
+            include: [{
+              model: User,
+              as: 'author',
+              attributes: ['ID', 'display_name']
+            }],
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            order: [['post_date', sortOrder]]
+          });
+
+          return {
+            posts: rows.map(post => ({
+              ID: post.ID,
+              id: post.ID,
+              post_title: post.post_title,
+              title: post.post_title,
+              post_excerpt: post.post_excerpt,
+              excerpt: post.post_excerpt,
+              post_status: post.post_status,
+              status: post.post_status,
+              post_date: post.post_date,
+              date: post.post_date,
+              post_author: post.post_author,
+              author: post.author,
+              comment_count: post.comment_count,
+              view_count: post.view_count || 0,
+              views: post.view_count || 0
+            })),
+            pagination: {
+              currentPage: parseInt(page),
+              itemsPerPage: parseInt(limit),
+              totalItems: count,
+              totalPages: Math.ceil(count / limit)
+            }
+          };
+        })(),
+
+        // 6. Get pending posts for approval
+        (async () => {
+          const pendingPosts = await Post.findAll({
+            where: { post_status: 'pending' },
+            attributes: ['ID', 'post_title', 'post_date'],
+            include: [{
+              model: User,
+              as: 'author',
+              attributes: ['display_name']
+            }],
+            order: [['post_date', 'DESC']],
+            limit: 50
+          });
+
+          return {
+            pending_posts: pendingPosts.map(post => ({
+              ID: post.ID,
+              post_title: post.post_title,
+              post_date: post.post_date,
+              author: {
+                display_name: post.author?.display_name || 'Unknown'
+              }
+            }))
+          };
+        })(),
+
+        // 7. Get admin users specifically (for Admin Management section)
+        User.findAll({
+          where: { user_role: { [Op.in]: ['admin', 'superadmin'] } },
+          attributes: ['ID', 'user_login', 'user_email', 'display_name', 'user_role', 'user_status', 'user_registered'],
+          include: [{
+            model: UserProfile,
+            as: 'profile',
+            attributes: ['profile_image'],
+            required: false
+          }],
+          order: [['user_registered', 'DESC']],
+          limit: 50
+        }),
+
+        // 8. Get scheduled posts
+        (async () => {
+          const { QueryTypes } = require('sequelize');
+          const posts = await sequelize.query(`
+            SELECT
+              p.ID,
+              p.post_title,
+              p.post_name,
+              p.post_status,
+              p.post_date,
+              p.post_content,
+              p.post_excerpt,
+              p.scheduled_publish_date,
+              u.display_name as author_name
+            FROM posts p
+            LEFT JOIN users u ON p.post_author = u.ID
+            WHERE p.post_type = 'post'
+              AND p.post_status IN ('scheduled', 'future')
+              AND p.deleted_at IS NULL
+            ORDER BY COALESCE(p.scheduled_publish_date, p.post_date) ASC
+            LIMIT 20
+          `, { type: QueryTypes.SELECT });
+          return { posts, total: posts.length };
+        })()
+      ]);
+
+      // Format users data
+      const users = usersData.rows.map(user => ({
+        ID: user.ID,
+        user_login: user.user_login,
+        user_email: user.user_email,
+        display_name: user.display_name,
+        user_role: user.user_role,
+        user_status: user.user_status,
+        user_registered: user.user_registered,
+        profile: user.profile ? {
+          profile_image: user.profile.profile_image,
+          birth_date: user.profile.birth_date,
+          gender: user.profile.gender,
+          city: user.profile.city,
+          profession: user.profile.profession
+        } : null
+      }));
+
+      console.log('✅ Dashboard data loaded successfully');
+
+      res.json({
+        success: true,
+        data: {
+          users: {
+            success: true,
+            data: {
+              users: users,
+              total: usersData.count
+            }
+          },
+          userStats: {
+            success: true,
+            data: userStatsData
+          },
+          contentStats: {
+            success: true,
+            data: contentStatsData
+          },
+          categories: {
+            success: true,
+            data: categoriesData
+          },
+          posts: {
+            success: true,
+            data: postsData
+          },
+          pendingPosts: {
+            success: true,
+            data: pendingPostsData
+          },
+          adminUsers: {
+            success: true,
+            data: {
+              users: adminUsersData.map(admin => ({
+                ID: admin.ID,
+                user_login: admin.user_login,
+                user_email: admin.user_email,
+                display_name: admin.display_name,
+                user_role: admin.user_role,
+                user_status: admin.user_status,
+                user_registered: admin.user_registered,
+                profile: admin.profile ? {
+                  profile_image: admin.profile.profile_image
+                } : null
+              })),
+              total: adminUsersData.length
+            }
+          },
+          scheduledPosts: {
+            success: true,
+            data: {
+              posts: scheduledPostsData.posts.map(post => ({
+                ID: post.ID,
+                post_title: post.post_title,
+                post_name: post.post_name,
+                post_status: post.post_status,
+                post_date: post.post_date,
+                post_content: post.post_content || '',
+                post_excerpt: post.post_excerpt || '',
+                scheduled_publish_date: post.scheduled_publish_date,
+                author: {
+                  display_name: post.author_name || 'Unknown'
+                }
+              })),
+              total: scheduledPostsData.total
+            }
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Error loading dashboard:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to load dashboard data',
+        error: error.message
+      });
+    }
+
+}
 }
 
 module.exports = AdminController;
