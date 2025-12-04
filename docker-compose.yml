@@ -13,6 +13,7 @@ services:
       REDIS_PORT: 6379
     volumes:
       - ./shared:/usr/src/shared:ro
+      - ./public/uploads:/usr/src/public/uploads
     depends_on:
       redis:
         condition: service_healthy
