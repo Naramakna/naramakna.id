@@ -58,6 +58,7 @@ DerivedData/
 uploads/
 */uploads/
 public/uploads/
+public/ads/
 *.zip
 
 # Cache
