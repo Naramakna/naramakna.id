@@ -130,12 +130,15 @@ class AuthAPI {
    */
   async getProfile(): Promise<ProfileResponse> {
     try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const response = await fetch(buildApiUrl('auth/profile'), {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers
       });
 
       if (!response.ok) {
@@ -235,12 +238,15 @@ class AuthAPI {
     new_password?: string;
   }): Promise<{ success: boolean; message: string; data?: { user: any } }> {
     try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const response = await fetch(buildApiUrl('auth/profile'), {
         method: 'PUT',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(profileData)
       });
 

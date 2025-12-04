@@ -1,60 +1,58 @@
-# Docker Compose untuk development environment (macOS Compatible)
-# Menjalankan MySQL dan Redis untuk development
-# 
-# macOS Usage:
-# brew install docker docker-compose (or Docker Desktop)
-# docker-compose up -d
-
-version: '3.8'
-
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: naramakna_mysql
-    platform: linux/amd64  # For Apple Silicon compatibility
-    environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: naramakna_portal
-      MYSQL_USER: naramakna_user
-      MYSQL_PASSWORD: naramakna_pass
+  backend:
+    build: ./backend
+    container_name: naramakna-backend
     ports:
-      - "3306:3306"
+      - "3001:3001"
+    env_file:
+      - backend/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ./shared:/usr/src/shared:ro
+    depends_on:
+      redis:
+        condition: service_healthy
     networks:
-      - naramakna_network
-    command: --default-authentication-plugin=mysql_native_password
+      - naramakna-net
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:3001/api
+        VITE_BACKEND_URL: http://localhost:3001
+        VITE_UPLOADS_BASE_URL: http://localhost:3001/uploads
+    container_name: naramakna-frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - frontend/.env
+    depends_on:
+      - backend
+    networks:
+      - naramakna-net
 
   redis:
     image: redis:7-alpine
-    container_name: naramakna_redis
-    platform: linux/amd64  # For Apple Silicon compatibility
-    ports:
-      - "6379:6379"
+    container_name: naramakna-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - redis-data:/data
     networks:
-      - naramakna_network
-
-  # Optional: phpMyAdmin for database management
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    container_name: naramakna_phpmyadmin
-    platform: linux/amd64
-    environment:
-      PMA_HOST: mysql
-      PMA_PORT: 3306
-      PMA_USER: naramakna_user
-      PMA_PASSWORD: naramakna_pass
-    ports:
-      - "8080:80"
-    depends_on:
-      - mysql
-    networks:
-      - naramakna_network
-
-volumes:
-  mysql_data:
+      - naramakna-net
 
 networks:
-  naramakna_network:
+  naramakna-net:
     driver: bridge
+
+volumes:
+  redis-data:

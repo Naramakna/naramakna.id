@@ -1,7 +1,7 @@
 // backend/src/app.js
 
 // Load environment variables
-require('dotenv').config({ path: '/var/www/naramakna.id/backend/.env' });
+require('dotenv').config({ path: require('fs').existsSync('/var/www/naramakna.id/backend/.env') ? '/var/www/naramakna.id/backend/.env' : require('path').join(__dirname, '../.env') });
 
 const express = require('express');
 const cors = require('cors');
