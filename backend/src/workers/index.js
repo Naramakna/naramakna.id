@@ -45,17 +45,16 @@ const hasScheduledPostsReady = async () => {
 
 // Job processors
 const jobProcessors = {
-  // 1. Publish Scheduled Posts - SMART: Early exit if no posts ready
+  // 1. [LEGACY] Publish Scheduled Posts - kept for backwards compatibility
+  // New posts use PUBLISH_SINGLE_POST webhook-style instead
   [QUEUE_NAMES.PUBLISH_SCHEDULED]: async (job) => {
-    // Quick check first - avoid heavy processing if no posts ready
     const hasReady = await hasScheduledPostsReady();
-    
+
     if (!hasReady) {
-      // Silent skip - no need to log every 5 minutes when nothing to do
       return { published: 0, skipped: true, reason: 'no_posts_ready' };
     }
-    
-    console.log(`🔍 [${job.id}] Found posts ready to publish, processing...`);
+
+    console.log(`🔍 [${job.id}] Legacy scheduler: Found posts ready to publish...`);
 
     const publishedPosts = await SchedulerController.publishScheduledPosts();
 
@@ -73,7 +72,90 @@ const jobProcessors = {
     return { published: 0 };
   },
 
-  // 2. Sync TikTok
+  // 2. Publish Single Post (WEBHOOK-STYLE) - Fires at exact scheduled time
+  [QUEUE_NAMES.PUBLISH_SINGLE_POST]: async (job) => {
+    const { postId, postTitle } = job.data;
+    const { Post, PostMeta } = require('../models');
+    const sequelize = require('../config/database');
+
+    console.log(`🎯 [${job.id}] Publishing post: "${postTitle}" (ID: ${postId})`);
+
+    try {
+      const post = await Post.findByPk(postId);
+
+      if (!post) {
+        console.warn(`⚠️ Post ${postId} not found, skipping`);
+        return { success: false, reason: 'post_not_found' };
+      }
+
+      // Only publish if still scheduled/future
+      if (!['scheduled', 'future'].includes(post.post_status)) {
+        console.log(`⏭️ Post ${postId} status is "${post.post_status}", skipping`);
+        return { success: false, reason: 'already_published_or_cancelled' };
+      }
+
+      const now = new Date();
+
+      // Preserve featured image metadata
+      const featuredImageMeta = await PostMeta.findOne({
+        where: { post_id: postId, meta_key: '_thumbnail_id' }
+      });
+
+      // Update post status to published
+      const updateData = {
+        post_status: 'publish',
+        post_modified: now,
+        post_modified_gmt: now
+      };
+
+      // For legacy scheduled posts, update post_date
+      if (post.post_status === 'scheduled') {
+        updateData.post_date = now;
+        updateData.post_date_gmt = now;
+        updateData.scheduled_publish_date = null;
+        updateData.original_status = null;
+      }
+
+      await post.update(updateData);
+
+      if (featuredImageMeta) {
+        console.log(`  🖼️ Featured image preserved: ${featuredImageMeta.meta_value}`);
+      }
+
+      // Log the publishing
+      await sequelize.query(
+        `INSERT INTO post_schedule_log
+         (post_id, action_type, scheduled_by, notes)
+         VALUES (:postId, 'published', :scheduledBy, 'Auto-published by webhook scheduler')`,
+        {
+          replacements: {
+            postId: postId,
+            scheduledBy: post.scheduled_by || post.post_author
+          }
+        }
+      );
+
+      const wibTime = now.toLocaleString('id-ID', {
+        timeZone: 'Asia/Jakarta',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      console.log(`✅ [${wibTime}] Published: "${postTitle}" (ID: ${postId})`);
+
+      return {
+        success: true,
+        postId,
+        postTitle,
+        publishedAt: now.toISOString()
+      };
+    } catch (error) {
+      console.error(`❌ Failed to publish post ${postId}:`, error.message);
+      throw error; // Let BullMQ retry
+    }
+  },
+
+  // 3. Sync TikTok (30 min cron - keeps this as cron because it doesn't have scheduled times)
   [QUEUE_NAMES.SYNC_TIKTOK]: async (job) => {
     console.log(`📱 [${job.id}] Syncing TikTok videos...`);
 
@@ -137,7 +219,8 @@ const jobProcessors = {
     return result;
   },
 
-  // 4. Pause Expired Ads
+  // 4. [LEGACY] Pause Expired Ads - kept for backwards compatibility
+  // New ads use PAUSE_SINGLE_AD webhook-style instead
   [QUEUE_NAMES.PAUSE_EXPIRED_ADS]: async (job) => {
     console.log(`💰 [${job.id}] Pausing expired ads...`);
 
@@ -172,6 +255,55 @@ const jobProcessors = {
 
     console.log(`✅ Paused ${expiredAds.length} expired ads`);
     return { count: expiredAds.length };
+  },
+
+  // 5. Pause Single Ad (WEBHOOK-STYLE) - Fires at exact end_date
+  [QUEUE_NAMES.PAUSE_SINGLE_AD]: async (job) => {
+    const { adId, campaignName } = job.data;
+    const { Advertisement } = require('../models');
+
+    console.log(`🎯 [${job.id}] Pausing ad: "${campaignName}" (ID: ${adId})`);
+
+    try {
+      const ad = await Advertisement.findByPk(adId);
+
+      if (!ad) {
+        console.warn(`⚠️ Ad ${adId} not found, skipping`);
+        return { success: false, reason: 'ad_not_found' };
+      }
+
+      // Only pause if still active
+      if (ad.status !== 'active') {
+        console.log(`⏭️ Ad ${adId} status is "${ad.status}", skipping`);
+        return { success: false, reason: 'not_active' };
+      }
+
+      const now = new Date();
+
+      // Update ad status to finished
+      await ad.update({
+        status: 'finished',
+        updated_at: now
+      });
+
+      const wibTime = now.toLocaleString('id-ID', {
+        timeZone: 'Asia/Jakarta',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      console.log(`✅ [${wibTime}] Paused ad: "${campaignName}" (ID: ${adId})`);
+
+      return {
+        success: true,
+        adId,
+        campaignName,
+        pausedAt: now.toISOString()
+      };
+    } catch (error) {
+      console.error(`❌ Failed to pause ad ${adId}:`, error.message);
+      throw error; // Let BullMQ retry
+    }
   },
 };
 

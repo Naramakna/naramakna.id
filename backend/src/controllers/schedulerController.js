@@ -1,6 +1,63 @@
 const { Post, User, PostMeta } = require('../models');
 const sequelize = require('../config/database');
 const { QueryTypes, Op } = require('sequelize');
+const { queues, QUEUE_NAMES } = require('../config/queue');
+
+// Helper: Add delayed job to publish a post at specific time
+const schedulePublishJob = async (postId, publishDate, postTitle) => {
+  const queue = queues[QUEUE_NAMES.PUBLISH_SINGLE_POST];
+  const delay = Math.max(0, new Date(publishDate).getTime() - Date.now());
+  const jobId = `publish-post-${postId}`;
+
+  // Remove existing job if any (for rescheduling)
+  try {
+    const existingJob = await queue.getJob(jobId);
+    if (existingJob) {
+      await existingJob.remove();
+      console.log(`🗑️ Removed existing job for post ${postId}`);
+    }
+  } catch (err) {
+    // Job might not exist, that's ok
+  }
+
+  // Add new delayed job
+  await queue.add(
+    'publish-single-post',
+    { postId, postTitle },
+    {
+      delay,
+      jobId,
+      removeOnComplete: true,
+      removeOnFail: false
+    }
+  );
+
+  const wibTime = new Date(publishDate).toLocaleString('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  });
+  console.log(`📅 Scheduled post "${postTitle}" (ID: ${postId}) for ${wibTime} (delay: ${Math.round(delay/1000/60)} minutes)`);
+  return jobId;
+};
+
+// Helper: Remove scheduled job
+const removePublishJob = async (postId) => {
+  const queue = queues[QUEUE_NAMES.PUBLISH_SINGLE_POST];
+  const jobId = `publish-post-${postId}`;
+
+  try {
+    const job = await queue.getJob(jobId);
+    if (job) {
+      await job.remove();
+      console.log(`🗑️ Removed scheduled job for post ${postId}`);
+      return true;
+    }
+  } catch (err) {
+    console.warn(`Could not remove job for post ${postId}:`, err.message);
+  }
+  return false;
+};
 
 class SchedulerController {
   // Get all scheduled posts
@@ -187,8 +244,8 @@ class SchedulerController {
 
       // Log the scheduling action
       await sequelize.query(
-        `INSERT INTO post_schedule_log 
-         (post_id, action_type, scheduled_date, scheduled_by, notes) 
+        `INSERT INTO post_schedule_log
+         (post_id, action_type, scheduled_date, scheduled_by, notes)
          VALUES (:postId, 'scheduled', :scheduledDate, :scheduledBy, :notes)`,
         {
           replacements: {
@@ -199,6 +256,9 @@ class SchedulerController {
           }
         }
       );
+
+      // Add delayed BullMQ job to publish at exact time (webhook-style)
+      await schedulePublishJob(postId, scheduleDateTime, post.post_title);
 
       res.json({
         success: true,
@@ -260,8 +320,8 @@ class SchedulerController {
 
       // Log the rescheduling action
       await sequelize.query(
-        `INSERT INTO post_schedule_log 
-         (post_id, action_type, scheduled_date, previous_scheduled_date, scheduled_by, notes) 
+        `INSERT INTO post_schedule_log
+         (post_id, action_type, scheduled_date, previous_scheduled_date, scheduled_by, notes)
          VALUES (:postId, 'rescheduled', :scheduledDate, :previousScheduledDate, :scheduledBy, :notes)`,
         {
           replacements: {
@@ -273,6 +333,9 @@ class SchedulerController {
           }
         }
       );
+
+      // Update BullMQ delayed job (removes old, adds new)
+      await schedulePublishJob(postId, newScheduleDateTime, post.post_title);
 
       res.json({
         success: true,
@@ -329,8 +392,8 @@ class SchedulerController {
 
       // Log the cancellation
       await sequelize.query(
-        `INSERT INTO post_schedule_log 
-         (post_id, action_type, previous_scheduled_date, scheduled_by, notes) 
+        `INSERT INTO post_schedule_log
+         (post_id, action_type, previous_scheduled_date, scheduled_by, notes)
          VALUES (:postId, 'cancelled', :previousScheduledDate, :scheduledBy, :notes)`,
         {
           replacements: {
@@ -341,6 +404,9 @@ class SchedulerController {
           }
         }
       );
+
+      // Remove the BullMQ delayed job
+      await removePublishJob(postId);
 
       res.json({
         success: true,

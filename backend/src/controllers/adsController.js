@@ -5,6 +5,78 @@
 
 const { Advertisement, User } = require('../models');
 const { Op } = require('sequelize');
+const { queues, QUEUE_NAMES } = require('../config/queue');
+
+// ============================================================================
+// WEBHOOK-STYLE HELPERS: Schedule pause jobs for ads
+// ============================================================================
+
+/**
+ * Schedule a delayed job to pause an ad at its end_date
+ * @param {number} adId - Advertisement ID
+ * @param {Date} endDate - When to pause the ad
+ * @param {string} campaignName - For logging purposes
+ */
+const schedulePauseAdJob = async (adId, endDate, campaignName) => {
+  try {
+    const queue = queues[QUEUE_NAMES.PAUSE_SINGLE_AD];
+    const delay = Math.max(0, new Date(endDate).getTime() - Date.now());
+    const jobId = `pause-ad-${adId}`;
+
+    // Remove existing job if any (for rescheduling)
+    try {
+      const existingJob = await queue.getJob(jobId);
+      if (existingJob) {
+        await existingJob.remove();
+      }
+    } catch (err) {
+      // Job might not exist, that's ok
+    }
+
+    // Add delayed job
+    await queue.add(
+      'pause-single-ad',
+      { adId, campaignName },
+      {
+        delay,
+        jobId,
+        removeOnComplete: true,
+        removeOnFail: false
+      }
+    );
+
+    const wibTime = new Date(endDate).toLocaleString('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      dateStyle: 'short',
+      timeStyle: 'short'
+    });
+    console.log(`📅 Scheduled pause job for ad "${campaignName}" (ID: ${adId}) at ${wibTime} WIB (delay: ${Math.round(delay/1000/60)} min)`);
+    return jobId;
+  } catch (error) {
+    console.error(`❌ Failed to schedule pause job for ad ${adId}:`, error.message);
+    throw error;
+  }
+};
+
+/**
+ * Remove scheduled pause job (when ad is paused/finished/rejected early)
+ * @param {number} adId - Advertisement ID
+ */
+const removePauseAdJob = async (adId) => {
+  try {
+    const queue = queues[QUEUE_NAMES.PAUSE_SINGLE_AD];
+    const jobId = `pause-ad-${adId}`;
+    const job = await queue.getJob(jobId);
+    if (job) {
+      await job.remove();
+      console.log(`🗑️ Removed pause job for ad ${adId}`);
+      return true;
+    }
+  } catch (err) {
+    // Job might not exist, that's ok
+  }
+  return false;
+};
 
 class AdsController {
 
@@ -815,7 +887,28 @@ class AdsController {
         });
       }
 
+      const oldStatus = ad.status;
       await ad.update({ status });
+
+      // ============================================================================
+      // WEBHOOK-STYLE: Schedule/remove pause jobs based on status change
+      // ============================================================================
+      try {
+        if (status === 'active' && oldStatus !== 'active') {
+          // Ad is becoming active - schedule pause job at end_date
+          if (ad.end_date && new Date(ad.end_date) > new Date()) {
+            await schedulePauseAdJob(ad.id, ad.end_date, ad.campaign_name);
+          } else {
+            console.log(`⚠️ Ad ${ad.id} has no future end_date, skipping pause job`);
+          }
+        } else if (['paused', 'finished', 'rejected', 'pending'].includes(status) && oldStatus === 'active') {
+          // Ad is no longer active - remove scheduled pause job
+          await removePauseAdJob(ad.id);
+        }
+      } catch (jobError) {
+        console.error('Warning: Failed to manage pause job:', jobError.message);
+        // Don't fail the request, just log the error
+      }
 
       // Disable caching for ads endpoints
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -1065,5 +1158,8 @@ module.exports = {
   delete: AdsController.delete,
   getStats: AdsController.getStats,
   uploadImage: AdsController.uploadImage,
-  getActivePopupAd: AdsController.getActivePopupAd
+  getActivePopupAd: AdsController.getActivePopupAd,
+  // Webhook-style helpers (for scheduler sync)
+  schedulePauseAdJob,
+  removePauseAdJob
 };

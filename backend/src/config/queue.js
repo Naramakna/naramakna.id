@@ -29,10 +29,12 @@ const defaultJobOptions = {
 
 // Queue names
 const QUEUE_NAMES = {
-  PUBLISH_SCHEDULED: 'publish-scheduled-posts',
+  PUBLISH_SCHEDULED: 'publish-scheduled-posts', // Legacy - keep for cleanup
+  PUBLISH_SINGLE_POST: 'publish-single-post', // New webhook-style: 1 job per scheduled post
   SYNC_TIKTOK: 'sync-tiktok',
   UPDATE_TRENDING: 'update-trending',
-  PAUSE_EXPIRED_ADS: 'pause-expired-ads',
+  PAUSE_EXPIRED_ADS: 'pause-expired-ads', // Legacy hourly cron - keep for backwards compatibility
+  PAUSE_SINGLE_AD: 'pause-single-ad', // New webhook-style: 1 job per active ad
 };
 
 // Create queues
