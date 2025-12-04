@@ -254,36 +254,34 @@ export const AdBanner: React.FC<AdBannerProps> = ({
     }
   };
 
-  // TEMPORARILY DISABLED: AdSense fallback - untuk testing custom ads
-  // if (shouldShowAdSenseFallback) {
-  //   return (
-  //     <div className={`${getSizeClasses()} relative rounded-lg overflow-hidden ${className}`}>
-  //       <ins id={adUniqueId}
-  //            className="adsbygoogle"
-  //            style={{
-  //              display: 'block',
-  //              width: '100%',
-  //              height: '100%',
-  //              border: 'none',
-  //              outline: 'none',
-  //              position: 'static',
-  //              left: 'auto',
-  //              right: 'auto',
-  //              top: 'auto',
-  //              bottom: 'auto'
-  //            }}
-  //            data-ad-client="ca-pub-5027382595607261"
-  //            data-ad-format="auto"
-  //            data-full-width-responsive="true">
-  //       </ins>
-  //
-  //       {/* Fallback indicator */}
-  //       <div className="absolute top-1 right-1 bg-blue-500 bg-opacity-70 text-white text-xs px-1.5 py-0.5 rounded z-10">
-  //         AdSense
-  //       </div>
-  //     </div>
-  //   );
-  // }
+  if (shouldShowAdSenseFallback) {
+    return (
+      <div className={`${getSizeClasses()} relative rounded-lg overflow-hidden ${className}`}>
+        <ins id={adUniqueId}
+             className="adsbygoogle"
+             style={{
+               display: 'block',
+               width: '100%',
+               height: '100%',
+               border: 'none',
+               outline: 'none',
+               position: 'static',
+               left: 'auto',
+               right: 'auto',
+               top: 'auto',
+               bottom: 'auto'
+             }}
+             data-ad-client="ca-pub-5027382595607261"
+             data-ad-format="auto"
+             data-full-width-responsive="true">
+        </ins>
+
+        <div className="absolute top-1 right-1 bg-blue-500 bg-opacity-70 text-white text-xs px-1.5 py-0.5 rounded z-10">
+          AdSense
+        </div>
+      </div>
+    );
+  }
   
   // Render placeholder if no real ad data and not showing AdSense
   if (!hasRealAd || isPlaceholder) {
