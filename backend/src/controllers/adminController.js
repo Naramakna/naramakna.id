@@ -1268,7 +1268,7 @@ class AdminController {
 
         // 5. Get posts (optimized - removed expensive view_count subquery)
         (async () => {
-          const whereClause = { post_type: 'post' };
+          const whereClause = { post_type: 'post', deleted_at: null };
 
           // Apply filters if provided
           if (filters.status) whereClause.post_status = filters.status;
@@ -1322,7 +1322,7 @@ class AdminController {
         // 6. Get pending posts for approval
         (async () => {
           const pendingPosts = await Post.findAll({
-            where: { post_status: 'pending' },
+            where: { post_status: 'pending', deleted_at: null },
             attributes: ['ID', 'post_title', 'post_date'],
             include: [{
               model: User,
