@@ -10,6 +10,80 @@ const { Op } = require('sequelize');
 const { optimizePostImages } = require('../utils/imageUtils');
 
 class ContentController {
+  /**
+   * Get latest published articles (no cache)
+   * GET /api/content/latest
+   */
+  static async getLatestArticles(req, res) {
+    try {
+      const { limit = 6 } = req.query;
+
+      const whereClause = {
+        post_status: 'publish',
+        post_type: 'post',
+        deleted_at: null
+      };
+
+      const include = [
+        { model: PostMeta, as: 'meta' },
+        { model: User, as: 'author', attributes: ['ID', 'display_name', 'user_email', 'user_nicename'] }
+      ];
+
+      const result = await Post.findAndCountAll({
+        where: whereClause,
+        include,
+        limit: parseInt(limit),
+        offset: 0,
+        order: [['post_date', 'DESC']],
+        distinct: true
+      });
+
+      // Pre-fetch thumbnails in one query
+      const thumbnailIds = [];
+      result.rows.forEach(post => {
+        const meta = post.meta || [];
+        const thumbMeta = meta.find(m => m.meta_key === '_thumbnail_id');
+        if (thumbMeta && thumbMeta.meta_value) {
+          thumbnailIds.push(parseInt(thumbMeta.meta_value));
+        }
+      });
+
+      let thumbnailMap = {};
+      if (thumbnailIds.length > 0) {
+        const thumbnails = await Post.findAll({
+          where: { ID: { [Op.in]: thumbnailIds } },
+          attributes: ['ID', 'guid', 'post_title']
+        });
+        thumbnails.forEach(t => {
+          thumbnailMap[t.ID] = { guid: t.guid, title: t.post_title };
+        });
+      }
+
+      const userAgent = req.headers['user-agent'] || '';
+      const formattedPosts = await Promise.all(
+        result.rows.map(post => ContentController.formatPostWithMeta(post, post.view_count || 0, userAgent, thumbnailMap))
+      );
+
+      res.json({
+        success: true,
+        data: {
+          posts: formattedPosts,
+          totalItems: formattedPosts.length,
+          criteria: 'most_recent'
+        }
+      });
+
+    } catch (error) {
+      console.error('Error fetching latest articles:', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          message: 'Failed to fetch latest articles',
+          error: error.message
+        });
+      }
+    }
+  }
   
   /**
    * Get mixed content feed (all content types)

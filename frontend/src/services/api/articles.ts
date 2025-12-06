@@ -198,4 +198,12 @@ export const articlesAPI = {
     const response = await fetch(buildApiUrl(`content/trending?${queryParams}`));
     return response.json();
   }
+  ,
+  async getLatestArticles(params?: { limit?: number }): Promise<ApiResponse<FeedResponse>> {
+    const queryParams = new URLSearchParams();
+    const limit = params?.limit ?? 6;
+    if (limit) queryParams.append('limit', limit.toString());
+    const response = await fetch(buildApiUrl(`content/latest?${queryParams}`));
+    return response.json();
+  }
 };

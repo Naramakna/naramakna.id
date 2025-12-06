@@ -1,0 +1,1 @@
+export { LatestArticleSection } from './LatestArticleSection';

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Carousel } from '../../molecules/Carousel';
-import { TrendingSection } from '../TrendingSection';
+import { LatestArticleSection } from '../LatestArticleSection';
 import { useContent } from '../../../hooks/useContent';
 import type { Article } from '../../../services/api/articles';
 
@@ -273,9 +273,9 @@ export const MainContentSection: React.FC<MainContentSectionProps> = ({
           </div>
         </div>
 
-        {/* Trending Sidebar */}
+        {/* Sidebar Artikel Terbaru */}
         <div className="md:col-span-2">
-          <TrendingSection limit={5} includeTikTok={false} mixedContent={false} />
+          <LatestArticleSection limit={6} />
         </div>
       </div>
     </div>

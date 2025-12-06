@@ -14,6 +14,8 @@ const { cacheMiddleware } = require('../middleware/cache');
 // Content feed and discovery - WITH CACHE
 router.get('/feed', cacheMiddleware(180), ContentController.getFeed); // 3 min
 router.get('/posts', cacheMiddleware(180), ContentController.getFeed); // 3 min
+// Latest articles - NO CACHE
+router.get('/latest', ContentController.getLatestArticles);
 
 // Search functionality - WITH CACHE
 router.get('/search/suggestions', cacheMiddleware(120), ContentController.getSearchSuggestions); // 2 min

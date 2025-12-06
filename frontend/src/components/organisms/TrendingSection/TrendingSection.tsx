@@ -2,7 +2,6 @@ import React from 'react';
 import { TrendingList } from '../../molecules/TrendingList';
 import { useTrending } from '../../../hooks/useTrending.ts';
 import { useTikTokVideos } from '../../../hooks/useTikTok';
-import type { Article } from '../../../services/api/articles';
 import { getCategorySlug } from '../../../utils/categorySlugMapping';
 
 interface TrendingArticle {
@@ -217,8 +216,8 @@ export const TrendingSection: React.FC<TrendingSectionProps> = ({
       <div className={`bg-white rounded-lg shadow-sm border border-gray-200 ${className}`}>
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center space-x-2">
-            <div className="w-1 h-6 bg-naramakna-gold rounded-full"></div>
-            <h2 className="text-lg font-semibold text-gray-900">Trending</h2>
+          <div className="w-1 h-6 bg-naramakna-gold rounded-full"></div>
+          <h2 className="text-lg font-semibold text-gray-900">Trending</h2>
           </div>
         </div>
         <div className="p-4">

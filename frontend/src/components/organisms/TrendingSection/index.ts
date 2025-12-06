@@ -1,1 +1,1 @@
-export { TrendingSection } from './TrendingSection'; 
+export { TrendingSection } from './TrendingSection';
