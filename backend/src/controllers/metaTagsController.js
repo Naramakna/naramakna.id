@@ -23,7 +23,8 @@ class MetaTagsController {
         where: { 
           post_name: slug,
           post_type: 'post',
-          post_status: 'publish'
+          post_status: 'publish',
+          deleted_at: null,
         },
         include: [
           {

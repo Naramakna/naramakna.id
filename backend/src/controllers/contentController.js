@@ -8,6 +8,7 @@ const { Post, PostMeta, User, Analytics, PostViews, Comment, sequelize } = requi
 const ContentHelpers = require('../models/ContentHelpers');
 const { Op } = require('sequelize');
 const { optimizePostImages } = require('../utils/imageUtils');
+const { clearCache } = require('../middleware/cache');
 
 class ContentController {
   /**
@@ -632,6 +633,12 @@ class ContentController {
         }
       }
 
+      try {
+        await clearCache('cache:/api/content/*');
+      } catch (cacheError) {
+        console.error('Cache clear error after create:', cacheError.message);
+      }
+
       res.status(201).json({
         success: true,
         message: 'Content created successfully',
@@ -697,6 +704,12 @@ class ContentController {
         }
       }
 
+      try {
+        await clearCache('cache:/api/content/*');
+      } catch (cacheError) {
+        console.error('Cache clear error after update:', cacheError.message);
+      }
+
       res.json({
         success: true,
         message: 'Content updated successfully',
@@ -745,6 +758,12 @@ class ContentController {
           post_status: 'trash',
           post_modified: new Date()
         });
+      }
+
+      try {
+        await clearCache('cache:/api/content/*');
+      } catch (cacheError) {
+        console.error('Cache clear error after delete:', cacheError.message);
       }
 
       res.json({
@@ -1731,6 +1750,12 @@ class ContentController {
 
         await transaction.commit();
 
+        try {
+          await clearCache('cache:/api/content/*');
+        } catch (cacheError) {
+          console.error('Cache clear error after admin permanent delete:', cacheError.message);
+        }
+
         res.json({
           success: true,
           message: `Article "${article.post_title}" by ${article.author.display_name} has been permanently deleted.`,
@@ -1752,6 +1777,12 @@ class ContentController {
         }, { transaction });
 
         await transaction.commit();
+
+        try {
+          await clearCache('cache:/api/content/*');
+        } catch (cacheError) {
+          console.error('Cache clear error after admin soft delete:', cacheError.message);
+        }
 
         res.json({
           success: true,
@@ -1828,6 +1859,12 @@ class ContentController {
       }, { transaction });
 
       await transaction.commit();
+
+      try {
+        await clearCache('cache:/api/content/*');
+      } catch (cacheError) {
+        console.error('Cache clear error after restore:', cacheError.message);
+      }
 
       res.json({
         success: true,

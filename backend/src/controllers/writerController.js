@@ -1,4 +1,5 @@
 const { Post, PostMeta, User, sequelize } = require('../models');
+const { clearCache } = require('../middleware/cache');
 const { QueryTypes } = require('sequelize');
 const { Op } = require('sequelize');
 const path = require('path');
@@ -725,6 +726,12 @@ class WriterController {
       await post.destroy({ transaction });
 
       await transaction.commit();
+
+      try {
+        await clearCache('cache:/api/content/*');
+      } catch (cacheError) {
+        console.error('Cache clear error after writer delete:', cacheError.message);
+      }
 
       res.status(200).json({
         success: true,

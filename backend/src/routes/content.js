@@ -9,7 +9,8 @@ const router = express.Router();
 const ContentController = require('../controllers/contentController');
 const { authenticate, requireWriter, requireAdmin, canEditPost, canCreateVideo } = require('../middleware/auth');
 const { uploadPostImages, handleUploadError } = require('../middleware/upload');
-const { cacheMiddleware } = require('../middleware/cache');
+const { cacheMiddleware, clearCache } = require('../middleware/cache');
+const cacheService = require('../services/cacheService');
 
 // Content feed and discovery - WITH CACHE
 router.get('/feed', cacheMiddleware(180), ContentController.getFeed); // 3 min
@@ -32,6 +33,22 @@ router.get('/type/:type', cacheMiddleware(180), ContentController.getByType); //
 router.get('/posts/slug/:slug/comments', cacheMiddleware(60), ContentController.getPostCommentsBySlug); // 1 min
 router.get('/posts/slug/:slug', cacheMiddleware(300), ContentController.getPostBySlug); // 5 min
 router.get('/posts/:id', cacheMiddleware(300), ContentController.getPostById); // 5 min
+
+router.get('/test-cache-clear', authenticate, requireAdmin, async (req, res) => {
+  try {
+    console.log('Testing cache clear...');
+    const testKey = 'cache:/api/content/feed?test=123';
+    await cacheService.set(testKey, { ok: true }, 60);
+    const before = await cacheService.get(testKey);
+    await clearCache('cache:/api/content/*');
+    const after = await cacheService.get(testKey);
+    const stats = await cacheService.getStats();
+    res.json({ success: true, beforeClear: !!before, afterClear: !!after, redisConnected: !!stats.connected });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Test cache clear failed', error: error.message });
+  }
+});
+
 router.get('/:id', cacheMiddleware(300), ContentController.getById); // 5 min
 
 // CREATE - NO CACHE
@@ -48,5 +65,6 @@ router.delete('/admin/articles/:id', authenticate, requireAdmin, ContentControll
 router.post('/admin/articles/:id/restore', authenticate, requireAdmin, ContentController.restoreArticle);
 router.get('/admin/articles/trash', authenticate, requireAdmin, cacheMiddleware(60), ContentController.getDeletedArticles); // 1 min
 router.post('/admin/articles/bulk-delete', authenticate, requireAdmin, ContentController.bulkDeleteArticles);
+
 
 module.exports = router;
