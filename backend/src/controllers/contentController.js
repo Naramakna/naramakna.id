@@ -547,9 +547,6 @@ class ContentController {
    */
   static async create(req, res) {
     try {
-      console.log('Content controller - req.body:', req.body);
-      console.log('Content controller - req.files:', req.files);
-      
       // Handle both JSON and FormData requests with validation
       const type = req.body.type || 'post';
       const title = req.body.title || 'Untitled Post';
@@ -558,9 +555,6 @@ class ContentController {
       const status = req.body.status || 'draft';
       // Always use authenticated user's ID for security - handle both 'id' and 'ID'
       const author_id = req.user?.id || req.user?.ID;
-      
-      console.log('req.user:', req.user);
-      console.log('author_id from req.user:', author_id);
       
       // Validate author exists in database
       if (!author_id) {
@@ -571,13 +565,6 @@ class ContentController {
       }
       const meta = req.body.meta ? JSON.parse(req.body.meta) : {};
       const categories = req.body.categories ? JSON.parse(req.body.categories) : [];
-      
-      console.log('Parsed data:', { type, title, content, status, author_id });
-
-      // TEMPORARILY DISABLED - Debug content type validation
-      console.log('Content type received:', type);
-      console.log('Type of type:', typeof type);
-      console.log('Is type valid?', ['post', 'youtube_video', 'tiktok_video', 'page'].includes(type));
       
       // Skip validation to debug FormData issue
       // const validTypes = ['post', 'youtube_video', 'tiktok_video', 'page'];
@@ -610,6 +597,8 @@ class ContentController {
         post_content_filtered: '',
         guid: `${req.protocol}://${req.get('host')}/content/${type}/${Date.now()}`
       });
+
+      console.log('Created post:', post);
 
       // Add metadata
       if (Object.keys(meta).length > 0) {

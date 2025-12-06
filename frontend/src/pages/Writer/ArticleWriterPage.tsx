@@ -20,6 +20,12 @@ const formatLocalDateTime = (date: Date): string => {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
+const toTimezoneOffset = (localDateTime: string, offset: string = "+07:00"): string => {
+  if (!localDateTime) return localDateTime;
+  if (/([+-]\d{2}:\d{2}|Z)$/.test(localDateTime)) return localDateTime;
+  return `${localDateTime}:00${offset}`;
+};
+
 interface ArticleData {
   title: string;
   content: string;
@@ -323,7 +329,7 @@ const ArticleWriterPage: React.FC = () => {
         ? buildApiUrl(`writer/articles/${editId}`)
         : buildApiUrl('writer/articles');
       
-      const articleData = article;
+      const articleData = { ...article, publish_date: toTimezoneOffset(article.publish_date) };
       
       const token = localStorage.getItem('token');
       const response = await fetch(url, {
@@ -380,6 +386,7 @@ const ArticleWriterPage: React.FC = () => {
       
       const draftData = {
         ...article,
+        publish_date: toTimezoneOffset(article.publish_date),
         status: 'draft' as const,
         image_captions: imageCaptions
       };
@@ -633,6 +640,7 @@ const ArticleWriterPage: React.FC = () => {
       
       const publishData = { 
         ...article, 
+        publish_date: toTimezoneOffset(article.publish_date),
         status: 'published' as const,
         image_captions: imageCaptions
       };
