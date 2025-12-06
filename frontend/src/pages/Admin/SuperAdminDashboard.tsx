@@ -168,12 +168,18 @@ const SuperAdminDashboard: React.FC = () => {
       });
 
       // Single batched API call instead of 7 separate calls (reduces MySQL connections from 23 -> 5-7)
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const batchedRes = await fetch(buildApiUrl(`admin/dashboard-all?${queryParams}`), {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         cache: 'no-store'
       });
 
