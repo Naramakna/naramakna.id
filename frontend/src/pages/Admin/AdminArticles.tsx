@@ -78,7 +78,8 @@ export const AdminArticles: React.FC = () => {
         method: 'GET',
         credentials: 'include',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         }
       });
 
@@ -109,7 +110,8 @@ export const AdminArticles: React.FC = () => {
         method: 'GET',
         credentials: 'include',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         }
       });
 

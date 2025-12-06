@@ -327,11 +327,13 @@ const SuperAdminDashboard: React.FC = () => {
   // Fetch trashed posts
   const fetchTrashedPosts = useCallback(async () => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl('content/admin/articles/trash'), {
         method: 'GET',
         credentials: 'include',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : undefined
         }
       });
 
@@ -402,11 +404,13 @@ const SuperAdminDashboard: React.FC = () => {
 
   const promoteToAdmin = async (userId: number) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl(`users/${userId}`), {
         method: 'PUT',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           user_role: 'admin'
@@ -449,10 +453,12 @@ const SuperAdminDashboard: React.FC = () => {
 
   const suspendUser = async (userId: number) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl(`admin/users/${userId}/suspend`), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         credentials: 'include',
         body: JSON.stringify({ suspend: true })
@@ -474,10 +480,12 @@ const SuperAdminDashboard: React.FC = () => {
 
   const unsuspendUser = async (userId: number) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl(`admin/users/${userId}/suspend`), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         credentials: 'include',
         body: JSON.stringify({ suspend: false })
@@ -499,9 +507,11 @@ const SuperAdminDashboard: React.FC = () => {
 
   const deleteUser = async (userId: number) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl(`admin/users/${userId}`), {
         method: 'DELETE',
-        credentials: 'include'
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined
       });
 
       if (response.ok) {
@@ -525,13 +535,15 @@ const SuperAdminDashboard: React.FC = () => {
     if (!confirmed) return;
 
     try {
+      const token = localStorage.getItem('token');
       const url = permanent 
         ? buildApiUrl(`content/admin/articles/${articleId}?force=true`)
         : buildApiUrl(`content/admin/articles/${articleId}`);
         
       const response = await fetch(url, {
         method: 'DELETE',
-        credentials: 'include'
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined
       });
 
       if (response.ok) {
@@ -556,11 +568,13 @@ const SuperAdminDashboard: React.FC = () => {
     if (!confirmed) return;
 
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl('content/admin/articles/bulk-delete'), {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           articleIds: articleIds,
@@ -585,9 +599,11 @@ const SuperAdminDashboard: React.FC = () => {
 
   const restoreArticle = async (articleId: number) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl(`content/admin/articles/${articleId}/restore`), {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined
       });
 
       if (response.ok) {
@@ -822,10 +838,14 @@ const SuperAdminDashboard: React.FC = () => {
                                   onClick={async () => {
                                     if (!window.confirm(`Approve artikel "${post.post_title}"?`)) return;
                                     try {
+                                      const token = localStorage.getItem('token');
                                       const response = await fetch(buildApiUrl(`approval/${post.ID}/review`), {
                                         method: 'POST',
                                         credentials: 'include',
-                                        headers: { 'Content-Type': 'application/json' },
+                                        headers: {
+                                          'Content-Type': 'application/json',
+                                          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                                        },
                                         body: JSON.stringify({ action: 'approve' })
                                       });
                                       if (response.ok) {
@@ -850,10 +870,14 @@ const SuperAdminDashboard: React.FC = () => {
                                     if (feedback === null) return; // User clicked cancel
                                     if (!window.confirm(`Reject artikel "${post.post_title}"?`)) return;
                                     try {
+                                      const token = localStorage.getItem('token');
                                       const response = await fetch(buildApiUrl(`approval/${post.ID}/review`), {
                                         method: 'POST',
                                         credentials: 'include',
-                                        headers: { 'Content-Type': 'application/json' },
+                                        headers: {
+                                          'Content-Type': 'application/json',
+                                          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                                        },
                                         body: JSON.stringify({ action: 'reject', feedback })
                                       });
                                       if (response.ok) {

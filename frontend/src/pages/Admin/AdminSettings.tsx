@@ -16,12 +16,15 @@ export const AdminSettings: React.FC = () => {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
+        const token = localStorage.getItem('token');
         const [analyticsResponse, pollingResponse, publicSettingsResponse] = await Promise.all([
           fetch(buildApiUrl('admin/settings/analytics-button'), {
-            credentials: 'include'
+            credentials: 'include',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : undefined
           }),
           fetch(buildApiUrl('admin/settings/polling'), {
-            credentials: 'include'
+            credentials: 'include',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : undefined
           }),
           fetch(buildApiUrl('settings/public'))
         ]);
@@ -65,10 +68,12 @@ export const AdminSettings: React.FC = () => {
     setMessage('');
 
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl('admin/settings/analytics-button/toggle'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         credentials: 'include',
         body: JSON.stringify({
@@ -98,10 +103,12 @@ export const AdminSettings: React.FC = () => {
     setMessage('');
 
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl('settings/toggle-views-count'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         credentials: 'include',
         body: JSON.stringify({
@@ -131,10 +138,12 @@ export const AdminSettings: React.FC = () => {
     setPollingMessage('');
 
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl('admin/settings/polling/toggle'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         credentials: 'include',
         body: JSON.stringify({
@@ -168,10 +177,12 @@ export const AdminSettings: React.FC = () => {
     setTrendingMessage('');
 
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl('trending/admin/update'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         credentials: 'include'
       });

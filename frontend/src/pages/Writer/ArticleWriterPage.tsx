@@ -98,6 +98,7 @@ const ArticleWriterPage: React.FC = () => {
 
   // Image captions state for editor images
   const [imageCaptions, setImageCaptions] = useState<Record<string, string>>({});
+  const isAutoSaveEnabled = (import.meta.env.VITE_ENABLE_AUTOSAVE ?? 'false') === 'true';
 
   // Responsive state for toolbar
   const [windowWidth, setWindowWidth] = useState(() => {
@@ -146,9 +147,11 @@ const ArticleWriterPage: React.FC = () => {
         formData.append('image', file);
 
         try {
+          const token = localStorage.getItem('token');
           const response = await fetch(buildApiUrl('writer/upload-image'), {
             method: 'POST',
             credentials: 'include',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
             body: formData
           });
 
@@ -184,9 +187,11 @@ const ArticleWriterPage: React.FC = () => {
       const formData = new FormData();
       formData.append('image', file);
 
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl('writer/upload-image'), {
         method: 'POST',
         credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
         body: formData
       });
 
@@ -303,6 +308,7 @@ const ArticleWriterPage: React.FC = () => {
 
   // Auto-save function
   const autoSave = useCallback(async () => {
+    if (!isAutoSaveEnabled) return;
     if (isSavingRef.current ||
         saveStatus === 'saving' ||
         !article.title.trim()) {
@@ -319,11 +325,13 @@ const ArticleWriterPage: React.FC = () => {
       
       const articleData = article;
       
+      const token = localStorage.getItem('token');
       const response = await fetch(url, {
         method: isEditMode ? 'PUT' : 'POST',
         credentials: 'include',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify(articleData),
         // Add timeout for auto-save
@@ -347,7 +355,7 @@ const ArticleWriterPage: React.FC = () => {
     } finally {
       isSavingRef.current = false; // Reset saving flag
     }
-  }, [article, isEditMode, editId]);
+  }, [article, isEditMode, editId, isAutoSaveEnabled]);
 
   // Save Draft function
   const handleSaveDraft = async (): Promise<string | null> => {
@@ -382,11 +390,13 @@ const ArticleWriterPage: React.FC = () => {
         ? buildApiUrl(`writer/articles/${editId}`)
         : buildApiUrl('writer/articles');
       
+      const token = localStorage.getItem('token');
       const response = await fetch(url, {
         method: isEditMode ? 'PUT' : 'POST',
         credentials: 'include',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify(draftData),
         // Add timeout for draft save
@@ -631,11 +641,13 @@ const ArticleWriterPage: React.FC = () => {
         ? buildApiUrl(`writer/articles/${editId}`)
         : buildApiUrl('writer/articles');
       
+      const token = localStorage.getItem('token');
       const response = await fetch(url, {
         method: isEditMode ? 'PUT' : 'POST',
         credentials: 'include',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify(publishData),
         // Add timeout to prevent hanging
@@ -747,6 +759,7 @@ const ArticleWriterPage: React.FC = () => {
   // Auto-save trigger
   // Auto-save effect - debounced to prevent excessive calls
   useEffect(() => {
+    if (!isAutoSaveEnabled) return;
     const timer = setTimeout(() => {
       if (isSavingRef.current ||
           saveStatus === 'saving' ||
@@ -757,7 +770,7 @@ const ArticleWriterPage: React.FC = () => {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [autoSave]);
+  }, [autoSave, isAutoSaveEnabled]);
 
   // Auth check
   useEffect(() => {
@@ -789,8 +802,10 @@ const ArticleWriterPage: React.FC = () => {
       try {
         console.log('🔧 Debug: Starting to load article for edit, editId:', editId);
         setIsLoadingArticle(true);
+        const token = localStorage.getItem('token');
         const response = await fetch(buildApiUrl(`writer/articles/${editId}`), {
-          credentials: 'include'
+          credentials: 'include',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : undefined
         });
         
         console.log('🔧 Debug: Response status:', response.status, response.ok);

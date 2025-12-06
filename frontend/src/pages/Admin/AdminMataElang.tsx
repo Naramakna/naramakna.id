@@ -353,9 +353,11 @@ export const AdminMataElang: React.FC = () => {
     if (!confirm('Yakin ingin submit galeri untuk persetujuan admin? Setelah disubmit, Anda tidak dapat mengedit galeri sampai admin memutuskan.')) return;
 
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl(getApiEndpoint(`mata-elang/partner/galleries/${galleryId}/submit-for-approval`)), {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined
       });
 
       if (response.ok) {

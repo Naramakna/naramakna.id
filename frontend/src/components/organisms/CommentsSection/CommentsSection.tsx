@@ -84,11 +84,13 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ postId }) => {
 
     try {
       setIsSubmitting(true);
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl('comments'), {
         method: 'POST',
         credentials: 'include',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           postId: postId,
@@ -123,11 +125,13 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ postId }) => {
     }
 
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl('comments'), {
         method: 'POST',
         credentials: 'include',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           postId: postId,
@@ -175,9 +179,11 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ postId }) => {
         ? `comments/admin/${commentId}`
         : `comments/${commentId}`;
 
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl(endpoint), {
         method: 'DELETE',
-        credentials: 'include'
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined
       });
 
       if (response.ok) {

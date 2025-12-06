@@ -3,6 +3,7 @@ const { QueryTypes } = require('sequelize');
 const { Op } = require('sequelize');
 const path = require('path');
 const ContentController = require('./contentController');
+const WriterService = require('../services/writerService');
 
 class WriterController {
   /**
@@ -13,9 +14,6 @@ class WriterController {
     const transaction = await sequelize.transaction();
     
     try {
-      // console.log('🔧 Debug: Create article called');
-      // console.log('🔧 Debug: Request user:', req.user?.ID, req.user?.login);
-      
       const {
         title,
         content,
@@ -27,129 +25,27 @@ class WriterController {
         publish_date,
         location,
         mark_as_18_plus,
-        status = req.body.status || ((req.user.user_role === 'admin' || req.user.user_role === 'superadmin') ? 'published' : 'draft'),
+        status,
         featured_image,
         featured_image_caption,
         image_captions
       } = req.body;
 
-
-
-      // Validate required fields - relaxed for drafts
-      if (!title || !content || !channel) {
+      const validation = WriterService.validateCreate(req.body, req.user.user_role);
+      if (!validation.valid) {
         await transaction.rollback();
-        return res.status(400).json({
-          success: false,
-          message: 'Title, content, and channel are required'
-        });
+        return res.status(validation.code).json({ success: false, message: validation.message });
       }
-      
-      // For published posts, require additional fields
-      if (status === 'published' && (!description || !summary_social)) {
-        await transaction.rollback();
-        return res.status(400).json({
-          success: false,
-          message: 'Description and summary social are required for published posts'
-        });
-      }
+      const desiredStatus = validation.desiredStatus;
 
-      // Generate slug from title
-      const slug = title
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .substring(0, 50);
+      const slug = WriterService.generateSlug(title);
 
       // Check for duplicate submissions within last 2 minutes to prevent race conditions
       // This prevents users from accidentally submitting the same post multiple times
-      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
-      const existingRecent = await Post.findOne({
-        where: {
-          post_author: req.user.ID,
-          post_title: title,
-          post_type: 'post',
-          post_status: {
-            [Op.in]: ['draft', 'pending', 'future']
-          },
-          post_date: {
-            [Op.gte]: twoMinutesAgo
-          }
-        },
-        order: [['post_date', 'DESC']]
-      });
+      const existingRecent = await WriterService.findRecentDuplicate(req.user.ID, title);
 
       if (existingRecent) {
-        // Update existing post instead of creating duplicate
-        console.log('🔄 Preventing duplicate - updating existing post:', existingRecent.ID);
-
-        await existingRecent.update({
-          post_content: content,
-          post_excerpt: description || '',
-          post_modified: new Date(),
-          post_date_gmt: new Date()
-        });
-
-        // Helper function to update post metadata
-        const updatePostMeta = async (postId, metaKey, metaValue) => {
-          await PostMeta.upsert({
-            post_id: postId,
-            meta_key: metaKey,
-            meta_value: metaValue
-          });
-        };
-
-        // Update metadata
-        if (summary_social) {
-          await updatePostMeta(existingRecent.ID, '_summary_social', summary_social);
-        }
-        if (channel) {
-          await updatePostMeta(existingRecent.ID, '_channel', channel);
-        }
-        if (publish_date) {
-          await updatePostMeta(existingRecent.ID, '_publish_date', publish_date);
-          // Also store scheduled_publish_date for scheduler
-          const scheduledDate = new Date(publish_date);
-          if (scheduledDate > new Date()) {
-            await updatePostMeta(existingRecent.ID, '_scheduled_publish_date', publish_date);
-          }
-        }
-        if (location) {
-          await updatePostMeta(existingRecent.ID, '_location', location);
-        }
-        if (mark_as_18_plus !== undefined) {
-          await updatePostMeta(existingRecent.ID, '_mark_as_18_plus', mark_as_18_plus ? '1' : '0');
-        }
-        if (featured_image) {
-          // Find attachment post by GUID to get the correct ID
-          const attachment = await Post.findOne({
-            where: { guid: featured_image, post_type: 'attachment' }
-          });
-
-          if (attachment) {
-            await updatePostMeta(existingRecent.ID, '_thumbnail_id', attachment.ID);
-            console.log(`🖼️ Featured image set for post ${existingRecent.ID}: ${attachment.ID}`);
-          }
-        }
-        if (featured_image_caption !== undefined) {
-          await updatePostMeta(existingRecent.ID, '_thumbnail_caption', featured_image_caption || '');
-
-          if (featured_image) {
-            const existingAttachment = await Post.findOne({
-              where: { guid: featured_image, post_type: 'attachment' }
-            });
-
-            if (existingAttachment && featured_image_caption) {
-              await existingAttachment.update({
-                post_title: featured_image_caption,
-                post_excerpt: featured_image_caption
-              });
-            }
-          }
-        }
-        if (image_captions && typeof image_captions === 'object') {
-          await updatePostMeta(existingRecent.ID, '_image_captions', JSON.stringify(image_captions));
-        }
-
+        await WriterService.updateExistingPost(existingRecent, req.body);
         return res.status(200).json({
           success: true,
           message: 'Post updated successfully (duplicate prevented)',
@@ -164,84 +60,11 @@ class WriterController {
 
       // For drafts, check if user already has a draft with the same title
       // If found, update instead of creating duplicate
-      if (status === 'draft') {
-        const existingDraft = await Post.findOne({
-          where: {
-            post_author: req.user.ID,
-            post_title: title,
-            post_status: 'draft',
-            post_type: 'post'
-          }
-        });
+      if (desiredStatus === 'draft') {
+        const existingDraft = await WriterService.findDraftDuplicate(req.user.ID, title);
 
         if (existingDraft) {
-          // Update existing draft instead of creating new one
-          console.log('🔄 Updating existing draft:', existingDraft.ID);
-          
-          await existingDraft.update({
-            post_content: content,
-            post_excerpt: description || '',
-            post_modified: new Date(),
-            post_date_gmt: new Date()
-          });
-
-          // Helper function to update post metadata
-          const updatePostMeta = async (postId, metaKey, metaValue) => {
-            await PostMeta.upsert({
-              post_id: postId,
-              meta_key: metaKey,
-              meta_value: metaValue
-            });
-          };
-
-          // Update metadata
-          if (summary_social) {
-            await updatePostMeta(existingDraft.ID, '_summary_social', summary_social);
-          }
-          if (channel) {
-            await updatePostMeta(existingDraft.ID, '_channel', channel);
-          }
-          if (publish_date) {
-            await updatePostMeta(existingDraft.ID, '_publish_date', publish_date);
-          }
-          if (location) {
-            await updatePostMeta(existingDraft.ID, '_location', location);
-          }
-          if (mark_as_18_plus !== undefined) {
-            await updatePostMeta(existingDraft.ID, '_mark_as_18_plus', mark_as_18_plus ? '1' : '0');
-          }
-          if (featured_image) {
-            // Find attachment post by GUID to get the correct ID
-            const attachment = await Post.findOne({
-              where: { guid: featured_image, post_type: 'attachment' }
-            });
-            
-            if (attachment) {
-              // Save attachment ID, not the URL
-              await updatePostMeta(existingDraft.ID, '_thumbnail_id', attachment.ID);
-              console.log(`🖼️ Featured image set for draft ${existingDraft.ID}: ${attachment.ID} (${featured_image})`);
-            } else {
-              console.warn(`❌ Attachment not found for URL: ${featured_image}`);
-            }
-          }
-          if (featured_image_caption !== undefined) {
-            await updatePostMeta(existingDraft.ID, '_thumbnail_caption', featured_image_caption || '');
-            
-            // Also update attachment post if exists
-            if (featured_image) {
-              const existingAttachment = await Post.findOne({
-                where: { guid: featured_image, post_type: 'attachment' }
-              });
-              
-              if (existingAttachment && featured_image_caption) {
-                await existingAttachment.update({
-                  post_title: featured_image_caption,
-                  post_excerpt: featured_image_caption
-                });
-              }
-            }
-          }
-
+          await WriterService.updateExistingPost(existingDraft, req.body);
           return res.status(200).json({
             success: true,
             message: 'Draft updated successfully',
@@ -255,57 +78,10 @@ class WriterController {
         }
       }
 
-      // Debug: Check publish_date
-      console.log('📅 WriterController: Creating article with publish_date:', {
-        publish_date_raw: publish_date,
-        publish_date_parsed: publish_date ? new Date(publish_date) : 'using current date',
-        current_time: new Date()
-      });
-
       // Determine post status and scheduled date
       // Parse publish_date treating it as WIB (UTC+7) if no timezone specified
-      let publishDate;
-      if (publish_date) {
-        publishDate = new Date(publish_date);
-        // If no timezone in string, assume it's WIB and convert to UTC
-        if (!publish_date.includes('Z') && !publish_date.match(/[+-]\d{2}:?\d{2}$/)) {
-          const wibOffset = 7 * 60; // WIB is UTC+7
-          const localOffset = publishDate.getTimezoneOffset(); // Server timezone offset
-          const adjustmentMinutes = wibOffset + localOffset;
-          publishDate = new Date(publishDate.getTime() + (adjustmentMinutes * 60 * 1000));
-        }
-      } else {
-        publishDate = new Date();
-      }
-      const now = new Date();
-      const isFuturePost = publishDate > now;
-
-      let postStatus;
-      let scheduledPublishDate = null;
-
-      // Admin and SuperAdmin can publish/schedule directly
-      if (req.user.user_role === 'admin' || req.user.user_role === 'superadmin') {
-        if (status === 'published') {
-          if (isFuturePost) {
-            postStatus = 'future';
-            scheduledPublishDate = publishDate;
-          } else {
-            postStatus = 'publish';
-          }
-        } else {
-          postStatus = 'draft';
-        }
-      } else {
-        // Writers need approval for publishing
-        if (status === 'published') {
-          postStatus = 'pending'; // Always pending for writers, regardless of date
-          if (isFuturePost) {
-            scheduledPublishDate = publishDate; // Store scheduled date for after approval
-          }
-        } else {
-          postStatus = 'draft';
-        }
-      }
+      const { publishDate, isFuturePost } = WriterService.parsePublishDateWIB(publish_date);
+      const { postStatus, scheduledPublishDate } = WriterService.determinePostStatus(req.user.user_role, desiredStatus, isFuturePost, publishDate);
 
       // Create post
       const post = await Post.create({
@@ -328,98 +104,25 @@ class WriterController {
         post_password: ''
       }, { transaction });
 
-      // Handle featured image
-      let thumbnailId = null;
-      
-      if (featured_image) {
-        
-        try {
-          // Find existing attachment post for the image
-          const existingAttachment = await Post.findOne({
-            where: { guid: featured_image, post_type: 'attachment' }
-          });
+      const thumbnailId = await WriterService.handleFeaturedImage({ featured_image, featured_image_caption, userId: req.user.ID, title, transaction });
 
-          if (existingAttachment) {
-            thumbnailId = existingAttachment.ID;
-            
-            // Update existing attachment with caption if provided
-            if (featured_image_caption) {
-              await existingAttachment.update({
-                post_title: featured_image_caption,
-                post_excerpt: featured_image_caption
-              }, { transaction });
-            }
-          } else {
-            // Create new attachment post
-            const attachmentPost = await Post.create({
-              post_author: req.user.ID,
-              post_date: new Date(),
-              post_date_gmt: new Date(),
-              post_content: '',
-              post_title: featured_image_caption || `Featured image for ${title}`,
-              post_excerpt: featured_image_caption || '',
-              post_status: 'inherit',
-              comment_status: 'closed',
-              ping_status: 'closed',
-              post_name: '',
-              post_type: 'attachment',
-              to_ping: '',
-              pinged: '',
-              post_content_filtered: '',
-              guid: featured_image,
-              post_password: '',
-              post_mime_type: 'image/jpeg'
-            }, { transaction });
-            
-            thumbnailId = attachmentPost.ID;
-          }
-        } catch (attachmentError) {
-          console.error('❌ Error handling featured image attachment:', attachmentError);
-          // Continue without featured image instead of failing entire article creation
-          thumbnailId = null;
-        }
-      }
+      const metaData = WriterService.buildMetaData({
+        postId: post.ID,
+        description,
+        summary_social,
+        channel,
+        topic,
+        keyword,
+        location,
+        mark_as_18_plus,
+        editUserId: req.user.ID,
+        scheduledPublishDate,
+        thumbnailId,
+        featured_image_caption,
+        image_captions
+      });
 
-      // Create post meta
-      const metaData = [
-        { post_id: post.ID, meta_key: '_aioseo_description', meta_value: description },
-        { post_id: post.ID, meta_key: '_summary_social', meta_value: summary_social },
-        { post_id: post.ID, meta_key: '_channel', meta_value: channel },
-        { post_id: post.ID, meta_key: '_topic', meta_value: topic || '' },
-        { post_id: post.ID, meta_key: '_keyword', meta_value: keyword || '' },
-        { post_id: post.ID, meta_key: '_location', meta_value: location || '' },
-        { post_id: post.ID, meta_key: '_mark_as_18_plus', meta_value: mark_as_18_plus ? '1' : '0' },
-        { post_id: post.ID, meta_key: '_edit_last', meta_value: req.user.ID.toString() }
-      ];
-
-      // Store scheduled date in metadata if exists
-      if (scheduledPublishDate) {
-        metaData.push({
-          post_id: post.ID,
-          meta_key: '_scheduled_publish_date',
-          meta_value: scheduledPublishDate.toISOString()
-        });
-      }
-
-      // Add thumbnail ID if we have featured image
-      if (thumbnailId) {
-        metaData.push({ post_id: post.ID, meta_key: '_thumbnail_id', meta_value: thumbnailId.toString() });
-      }
-      
-      // Add thumbnail caption if provided
-      if (featured_image_caption !== undefined) {
-        metaData.push({ post_id: post.ID, meta_key: '_thumbnail_caption', meta_value: featured_image_caption || '' });
-      }
-
-      // Add image captions if provided
-      if (image_captions && typeof image_captions === 'object') {
-        console.log(`📸 [CREATE] Saving image captions for post ${post.ID}:`, Object.keys(image_captions).length, 'images');
-        metaData.push({ post_id: post.ID, meta_key: '_image_captions', meta_value: JSON.stringify(image_captions) });
-      } else {
-        console.log(`📸 [CREATE] No image captions provided for post ${post.ID}. Type:`, typeof image_captions, 'Value:', image_captions);
-      }
-
-      await PostMeta.bulkCreate(metaData, { transaction });
+      await WriterService.saveMeta(metaData, transaction);
 
       await transaction.commit();
 
@@ -844,25 +547,31 @@ class WriterController {
       //   status: post.post_status
       // });
 
-      res.status(200).json({
-        success: true,
-        data: {
-          id: post.ID,
-          title: post.post_title,
-          content: post.post_content,
-          excerpt: post.post_excerpt,
-          slug: post.post_name,
-          status: post.post_status,
-          type: post.post_type,
-          date: post.post_date,
-          modified: post.post_modified,
-          author_id: post.post_author,
-          publish_date: post.post_date ? new Date(post.post_date).toISOString().slice(0, 16) : null,
-          location: metadata._location || '',
-          channel: metadata._channel || 'news',
-          topic: metadata._topic || '',
-          keyword: metadata._keyword || '',
-          summary_social: metadata._summary_social || '',
+      console.log('🔧 Debug: Found post for edit:', {
+        ID: post.ID,
+        title: post.post_title,
+        post_date: post.post_date
+      });
+
+        res.status(200).json({
+          success: true,
+          data: {
+            id: post.ID,
+            title: post.post_title,
+            content: post.post_content,
+            excerpt: post.post_excerpt,
+            slug: post.post_name,
+            status: post.post_status,
+            type: post.post_type,
+            date: post.post_date ? post.post_date : null,
+            modified: post.post_modified ? post.post_modified : null,
+            author_id: post.post_author,
+            publish_date: post.post_date ? post.post_date : null,
+            location: metadata._location || '',
+            channel: metadata._channel || 'news',
+            topic: metadata._topic || '',
+            keyword: metadata._keyword || '',
+            summary_social: metadata._summary_social || '',
           mark_as_18_plus: metadata._mark_as_18_plus === '1' || false,
           featured_image: featuredImageUrl,
           featured_image_caption: metadata._thumbnail_caption || '',
