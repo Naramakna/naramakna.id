@@ -107,6 +107,105 @@ app.use((req, res, next) => {
 // IP and Location tracking middleware
 app.use(ipTracker);
 
+app.use((req, res, next) => {
+  const start = process.hrtime.bigint();
+  const { randomUUID } = require('crypto');
+  const request_id = typeof randomUUID === 'function' ? randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  req.request_id = request_id;
+  let responseBody;
+  const originalJson = res.json.bind(res);
+  const originalSend = res.send.bind(res);
+  res.json = function (body) {
+    responseBody = body;
+    return originalJson(body);
+  };
+  res.send = function (body) {
+    responseBody = body;
+    return originalSend(body);
+  };
+  res.on('finish', () => {
+    const end = process.hrtime.bigint();
+    const durationMs = Number((end - start) / 1000000n);
+    const ip = (req.location && req.location.ip) || req.ip || (req.headers['x-forwarded-for'] || '');
+  const logEntry = {
+      timestamp: new Date().toISOString(),
+      status: res.statusCode < 400 ? 'SUCCESS' : 'ERROR',
+      request_id,
+      ip,
+      method: req.method,
+      path: req.originalUrl || req.url,
+      query: req.query || {},
+      headers: {
+        user_agent: req.headers['user-agent'] || '',
+        content_type: req.headers['content-type'] || ''
+      },
+      body: (function maskSensitive(obj) {
+        try {
+          if (Array.isArray(obj)) return undefined;
+          if (!obj || typeof obj !== 'object') return obj;
+          const redactKeys = ['password', 'pass', 'authorization', 'token', 'access_token', 'refresh_token'];
+          const walk = (input) => {
+            if (Array.isArray(input)) return undefined;
+            if (input && typeof input === 'object') {
+              const out = {};
+              for (const k of Object.keys(input)) {
+                if (redactKeys.includes(k.toLowerCase())) out[k] = '[REDACTED]';
+                else out[k] = walk(input[k]);
+              }
+              return out;
+            }
+            return input;
+          };
+          return walk(obj);
+        } catch (e) {
+          return {};
+        }
+      })(req.body),
+      response_status: res.statusCode,
+      response_time_ms: durationMs,
+      response_body: (function sanitizeResponse(body) {
+        try {
+          if (!body) return {};
+          if (typeof body === 'string') {
+            try { const parsed = JSON.parse(body); return Array.isArray(parsed) ? undefined : parsed; } catch { return { data: body }; }
+          }
+          if (Array.isArray(body)) return undefined;
+          return (function maskSensitive(obj) {
+            try {
+              if (Array.isArray(obj)) return undefined;
+              if (!obj || typeof obj !== 'object') return obj;
+              const redactKeys = ['password', 'pass', 'authorization', 'token', 'access_token', 'refresh_token'];
+              const walk = (input) => {
+                if (Array.isArray(input)) return undefined;
+                if (input && typeof input === 'object') {
+                  const out = {};
+                  for (const k of Object.keys(input)) {
+                    if (redactKeys.includes(k.toLowerCase())) out[k] = '[REDACTED]';
+                    else out[k] = walk(input[k]);
+                  }
+                  return out;
+                }
+                return input;
+              };
+              return walk(obj);
+            } catch (e) {
+              return {};
+            }
+          })(body);
+        } catch (e) {
+          return {};
+        }
+      })(responseBody)
+    };
+    try {
+      console.log(JSON.stringify(logEntry));
+    } catch (e) {
+      console.log('{}');
+    }
+  });
+  next();
+});
+
 // Request Deduplication Middleware (CPU Spike Prevention)
 // DISABLED - causing pending request issues when errors occur
 // app.use(requestDeduplication(1000)); // 1 second deduplication window
