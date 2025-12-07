@@ -191,7 +191,8 @@ class UserController {
                 user_status,
                 user_url,
                 bio,
-                user_login
+                user_login,
+                new_password
             } = req.body;
 
             const targetUser = await User.findByPk(id);
@@ -291,6 +292,25 @@ class UserController {
 
                 if (user_status !== undefined) {
                     updates.user_status = parseInt(user_status);
+                }
+
+                // Allow admin to update password for any user
+                if (new_password !== undefined) {
+                    const pwd = String(new_password);
+                    if (!pwd || pwd.length < 8) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'Password must be at least 8 characters'
+                        });
+                    }
+                    // Prevent non-superadmin from modifying superadmin accounts
+                    if (targetUser.user_role === USER_ROLES.SUPERADMIN && currentUser.user_role !== USER_ROLES.SUPERADMIN) {
+                        return res.status(403).json({
+                            success: false,
+                            message: 'Only superadmin can modify superadmin accounts'
+                        });
+                    }
+                    updates.user_pass = pwd; // Will be hashed by model hook
                 }
             }
 

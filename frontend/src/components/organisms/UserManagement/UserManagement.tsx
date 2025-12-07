@@ -22,6 +22,7 @@ interface UserManagementProps {
   onUnsuspendUser?: (userId: number) => void;
   onDeleteUser?: (userId: number) => void;
   onEditUser?: (userId: number, data: { user_login?: string; user_email?: string; user_role?: string; user_status?: number | string }) => void;
+  onUpdatePassword?: (userId: number, newPassword: string) => void;
   showActions?: boolean;
 }
 
@@ -36,10 +37,13 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   onUnsuspendUser,
   onDeleteUser,
   onEditUser,
+  onUpdatePassword,
   showActions = false
 }) => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form, setForm] = useState<{ user_login: string; user_email: string; user_role: string; user_status: string } | null>(null);
+  const [changingPasswordUser, setChangingPasswordUser] = useState<User | null>(null);
+  const [passwordForm, setPasswordForm] = useState<{ password: string; confirm: string } | null>(null);
 
   const openEdit = (user: User) => {
     setEditingUser(user);
@@ -54,6 +58,34 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   const closeEdit = () => {
     setEditingUser(null);
     setForm(null);
+  };
+
+  const openChangePassword = (user: User) => {
+    setChangingPasswordUser(user);
+    setPasswordForm({ password: '', confirm: '' });
+  };
+
+  const closeChangePassword = () => {
+    setChangingPasswordUser(null);
+    setPasswordForm(null);
+  };
+
+  const saveChangePassword = () => {
+    if (!changingPasswordUser || !passwordForm || !onUpdatePassword) return;
+    const { password, confirm } = passwordForm;
+    if (password.length < 8) {
+      alert('Password minimal 8 karakter');
+      return;
+    }
+    if (password !== confirm) {
+      alert('Konfirmasi Password tidak sama');
+      return;
+    }
+    if (!window.confirm(`Update password untuk user "${changingPasswordUser.display_name || changingPasswordUser.user_login}"?`)) {
+      return;
+    }
+    onUpdatePassword(changingPasswordUser.ID, password);
+    closeChangePassword();
   };
 
   const saveEdit = () => {
@@ -117,6 +149,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({
             className="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs font-medium"
           >
             Edit
+          </button>
+        )}
+        {onUpdatePassword && (user.user_role !== 'superadmin' || currentUserRole === 'superadmin') && (
+          <button
+            onClick={() => openChangePassword(user)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded text-xs font-medium"
+            title="Update Password"
+          >
+            Update Password
           </button>
         )}
         {onPromoteToAdmin && (user.user_role === 'user' || user.user_role === 'writer') && (
@@ -246,6 +287,47 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                 className="px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700"
               >
                 Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {changingPasswordUser && passwordForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Update Password</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                <input
+                  type="password"
+                  value={passwordForm.password}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, password: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Konfirmasi Password</label>
+                <input
+                  type="password"
+                  value={passwordForm.confirm}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={closeChangePassword}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveChangePassword}
+                className="px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+              >
+                Update
               </button>
             </div>
           </div>

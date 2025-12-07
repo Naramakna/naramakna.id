@@ -684,6 +684,32 @@ const SuperAdminDashboard: React.FC = () => {
     }
   };
 
+  const updateUserPassword = async (userId: number, newPassword: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(buildApiUrl(`users/${userId}`), {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ new_password: newPassword })
+      });
+
+      const result = await response.json();
+      if (response.ok && result.success) {
+        alert(result.message || 'Password user berhasil diupdate!');
+        fetchData();
+      } else {
+        alert(result.message || 'Gagal update password user');
+      }
+    } catch (error) {
+      console.error('Error updating user password:', error);
+      alert('Error updating user password');
+    }
+  };
+
 
 
 
@@ -760,6 +786,7 @@ const SuperAdminDashboard: React.FC = () => {
                   onDeleteUser={deleteUser}
                   title="All Users Management"
                   onEditUser={editUser}
+                  onUpdatePassword={updateUserPassword}
                   showActions={true}
                 />
               )}
@@ -775,6 +802,7 @@ const SuperAdminDashboard: React.FC = () => {
                   onDeleteUser={deleteUser}
                   title="Admin Management"
                   onEditUser={editUser}
+                  onUpdatePassword={updateUserPassword}
                   showActions={true}
                 />
               )}
