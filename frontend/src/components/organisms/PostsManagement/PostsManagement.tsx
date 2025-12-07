@@ -24,6 +24,7 @@ interface Post {
   };
   view_count?: number;
   views?: number;
+  featured_image?: string;
 }
 
 interface FilterState {
@@ -35,6 +36,9 @@ interface FilterState {
   maxViews: string;
   sortBy: string;
   sortOrder: string;
+  startDate?: string;
+  endDate?: string;
+  title?: string;
 }
 
 interface PaginationState {
@@ -60,6 +64,7 @@ interface PostsManagementProps {
   users?: User[];
   onFilterChange: (key: string, value: string) => void;
   onResetFilters: () => void;
+  onApplyFilters: () => void;
   onToggleFilters: () => void;
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (itemsPerPage: number) => void;
@@ -77,6 +82,7 @@ export const PostsManagement: React.FC<PostsManagementProps> = ({
   users = [],
   onFilterChange,
   onResetFilters,
+  onApplyFilters,
   onToggleFilters,
   onPageChange,
   onItemsPerPageChange,
@@ -155,6 +161,26 @@ export const PostsManagement: React.FC<PostsManagementProps> = ({
           onChange={(e) => handlePostSelection(post.id || post.ID || 0, e.target.checked)}
           className="rounded border-gray-300 text-red-600 focus:ring-red-500"
         />
+      )
+    },
+    {
+      key: 'image',
+      label: 'Image',
+      render: (_: any, post: Post) => (
+        <div className="h-12 w-20">
+          {post.featured_image ? (
+            <img
+              src={post.featured_image}
+              alt={post.title || post.post_title || 'Thumbnail'}
+              className="h-full w-full object-cover rounded border border-gray-200"
+              loading="lazy"
+            />
+          ) : (
+            <div className="h-full w-full bg-gray-100 border border-gray-200 rounded flex items-center justify-center text-xs text-gray-500">
+              No Image
+            </div>
+          )}
+        </div>
       )
     },
     {
@@ -296,6 +322,7 @@ export const PostsManagement: React.FC<PostsManagementProps> = ({
         users={users}
         onFilterChange={onFilterChange}
         onResetFilters={onResetFilters}
+        onApplyFilters={onApplyFilters}
         onClose={() => onToggleFilters()}
         isVisible={showFilters}
       />

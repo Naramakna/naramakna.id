@@ -9,6 +9,9 @@ interface FilterState {
   maxViews: string;
   sortBy: string;
   sortOrder: string;
+  startDate?: string;
+  endDate?: string;
+  title?: string;
 }
 
 interface User {
@@ -22,6 +25,7 @@ interface FilterPanelProps {
   filters: FilterState;
   onFilterChange: (key: string, value: string) => void;
   onResetFilters: () => void;
+  onApplyFilters: () => void;
   onClose: () => void;
   isVisible: boolean;
   users?: User[]; // Add users prop for dropdown
@@ -31,6 +35,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
   filters,
   onFilterChange,
   onResetFilters,
+  onApplyFilters,
   onClose,
   isVisible,
   users = []
@@ -71,6 +76,18 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
             <option value="pending">Pending</option>
             <option value="trash">Trash</option>
           </select>
+        </div>
+
+        {/* Title Filter */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
+          <input
+            type="text"
+            placeholder="Search title..."
+            value={filters.title || ''}
+            onChange={(e) => onFilterChange('title', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
+          />
         </div>
 
         {/* Year Filter */}
@@ -116,6 +133,28 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        {/* Publish Date From */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Publish From</label>
+          <input
+            type="date"
+            value={filters.startDate || ''}
+            onChange={(e) => onFilterChange('startDate', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
+          />
+        </div>
+
+        {/* Publish Date To */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Publish To</label>
+          <input
+            type="date"
+            value={filters.endDate || ''}
+            onChange={(e) => onFilterChange('endDate', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
+          />
+        </div>
+
         {/* Min Views */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Min Views</label>
@@ -179,7 +218,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
           Reset Filters
         </button>
         <button
-          onClick={onClose}
+          onClick={onApplyFilters}
           className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
         >
           Apply Filters

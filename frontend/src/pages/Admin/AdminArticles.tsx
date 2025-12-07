@@ -21,6 +21,7 @@ interface Article {
   view_count?: number;
   views?: number; // Alternative field name
   categories?: Category[];
+  featured_image?: string;
 }
 
 interface Category {
@@ -315,6 +316,9 @@ export const AdminArticles: React.FC = () => {
                   />
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Image
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Title
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -337,7 +341,7 @@ export const AdminArticles: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={8} className="px-6 py-12 text-center">
                     <div className="flex justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                     </div>
@@ -345,7 +349,7 @@ export const AdminArticles: React.FC = () => {
                 </tr>
               ) : articles.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                     No articles found
                   </td>
                 </tr>
@@ -361,6 +365,20 @@ export const AdminArticles: React.FC = () => {
                         onChange={() => handleSelectArticle(articleId)}
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {article.featured_image ? (
+                        <img
+                          src={article.featured_image}
+                          alt={article.title || article.post_title || 'Thumbnail'}
+                          className="h-12 w-20 object-cover rounded border border-gray-200"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="h-12 w-20 bg-gray-100 border border-gray-200 rounded flex items-center justify-center text-xs text-gray-500">
+                          No Image
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="max-w-xs">

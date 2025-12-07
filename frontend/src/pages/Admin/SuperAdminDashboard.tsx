@@ -142,7 +142,23 @@ const SuperAdminDashboard: React.FC = () => {
     minViews: '',
     maxViews: '',
     sortBy: 'date',
-    sortOrder: 'DESC'
+    sortOrder: 'DESC',
+    title: '',
+    startDate: '',
+    endDate: ''
+  });
+  const [filtersDraft, setFiltersDraft] = useState({
+    author: '',
+    status: '',
+    year: '',
+    month: '',
+    minViews: '',
+    maxViews: '',
+    sortBy: 'date',
+    sortOrder: 'DESC',
+    title: '',
+    startDate: '',
+    endDate: ''
   });
   const [showFilters, setShowFilters] = useState(false);
   
@@ -280,19 +296,14 @@ const SuperAdminDashboard: React.FC = () => {
 
   // Filter handling functions
   const handleFilterChange = (key: string, value: string) => {
-    setFilters(prev => ({
+    setFiltersDraft(prev => ({
       ...prev,
       [key]: value
-    }));
-    // Reset to first page when filters change
-    setPagination(prev => ({
-      ...prev,
-      currentPage: 1
     }));
   };
 
   const resetFilters = () => {
-    setFilters({
+    setFiltersDraft({
       author: '',
       status: '',
       year: '',
@@ -300,12 +311,20 @@ const SuperAdminDashboard: React.FC = () => {
       minViews: '',
       maxViews: '',
       sortBy: 'date',
-      sortOrder: 'DESC'
+      sortOrder: 'DESC',
+      title: '',
+      startDate: '',
+      endDate: ''
     });
+  };
+
+  const applyFilters = () => {
+    setFilters(filtersDraft);
     setPagination(prev => ({
       ...prev,
       currentPage: 1
     }));
+    setShowFilters(false);
   };
 
   // Pagination functions
@@ -720,12 +739,13 @@ const SuperAdminDashboard: React.FC = () => {
                 <PostsManagement
                   posts={posts}
                   loading={loading}
-                  filters={filters}
+                  filters={filtersDraft}
                   showFilters={showFilters}
                   pagination={pagination}
                   users={users}
                   onFilterChange={handleFilterChange}
                   onResetFilters={resetFilters}
+                  onApplyFilters={applyFilters}
                   onToggleFilters={() => setShowFilters(!showFilters)}
                   onPageChange={handlePageChange}
                   onItemsPerPageChange={handleItemsPerPageChange}

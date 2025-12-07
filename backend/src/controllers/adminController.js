@@ -1,4 +1,4 @@
-const {User, Post, Comment, UserProfile, Analytics, Advertisement, Image, Option, sequelize} = require('../models');
+const {User, Post, PostMeta, Comment, UserProfile, Analytics, Advertisement, Image, Option, sequelize} = require('../models');
 const { Op } = require('sequelize');
 
 class AdminController {
@@ -1273,6 +1273,18 @@ class AdminController {
           // Apply filters if provided
           if (filters.status) whereClause.post_status = filters.status;
           if (filters.author) whereClause.post_author = filters.author;
+          if (filters.title) {
+            whereClause[Op.or] = [
+              { post_title: { [Op.like]: `%${filters.title}%` } },
+              { post_excerpt: { [Op.like]: `%${filters.title}%` } }
+            ];
+          }
+          if (filters.startDate || filters.endDate) {
+            whereClause.post_date = {
+              ...(filters.startDate ? { [Op.gte]: filters.startDate } : {}),
+              ...(filters.endDate ? { [Op.lte]: filters.endDate } : {})
+            };
+          }
 
           const sortOrder = filters.sortOrder || 'DESC';
 
@@ -1282,15 +1294,45 @@ class AdminController {
               'ID', 'post_title', 'post_excerpt', 'post_status', 'post_date',
               'post_author', 'comment_count', 'view_count'
             ],
-            include: [{
-              model: User,
-              as: 'author',
-              attributes: ['ID', 'display_name']
-            }],
+            include: [
+              {
+                model: User,
+                as: 'author',
+                attributes: ['ID', 'display_name']
+              },
+              {
+                model: PostMeta,
+                as: 'meta',
+                attributes: ['meta_key', 'meta_value'],
+                required: false
+              }
+            ],
             limit: parseInt(limit),
             offset: parseInt(offset),
             order: [['post_date', sortOrder]]
           });
+
+          // Build thumbnail map in one batch to avoid N+1
+          const thumbnailIds = [];
+          rows.forEach(post => {
+            const meta = post.meta || [];
+            const thumbMeta = meta.find(m => m.meta_key === '_thumbnail_id');
+            if (thumbMeta && thumbMeta.meta_value) {
+              const id = parseInt(thumbMeta.meta_value);
+              if (!Number.isNaN(id)) thumbnailIds.push(id);
+            }
+          });
+
+          let thumbnailMap = {};
+          if (thumbnailIds.length > 0) {
+            const thumbnails = await Post.findAll({
+              where: { ID: { [Op.in]: thumbnailIds } },
+              attributes: ['ID', 'guid', 'post_title']
+            });
+            thumbnails.forEach(t => {
+              thumbnailMap[t.ID] = { guid: t.guid, title: t.post_title };
+            });
+          }
 
           return {
             posts: rows.map(post => ({
@@ -1308,7 +1350,17 @@ class AdminController {
               author: post.author,
               comment_count: post.comment_count,
               view_count: post.view_count || 0,
-              views: post.view_count || 0
+              views: post.view_count || 0,
+              featured_image: (() => {
+                const meta = post.meta || [];
+                const thumbMeta = meta.find(m => m.meta_key === '_thumbnail_id');
+                if (thumbMeta && thumbMeta.meta_value) {
+                  const id = parseInt(thumbMeta.meta_value);
+                  const thumb = thumbnailMap[id];
+                  return thumb ? thumb.guid : undefined;
+                }
+                return undefined;
+              })()
             })),
             pagination: {
               currentPage: parseInt(page),
