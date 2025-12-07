@@ -190,7 +190,8 @@ class UserController {
                 user_role,
                 user_status,
                 user_url,
-                bio
+                bio,
+                user_login
             } = req.body;
 
             const targetUser = await User.findByPk(id);
@@ -244,6 +245,29 @@ class UserController {
 
             // Admin-only fields
             if (isAdmin) {
+                if (user_login !== undefined && user_login !== targetUser.user_login) {
+                    const newLogin = String(user_login).trim();
+                    if (!newLogin || newLogin.length < 3 || newLogin.length > 30) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'Invalid username length'
+                        });
+                    }
+                    const existingLogin = await User.findOne({
+                        where: {
+                            user_login: newLogin,
+                            ID: { [Op.ne]: targetUser.ID }
+                        }
+                    });
+                    if (existingLogin) {
+                        return res.status(409).json({
+                            success: false,
+                            message: 'Username already in use'
+                        });
+                    }
+                    updates.user_login = newLogin;
+                    updates.user_nicename = newLogin.toLowerCase();
+                }
                 if (user_role !== undefined) {
                     // Prevent users from promoting themselves to superadmin
                     if (user_role === USER_ROLES.SUPERADMIN && currentUser.user_role !== USER_ROLES.SUPERADMIN) {

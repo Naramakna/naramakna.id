@@ -29,6 +29,14 @@ interface User {
 }
 
 
+const normalizeUserStatus = (s: any): string => {
+  if (s === 1 || s === '1' || s === 'active') return 'active';
+  if (s === 2 || s === '2' || s === 'suspended') return 'suspended';
+  if (s === 0 || s === '0' || s === 'pending') return 'pending';
+  return typeof s === 'string' ? s : '';
+};
+
+
 
 interface Post {
   ID?: number;
@@ -219,17 +227,27 @@ const SuperAdminDashboard: React.FC = () => {
 
       // Set users data
       if (usersData.success) {
-        setUsers(usersData.data.users);
+        setUsers((usersData.data.users || []).map((u: any) => ({
+          ...u,
+          user_status: normalizeUserStatus(u.user_status)
+        })));
       }
 
       // Set admin users from dedicated API query
       if (adminUsersData.success) {
-        setAdmins(adminUsersData.data.users || []);
+        const adminList = (adminUsersData.data.users || []).map((u: any) => ({
+          ...u,
+          user_status: normalizeUserStatus(u.user_status)
+        }));
+        setAdmins(adminList);
       } else {
         // Fallback: filter admins from users list
-        const adminUsers = usersData.data?.users?.filter((user: User) =>
-          user.user_role === 'admin' || user.user_role === 'superadmin'
-        ) || [];
+        const adminUsers = (usersData.data?.users || [])
+          .filter((user: any) => user.user_role === 'admin' || user.user_role === 'superadmin')
+          .map((u: any) => ({
+            ...u,
+            user_status: normalizeUserStatus(u.user_status)
+          }));
         setAdmins(adminUsers);
       }
 
@@ -640,6 +658,32 @@ const SuperAdminDashboard: React.FC = () => {
     }
   };
 
+  const editUser = async (userId: number, data: { user_login?: string; user_email?: string; user_role?: string; user_status?: number | string }) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(buildApiUrl(`users/${userId}`), {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(data)
+      });
+
+      const result = await response.json();
+      if (response.ok && result.success) {
+        alert(result.message || 'User updated successfully!');
+        fetchData();
+      } else {
+        alert(result.message || 'Failed to update user');
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
+      alert('Error updating user');
+    }
+  };
+
 
 
 
@@ -715,6 +759,7 @@ const SuperAdminDashboard: React.FC = () => {
                   onUnsuspendUser={unsuspendUser}
                   onDeleteUser={deleteUser}
                   title="All Users Management"
+                  onEditUser={editUser}
                   showActions={true}
                 />
               )}
@@ -729,6 +774,7 @@ const SuperAdminDashboard: React.FC = () => {
                   onUnsuspendUser={unsuspendUser}
                   onDeleteUser={deleteUser}
                   title="Admin Management"
+                  onEditUser={editUser}
                   showActions={true}
                 />
               )}
