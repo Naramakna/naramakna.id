@@ -444,7 +444,9 @@ class SchedulerController {
       const now = new Date();
 
       // Find posts that should be published now
+      // limit to 100 posts per run
       const postsToPublish = await Post.findAll({
+        limit: 100,
         where: {
           [Op.or]: [
             // Legacy scheduled posts system

@@ -82,4 +82,4 @@ test('Sistem menangani 1000+ posting terjadwal secara efisien');
 ### Konfigurasi Cron
 ```bash
 # Entri crontab produksi
-*/5 * * * * cd /var/www/naramakna.id/backend && node cron/check-and-publish.js
+*/5 * * * * cd /home/naramakna/apps/naramakna.id/backend && docker compose exec backend node cron/check-and-publish.js

@@ -1,1 +1,0 @@
-export { ImageWithCaption } from './ImageWithCaption';

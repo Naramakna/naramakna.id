@@ -1,1 +1,0 @@
-export { ProfileInfoDisplay } from './ProfileInfoDisplay';

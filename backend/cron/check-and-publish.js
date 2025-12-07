@@ -1,18 +1,19 @@
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const SchedulerController = require('../src/controllers/schedulerController');
 const RedisLock = require('../src/services/redisLock');
+const logger = require('../src/utils/logger');
 
 async function checkAndPublish() {
   const lockKey = 'cron:publish-scheduled-posts';
   const lockValue = await RedisLock.acquire(lockKey, 120); // 2 min lock
 
   if (!lockValue) {
-    console.log('⏭️  Another instance is already publishing posts, skipping...');
+    logger.info('Cron skip: lock held by another instance');
     process.exit(0);
   }
 
   try {
-    console.log('🔍 Checking for posts to publish...');
+    logger.info('Cron check: publishing scheduled posts');
 
     // Check if there are any scheduled posts ready to publish
     const publishedPosts = await SchedulerController.publishScheduledPosts();
@@ -29,16 +30,16 @@ async function checkAndPublish() {
         second: '2-digit',
         timeZoneName: 'short'
       });
-      console.log(`📅 [${wibTime}] Published ${publishedPosts.length} scheduled posts`);
+      logger.info('Cron published scheduled posts', { time: wibTime, count: publishedPosts.length });
     } else {
-      console.log('📅 No posts to publish at this time');
+      logger.info('Cron no posts to publish');
     }
 
     // Exit cleanly
     process.exit(0);
 
   } catch (error) {
-    console.error('❌ Scheduler error:', error.message);
+    logger.error('Cron scheduler error', { message: error.message });
     process.exit(1);
   } finally {
     await RedisLock.release(lockKey, lockValue);

@@ -1,1 +1,0 @@
-export { TrendingList } from './TrendingList'; 

@@ -1,1 +1,0 @@
-export { ProfileBadge } from './ProfileBadge';

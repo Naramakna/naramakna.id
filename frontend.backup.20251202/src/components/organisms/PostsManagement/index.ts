@@ -1,1 +1,0 @@
-export { PostsManagement } from './PostsManagement';
