@@ -208,8 +208,8 @@ export const IndexBerita: React.FC = () => {
           rotationInterval={5000}
         />
 
-        {/* Video Section */}
-        <VideoSection />
+        {/* Video Section Tiktok */}
+        {/* <VideoSection /> */}
         
         {/* Polling Section */}
         <PollingMain />
