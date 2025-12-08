@@ -1303,7 +1303,7 @@ class AdminController {
               {
                 model: PostMeta,
                 as: 'meta',
-                attributes: ['meta_key', 'meta_value'],
+                attributes: ['meta_id', 'meta_key', 'meta_value'],
                 required: false
               }
             ],
@@ -1316,9 +1316,11 @@ class AdminController {
           const thumbnailIds = [];
           rows.forEach(post => {
             const meta = post.meta || [];
-            const thumbMeta = meta.find(m => m.meta_key === '_thumbnail_id');
-            if (thumbMeta && thumbMeta.meta_value) {
-              const id = parseInt(thumbMeta.meta_value);
+            const latestThumb = meta
+              .filter(m => m.meta_key === '_thumbnail_id')
+              .sort((a, b) => (b.meta_id || 0) - (a.meta_id || 0))[0];
+            if (latestThumb && latestThumb.meta_value) {
+              const id = parseInt(latestThumb.meta_value);
               if (!Number.isNaN(id)) thumbnailIds.push(id);
             }
           });
@@ -1353,9 +1355,11 @@ class AdminController {
               views: post.view_count || 0,
               featured_image: (() => {
                 const meta = post.meta || [];
-                const thumbMeta = meta.find(m => m.meta_key === '_thumbnail_id');
-                if (thumbMeta && thumbMeta.meta_value) {
-                  const id = parseInt(thumbMeta.meta_value);
+                const latestThumb = meta
+                  .filter(m => m.meta_key === '_thumbnail_id')
+                  .sort((a, b) => (b.meta_id || 0) - (a.meta_id || 0))[0];
+                if (latestThumb && latestThumb.meta_value) {
+                  const id = parseInt(latestThumb.meta_value);
                   const thumb = thumbnailMap[id];
                   return thumb ? thumb.guid : undefined;
                 }

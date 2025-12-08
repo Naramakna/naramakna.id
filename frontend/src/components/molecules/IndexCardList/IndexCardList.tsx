@@ -99,9 +99,8 @@ export const IndexCardList: React.FC<IndexCardListProps> = ({
                 alt={article.title}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                  const fallbackDiv = e.currentTarget.parentElement?.querySelector('.fallback-placeholder');
-                  fallbackDiv?.classList.remove('hidden');
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = '/images/placeholder-gallery.jpg';
                 }}
               />
             ) : null}

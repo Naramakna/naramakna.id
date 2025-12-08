@@ -40,6 +40,10 @@ export const VideoItemGallery: React.FC<VideoItemGalleryProps> = ({
             src={imageSrc} 
             alt={title}
             className="w-full h-full object-cover"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = '/images/placeholder-gallery.jpg';
+            }}
           />
         ) : (
           <div className="w-full h-full bg-gray-300 flex items-center justify-center">

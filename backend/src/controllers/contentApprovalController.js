@@ -34,7 +34,7 @@ class ContentApprovalController {
           {
             model: PostMeta,
             as: 'meta',
-            attributes: ['meta_key', 'meta_value'],
+            attributes: ['meta_id', 'meta_key', 'meta_value'],
             required: false
           }
         ],
@@ -48,8 +48,14 @@ class ContentApprovalController {
         const postObj = post.toJSON();
         const metaObj = {};
         if (postObj.meta && Array.isArray(postObj.meta)) {
+          const latestMap = {};
           postObj.meta.forEach(m => {
-            metaObj[m.meta_key] = m.meta_value;
+            const k = m.meta_key;
+            const id = m.meta_id || 0;
+            if (!(k in latestMap) || id > latestMap[k]) {
+              latestMap[k] = id;
+              metaObj[k] = m.meta_value;
+            }
           });
         }
         delete postObj.meta;

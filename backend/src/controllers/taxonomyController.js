@@ -115,8 +115,14 @@ const taxonomyController = {
       const formattedPosts = posts.rows.map(post => {
         const metadata = {};
         if (post.meta) {
-          post.meta.forEach(meta => {
-            metadata[meta.meta_key] = meta.meta_value;
+          const latestMap = {};
+          post.meta.forEach(m => {
+            const k = m.meta_key;
+            const id = m.meta_id || 0;
+            if (!(k in latestMap) || id > latestMap[k]) {
+              latestMap[k] = id;
+              metadata[k] = m.meta_value;
+            }
           });
         }
 

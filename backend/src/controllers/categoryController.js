@@ -173,7 +173,14 @@ const categoryController = {
         LEFT JOIN term_relationships tr ON p.ID = tr.object_id
         LEFT JOIN term_taxonomy tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
         LEFT JOIN terms t ON tt.term_id = t.term_id
-        LEFT JOIN postmeta thumbnail_meta ON p.ID = thumbnail_meta.post_id AND thumbnail_meta.meta_key = '_thumbnail_id'
+        LEFT JOIN postmeta thumbnail_meta 
+          ON p.ID = thumbnail_meta.post_id 
+         AND thumbnail_meta.meta_key = '_thumbnail_id'
+         AND thumbnail_meta.meta_id = (
+           SELECT MAX(pm.meta_id) 
+           FROM postmeta pm 
+           WHERE pm.post_id = p.ID AND pm.meta_key = '_thumbnail_id'
+         )
         LEFT JOIN posts thumbnail_post ON thumbnail_meta.meta_value = thumbnail_post.ID
         WHERE p.post_status = 'publish'
         AND p.post_type = 'post'

@@ -330,6 +330,12 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
               allCaptionKeys: Object.keys(imageCaptions)
             });
             
+            // Inject onerror fallback to placeholder if not present
+            let newAttributes = attributes;
+            if (!/onerror=/i.test(newAttributes)) {
+              newAttributes = `${attributes} onerror="this.onerror=null;this.src='/images/placeholder-gallery.jpg'"`;
+            }
+
             // Split caption into 2 lines if it exists
             const captionLines = caption ? caption.split('\n') : ['', ''];
             const line1 = captionLines[0] || '';
@@ -337,12 +343,12 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
             
             // Return image with 2-line caption section below
             return `
-              ${match}
+              <img${newAttributes}>
               <div class="caption-container w-full flex flex-col items-center justify-center mt-3 mb-6">
                 <p class="text-sm text-gray-600 italic text-center leading-relaxed mx-auto">${line1}</p>
                 <p class="text-sm text-gray-600 italic text-center leading-relaxed mx-auto">${line2}</p>
               </div>
-            `;
+              `;
           }
           return match;
         }
@@ -381,6 +387,10 @@ export const ArticleContent: React.FC<ArticleContentProps> = ({
               alt={featuredImage.alt || 'Featured image'}
               className="w-full h-auto object-cover"
               style={{ maxHeight: '600px' }}
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = '/images/placeholder-gallery.jpg';
+              }}
             />
             {/* Zoom button overlay - Kumparan style */}
             <button className="absolute bottom-4 right-4 bg-black bg-opacity-60 text-white px-3 py-2 rounded-md text-sm hover:bg-opacity-80 transition-all duration-200 flex items-center space-x-1">

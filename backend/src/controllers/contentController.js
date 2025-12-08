@@ -43,9 +43,11 @@ class ContentController {
       const thumbnailIds = [];
       result.rows.forEach(post => {
         const meta = post.meta || [];
-        const thumbMeta = meta.find(m => m.meta_key === '_thumbnail_id');
-        if (thumbMeta && thumbMeta.meta_value) {
-          thumbnailIds.push(parseInt(thumbMeta.meta_value));
+        const latestThumb = meta
+          .filter(m => m.meta_key === '_thumbnail_id')
+          .sort((a, b) => (b.meta_id || 0) - (a.meta_id || 0))[0];
+        if (latestThumb && latestThumb.meta_value) {
+          thumbnailIds.push(parseInt(latestThumb.meta_value));
         }
       });
 
@@ -306,9 +308,11 @@ class ContentController {
       const thumbnailIds = [];
       result.rows.forEach(post => {
         const meta = post.meta || [];
-        const thumbMeta = meta.find(m => m.meta_key === '_thumbnail_id');
-        if (thumbMeta && thumbMeta.meta_value) {
-          thumbnailIds.push(parseInt(thumbMeta.meta_value));
+        const latestThumb = meta
+          .filter(m => m.meta_key === '_thumbnail_id')
+          .sort((a, b) => (b.meta_id || 0) - (a.meta_id || 0))[0];
+        if (latestThumb && latestThumb.meta_value) {
+          thumbnailIds.push(parseInt(latestThumb.meta_value));
         }
       });
 
@@ -564,6 +568,9 @@ class ContentController {
         });
       }
       const meta = req.body.meta ? JSON.parse(req.body.meta) : {};
+      const featured_image = req.body.featured_image;
+      const featured_image_caption = req.body.featured_image_caption;
+      const image_captions = req.body.image_captions;
       const categories = req.body.categories ? JSON.parse(req.body.categories) : [];
       
       // Skip validation to debug FormData issue
@@ -609,6 +616,48 @@ class ContentController {
             meta_value: typeof value === 'object' ? JSON.stringify(value) : value.toString()
           });
         }
+      }
+
+      let thumbnailId = null;
+      if (featured_image) {
+        const existingAttachment = await Post.findOne({ where: { guid: featured_image, post_type: 'attachment' } });
+        if (existingAttachment) {
+          thumbnailId = existingAttachment.ID;
+          if (featured_image_caption) {
+            await existingAttachment.update({ post_title: featured_image_caption, post_excerpt: featured_image_caption });
+          }
+        } else {
+          const attachmentPost = await Post.create({
+            post_author: author_id,
+            post_date: new Date(),
+            post_date_gmt: new Date(),
+            post_content: '',
+            post_title: featured_image_caption || `Featured image for ${title}`,
+            post_excerpt: featured_image_caption || '',
+            post_status: 'inherit',
+            comment_status: 'closed',
+            ping_status: 'closed',
+            post_name: '',
+            post_type: 'attachment',
+            to_ping: '',
+            pinged: '',
+            post_content_filtered: '',
+            guid: featured_image,
+            post_password: '',
+            post_mime_type: 'image/jpeg'
+          });
+          thumbnailId = attachmentPost.ID;
+        }
+      }
+
+      if (thumbnailId) {
+        await PostMeta.create({ post_id: post.ID, meta_key: '_thumbnail_id', meta_value: thumbnailId.toString() });
+      }
+      if (featured_image_caption !== undefined) {
+        await PostMeta.create({ post_id: post.ID, meta_key: '_thumbnail_caption', meta_value: featured_image_caption || '' });
+      }
+      if (image_captions && typeof image_captions === 'object') {
+        await PostMeta.create({ post_id: post.ID, meta_key: '_image_captions', meta_value: JSON.stringify(image_captions) });
       }
 
       // Add categories
@@ -662,7 +711,10 @@ class ContentController {
         excerpt,
         status,
         meta = {},
-        categories = []
+        categories = [],
+        featured_image,
+        featured_image_caption,
+        image_captions
       } = req.body;
 
       const post = await Post.findByPk(id);
@@ -691,6 +743,48 @@ class ContentController {
             meta_value: typeof value === 'object' ? JSON.stringify(value) : value.toString()
           });
         }
+      }
+
+      let thumbnailId = null;
+      if (featured_image) {
+        const existingAttachment = await Post.findOne({ where: { guid: featured_image, post_type: 'attachment' } });
+        if (existingAttachment) {
+          thumbnailId = existingAttachment.ID;
+          if (featured_image_caption) {
+            await existingAttachment.update({ post_title: featured_image_caption, post_excerpt: featured_image_caption });
+          }
+        } else {
+          const attachmentPost = await Post.create({
+            post_author: post.post_author,
+            post_date: new Date(),
+            post_date_gmt: new Date(),
+            post_content: '',
+            post_title: featured_image_caption || `Featured image for ${title || post.post_title}`,
+            post_excerpt: featured_image_caption || '',
+            post_status: 'inherit',
+            comment_status: 'closed',
+            ping_status: 'closed',
+            post_name: '',
+            post_type: 'attachment',
+            to_ping: '',
+            pinged: '',
+            post_content_filtered: '',
+            guid: featured_image,
+            post_password: '',
+            post_mime_type: 'image/jpeg'
+          });
+          thumbnailId = attachmentPost.ID;
+        }
+      }
+
+      if (thumbnailId) {
+        await PostMeta.upsert({ post_id: post.ID, meta_key: '_thumbnail_id', meta_value: thumbnailId.toString() });
+      }
+      if (featured_image_caption !== undefined) {
+        await PostMeta.upsert({ post_id: post.ID, meta_key: '_thumbnail_caption', meta_value: featured_image_caption || '' });
+      }
+      if (image_captions && typeof image_captions === 'object') {
+        await PostMeta.upsert({ post_id: post.ID, meta_key: '_image_captions', meta_value: JSON.stringify(image_captions) });
       }
 
       try {
@@ -1015,8 +1109,14 @@ class ContentController {
     // Convert meta array to object
     const metadata = {};
     if (postData.meta) {
-      postData.meta.forEach(meta => {
-        metadata[meta.meta_key] = meta.meta_value;
+      const latestMap = {};
+      postData.meta.forEach(m => {
+        const k = m.meta_key;
+        const id = m.meta_id || 0;
+        if (!(k in latestMap) || id > latestMap[k]) {
+          latestMap[k] = id;
+          metadata[k] = m.meta_value;
+        }
       });
     }
 
@@ -1487,8 +1587,14 @@ class ContentController {
       // Process metadata for easier access
       const metadata = {};
       if (post.meta) {
-        post.meta.forEach(meta => {
-          metadata[meta.meta_key] = meta.meta_value;
+        const latestMap = {};
+        post.meta.forEach(m => {
+          const k = m.meta_key;
+          const id = m.meta_id || 0;
+          if (!(k in latestMap) || id > latestMap[k]) {
+            latestMap[k] = id;
+            metadata[k] = m.meta_value;
+          }
         });
       }
 
