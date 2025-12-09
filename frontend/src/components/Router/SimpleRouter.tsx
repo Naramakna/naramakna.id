@@ -89,7 +89,8 @@ const AsyncUsernameRoute: React.FC<{ username: string }> = ({ username }) => {
         }
       } catch (error) {
         console.error('Error validating username:', error);
-        setUserExists(false);
+        // On network error, optimistically render profile page and let it decide
+        setUserExists(true);
       } finally {
         setIsValidating(false);
       }
