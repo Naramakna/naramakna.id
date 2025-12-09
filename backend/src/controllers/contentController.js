@@ -1727,6 +1727,31 @@ class ContentController {
         distinct: true
       });
 
+      // Collect post IDs for batch analytics view counts
+      const postIds = result.rows.map(p => p.ID);
+      const analyticsViewCounts = {};
+      if (postIds.length > 0) {
+        try {
+          const analyticsData = await Analytics.findAll({
+            attributes: [
+              'content_id',
+              [sequelize.fn('COUNT', sequelize.col('id')), 'view_count']
+            ],
+            where: {
+              content_id: postIds,
+              event_type: 'view'
+            },
+            group: ['content_id']
+          });
+
+          analyticsData.forEach(item => {
+            analyticsViewCounts[item.content_id] = parseInt(item.dataValues.view_count) || 0;
+          });
+        } catch (error) {
+          console.error('Error fetching analytics view counts for author posts:', error);
+        }
+      }
+
       const thumbnailIds = [];
       result.rows.forEach(post => {
         const meta = post.meta || [];
@@ -1781,7 +1806,8 @@ class ContentController {
             user_login: post.author.user_login,
             user_nicename: post.author.user_nicename
           },
-          featured_image: featuredImage
+          featured_image: featuredImage,
+          view_count: analyticsViewCounts[post.ID] || 0
         };
       });
 

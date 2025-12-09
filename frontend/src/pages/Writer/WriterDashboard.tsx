@@ -12,6 +12,7 @@ interface Post {
   post_type: string;
   post_modified?: string;
   featured_image?: string;
+  view_count?: number;
   review?: {
     action: string;
     reviewer_name: string;
@@ -25,6 +26,7 @@ const WriterDashboard: React.FC = () => {
   const [pendingPosts, setPendingPosts] = useState<Post[]>([]);
   const [rejectedPosts, setRejectedPosts] = useState<Post[]>([]);
   const [draftPosts, setDraftPosts] = useState<Post[]>([]);
+  const [publishedPosts, setPublishedPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [newPost, setNewPost] = useState({
@@ -52,7 +54,7 @@ const WriterDashboard: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const [pendingRes, rejectedRes, draftsRes] = await Promise.all([
+      const [pendingRes, rejectedRes, draftsRes, publishedRes] = await Promise.all([
         fetch(buildApiUrl('approval/my-pending'), {
           headers: { 'Authorization': `Bearer ${token}` },
           credentials: 'include'
@@ -64,12 +66,17 @@ const WriterDashboard: React.FC = () => {
         fetch(buildApiUrl(`content/author/${currentUser.ID}?status=draft&limit=20`), {
           headers: { 'Authorization': `Bearer ${token}` },
           credentials: 'include'
+        }),
+        fetch(buildApiUrl(`content/author/${currentUser.ID}?status=publish&limit=20`), {
+          headers: { 'Authorization': `Bearer ${token}` },
+          credentials: 'include'
         })
       ]);
 
       const pendingData = await pendingRes.json();
       const rejectedData = await rejectedRes.json();
       const draftsData = await draftsRes.json();
+      const publishedData = await publishedRes.json();
 
       if (pendingData.success) {
         const source = Array.isArray(pendingData.data?.my_pending_posts) ? pendingData.data.my_pending_posts : [];
@@ -103,6 +110,21 @@ const WriterDashboard: React.FC = () => {
           featured_image: (p.featured_image && p.featured_image.url) ? p.featured_image.url : (p.featured_image || null)
         }));
         setDraftPosts(normalized);
+      }
+      if (publishedData.success) {
+        const source = (publishedData.data && publishedData.data.posts) ? publishedData.data.posts : (Array.isArray(publishedData.data) ? publishedData.data : []);
+        const normalized = source.map((p: any) => ({
+          ID: p.ID ?? p.id ?? 0,
+          post_title: p.post_title ?? p.title ?? 'Untitled',
+          post_content: p.post_content ?? p.content ?? '',
+          post_status: p.post_status ?? p.status ?? 'publish',
+          post_date: p.post_date ?? p.date ?? new Date().toISOString(),
+          post_type: p.post_type ?? p.type ?? 'post',
+          post_modified: p.post_modified ?? p.modified ?? p.date ?? p.post_date ?? null,
+          featured_image: (p.featured_image && p.featured_image.url) ? p.featured_image.url : (p.featured_image || null),
+          view_count: p.view_count ?? 0
+        }));
+        setPublishedPosts(normalized);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -256,6 +278,16 @@ const WriterDashboard: React.FC = () => {
                 Pending Posts ({pendingPosts.length})
               </button>
               <button
+                onClick={() => setActiveTab('published')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'published'
+                    ? 'border-yellow-500 text-yellow-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Published Posts ({publishedPosts.length})
+              </button>
+              <button
                 onClick={() => setActiveTab('rejected')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'rejected'
@@ -331,6 +363,66 @@ const WriterDashboard: React.FC = () => {
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'published' && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Published Posts</h2>
+            {publishedPosts.length === 0 ? (
+              <div className="text-center py-12">
+                <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No published posts</h3>
+                <p className="text-gray-600 mb-6">You haven’t published any posts yet.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Published</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Views</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {publishedPosts.map(post => (
+                      <tr key={post.ID} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {(() => {
+                            const primary = post.featured_image ? getImageUrl(post.featured_image) : null;
+                            const imgMatch = (!primary && post.post_content) ? post.post_content.match(/<img[^>]+src=['"]([^'\"]+)['"]/): null;
+                            const rawUrl = imgMatch ? imgMatch[1] : null;
+                            const fallback = rawUrl ? getImageUrl(rawUrl) : null;
+                            const imageUrl = primary || fallback;
+                            return imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt={post.post_title}
+                                className="w-16 h-16 object-cover rounded-md"
+                                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            ) : null;
+                          })()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{post.post_title}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {new Date(post.post_date).toLocaleString('id-ID', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {post.view_count ?? 0}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
