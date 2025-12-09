@@ -37,6 +37,14 @@ const WriterDashboard: React.FC = () => {
   const [featuredImage, setFeaturedImage] = useState<File | null>(null);
   const [galleryImages, setGalleryImages] = useState<File[]>([]);
   const [creating, setCreating] = useState(false);
+  const [draftPage, setDraftPage] = useState(1);
+  const [draftTotalPages, setDraftTotalPages] = useState(1);
+  const [pendingPage, setPendingPage] = useState(1);
+  const [pendingTotalPages, setPendingTotalPages] = useState(1);
+  const [publishedPage, setPublishedPage] = useState(1);
+  const [publishedTotalPages, setPublishedTotalPages] = useState(1);
+  const [rejectedPage, setRejectedPage] = useState(1);
+  const [rejectedTotalPages, setRejectedTotalPages] = useState(1);
 
   const getImageUrl = (imagePath: string | null) => {
     if (!imagePath) return null;
@@ -50,24 +58,24 @@ const WriterDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [draftPage, pendingPage, publishedPage, rejectedPage]);
 
   const fetchData = async () => {
     try {
       const [pendingRes, rejectedRes, draftsRes, publishedRes] = await Promise.all([
-        fetch(buildApiUrl('approval/my-pending'), {
+        fetch(buildApiUrl(`approval/my-pending?page=${pendingPage}&limit=20`), {
           headers: { 'Authorization': `Bearer ${token}` },
           credentials: 'include'
         }),
-        fetch(buildApiUrl('approval/my-rejected'), {
+        fetch(buildApiUrl(`approval/my-rejected?page=${rejectedPage}&limit=20`), {
           headers: { 'Authorization': `Bearer ${token}` },
           credentials: 'include'
         }),
-        fetch(buildApiUrl(`content/author/${currentUser.ID}?status=draft&limit=20`), {
+        fetch(buildApiUrl(`content/author/${currentUser.ID}?status=draft&limit=20&page=${draftPage}`), {
           headers: { 'Authorization': `Bearer ${token}` },
           credentials: 'include'
         }),
-        fetch(buildApiUrl(`content/author/${currentUser.ID}?status=publish&limit=20`), {
+        fetch(buildApiUrl(`content/author/${currentUser.ID}?status=publish&limit=20&page=${publishedPage}`), {
           headers: { 'Authorization': `Bearer ${token}` },
           credentials: 'include'
         })
@@ -95,8 +103,12 @@ const WriterDashboard: React.FC = () => {
           } as Post;
         });
         setPendingPosts(normalizedPending);
+        setPendingTotalPages(pendingData.data?.pagination?.total_pages ?? 1);
       }
-      if (rejectedData.success) setRejectedPosts(rejectedData.data.my_rejected_posts);
+      if (rejectedData.success) {
+        setRejectedPosts(rejectedData.data.my_rejected_posts);
+        setRejectedTotalPages(rejectedData.data?.pagination?.total_pages ?? 1);
+      }
       if (draftsData.success) {
         const source = (draftsData.data && draftsData.data.posts) ? draftsData.data.posts : (Array.isArray(draftsData.data) ? draftsData.data : []);
         const normalized = source.map((p: any) => ({
@@ -110,6 +122,7 @@ const WriterDashboard: React.FC = () => {
           featured_image: (p.featured_image && p.featured_image.url) ? p.featured_image.url : (p.featured_image || null)
         }));
         setDraftPosts(normalized);
+        setDraftTotalPages(draftsData.data?.pagination?.totalPages ?? 1);
       }
       if (publishedData.success) {
         const source = (publishedData.data && publishedData.data.posts) ? publishedData.data.posts : (Array.isArray(publishedData.data) ? publishedData.data : []);
@@ -125,6 +138,7 @@ const WriterDashboard: React.FC = () => {
           view_count: p.view_count ?? 0
         }));
         setPublishedPosts(normalized);
+        setPublishedTotalPages(publishedData.data?.pagination?.totalPages ?? 1);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -378,8 +392,9 @@ const WriterDashboard: React.FC = () => {
                 <p className="text-gray-600 mb-6">You haven’t published any posts yet.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
+              <div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
@@ -420,7 +435,25 @@ const WriterDashboard: React.FC = () => {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                  </table>
+                </div>
+                <div className="mt-4 flex items-center justify-between">
+                  <button
+                    onClick={() => setPublishedPage(p => Math.max(1, p - 1))}
+                    disabled={publishedPage <= 1}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${publishedPage <= 1 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-gray-600">Page {publishedPage} of {publishedTotalPages}</span>
+                  <button
+                    onClick={() => setPublishedPage(p => Math.min(publishedTotalPages, p + 1))}
+                    disabled={publishedPage >= publishedTotalPages}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${publishedPage >= publishedTotalPages ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -444,8 +477,9 @@ const WriterDashboard: React.FC = () => {
                 </a>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
+              <div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
@@ -495,7 +529,25 @@ const WriterDashboard: React.FC = () => {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                  </table>
+                </div>
+                <div className="mt-4 flex items-center justify-between">
+                  <button
+                    onClick={() => setDraftPage(p => Math.max(1, p - 1))}
+                    disabled={draftPage <= 1}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${draftPage <= 1 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-gray-600">Page {draftPage} of {draftTotalPages}</span>
+                  <button
+                    onClick={() => setDraftPage(p => Math.min(draftTotalPages, p + 1))}
+                    disabled={draftPage >= draftTotalPages}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${draftPage >= draftTotalPages ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -519,8 +571,9 @@ const WriterDashboard: React.FC = () => {
                 </a>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
+              <div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
@@ -571,7 +624,25 @@ const WriterDashboard: React.FC = () => {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                  </table>
+                </div>
+                <div className="mt-4 flex items-center justify-between">
+                  <button
+                    onClick={() => setPendingPage(p => Math.max(1, p - 1))}
+                    disabled={pendingPage <= 1}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${pendingPage <= 1 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-gray-600">Page {pendingPage} of {pendingTotalPages}</span>
+                  <button
+                    onClick={() => setPendingPage(p => Math.min(pendingTotalPages, p + 1))}
+                    disabled={pendingPage >= pendingTotalPages}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${pendingPage >= pendingTotalPages ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -589,8 +660,9 @@ const WriterDashboard: React.FC = () => {
                 <p className="text-gray-600">All your submissions have been approved or are pending review.</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {rejectedPosts.map(post => (
+              <div>
+                <div className="space-y-4">
+                  {rejectedPosts.map(post => (
                   <div key={post.ID} className="border border-red-200 rounded-lg p-6 bg-red-50">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex-1">
@@ -644,7 +716,25 @@ const WriterDashboard: React.FC = () => {
                       </a>
                     </div>
                   </div>
-                ))}
+                  ))}
+                </div>
+                <div className="mt-4 flex items-center justify-between">
+                  <button
+                    onClick={() => setRejectedPage(p => Math.max(1, p - 1))}
+                    disabled={rejectedPage <= 1}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${rejectedPage <= 1 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-gray-600">Page {rejectedPage} of {rejectedTotalPages}</span>
+                  <button
+                    onClick={() => setRejectedPage(p => Math.min(rejectedTotalPages, p + 1))}
+                    disabled={rejectedPage >= rejectedTotalPages}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${rejectedPage >= rejectedTotalPages ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             )}
           </div>
