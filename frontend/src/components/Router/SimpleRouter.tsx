@@ -239,10 +239,19 @@ const SimpleRouter: React.FC = () => {
         return <GalleryDetailPage />;
       }
 
+      const writerProfileMatch = path.match(/^\/penulis\/(@)?([a-zA-Z0-9][a-zA-Z0-9_.@-]{2,29})$/);
+      if (writerProfileMatch) {
+        const username = writerProfileMatch[2];
+        return <AsyncUsernameRoute username={username} />;
+      }
+
       const usernameMatch = path.match(/^\/(@)?([a-zA-Z0-9][a-zA-Z0-9_.@-]{2,29})$/);
       if (usernameMatch) {
         const username = usernameMatch[2];
-        return <AsyncUsernameRoute username={username} />;
+        if (typeof window !== 'undefined') {
+          window.location.replace(`/penulis/${username}`);
+        }
+        return <LoadingFallback />;
       }
 
       return <NotFound />;

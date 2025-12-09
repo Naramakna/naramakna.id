@@ -206,7 +206,7 @@ export const ProfileBadge: React.FC<ProfileBadgeProps> = ({ className = '' }) =>
           {/* Menu Items */}
           <div className="py-2">
             <a
-              href={`/${user.user_nicename || user.user_login.replace(/\s+/g, '-').replace(/\./g, '-').toLowerCase()}`}
+              href={`/penulis/${user.user_nicename || user.user_login.replace(/\s+/g, '-').replace(/\./g, '-').toLowerCase()}`}
               onClick={() => setIsDropdownOpen(false)}
               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >
