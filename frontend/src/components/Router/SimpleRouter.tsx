@@ -246,11 +246,13 @@ const SimpleRouter: React.FC = () => {
         return <AsyncUsernameRoute username={username} />;
       }
 
-      // Alias route: /author/:username -> same as /penulis/:username
       const authorProfileMatch = path.match(/^\/author\/(\@)?([a-zA-Z0-9][a-zA-Z0-9_.@-]{2,29})$/);
       if (authorProfileMatch) {
         const username = authorProfileMatch[2];
-        return <AsyncUsernameRoute username={username} />;
+        if (typeof window !== 'undefined') {
+          window.location.replace(`/penulis/${username}`);
+        }
+        return <LoadingFallback />;
       }
 
       const usernameMatch = path.match(/^\/(@)?([a-zA-Z0-9][a-zA-Z0-9_.@-]{2,29})$/);
