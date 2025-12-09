@@ -480,16 +480,20 @@ class SchedulerController {
           });
 
           // Update post status to published
+          const publishTime = post.post_status === 'scheduled'
+            ? post.scheduled_publish_date
+            : post.post_date;
+
           const updateData = {
             post_status: 'publish',
-            post_modified: now,
-            post_modified_gmt: now
+            post_modified: publishTime,
+            post_modified_gmt: publishTime
           };
           
           // For legacy scheduled posts, clear scheduled fields and update post_date
           if (post.post_status === 'scheduled') {
-            updateData.post_date = now;
-            updateData.post_date_gmt = now;
+            updateData.post_date = publishTime;
+            updateData.post_date_gmt = publishTime;
             updateData.scheduled_publish_date = null;
             updateData.original_status = null;
           }
@@ -516,8 +520,8 @@ class SchedulerController {
                 await attachment.update({
                   post_title: captionMeta.meta_value,
                   post_excerpt: captionMeta.meta_value,
-                  post_modified: now,
-                  post_modified_gmt: now
+                  post_modified: publishTime,
+                  post_modified_gmt: publishTime
                 });
                 console.log(`  📝 Featured image caption updated: "${captionMeta.meta_value}"`);
               }
