@@ -1712,6 +1712,10 @@ class ContentController {
         },
         include: [
           {
+            model: PostMeta,
+            as: 'meta'
+          },
+          {
             model: User,
             as: 'author',
             attributes: ['ID', 'display_name', 'user_email', 'user_login', 'user_nicename']
@@ -1719,28 +1723,67 @@ class ContentController {
         ],
         limit: parseInt(limit),
         offset: parseInt(offset),
-        order: [['post_date', 'DESC']]
+        order: [['post_date', 'DESC']],
+        distinct: true
       });
 
-      // Format posts
-      const formattedPosts = result.rows.map(post => ({
-        id: post.ID,
-        title: post.post_title,
-        content: post.post_content,
-        excerpt: post.post_excerpt,
-        slug: post.post_name,
-        status: post.post_status,
-        type: post.post_type,
-        date: post.post_date,
-        modified: post.post_modified,
-        author: {
-          ID: post.author.ID,
-          display_name: post.author.display_name,
-          user_email: post.author.user_email,
-          user_login: post.author.user_login,
-          user_nicename: post.author.user_nicename
+      const thumbnailIds = [];
+      result.rows.forEach(post => {
+        const meta = post.meta || [];
+        const latestThumb = meta
+          .filter(m => m.meta_key === '_thumbnail_id')
+          .sort((a, b) => (b.meta_id || 0) - (a.meta_id || 0))[0];
+        if (latestThumb && latestThumb.meta_value) {
+          const id = parseInt(latestThumb.meta_value);
+          if (!isNaN(id)) thumbnailIds.push(id);
         }
-      }));
+      });
+
+      let thumbnailMap = {};
+      if (thumbnailIds.length > 0) {
+        const thumbnails = await Post.findAll({
+          where: { ID: { [Op.in]: thumbnailIds } },
+          attributes: ['ID', 'guid']
+        });
+        thumbnails.forEach(t => {
+          thumbnailMap[t.ID] = t.guid;
+        });
+      }
+
+      const formattedPosts = result.rows.map(post => {
+        let featuredImage = null;
+        if (post.meta) {
+          const latestThumb = post.meta
+            .filter(m => m.meta_key === '_thumbnail_id')
+            .sort((a, b) => (b.meta_id || 0) - (a.meta_id || 0))[0];
+          if (latestThumb && latestThumb.meta_value) {
+            const id = parseInt(latestThumb.meta_value);
+            if (!isNaN(id) && thumbnailMap[id]) {
+              featuredImage = thumbnailMap[id];
+            }
+          }
+        }
+
+        return {
+          id: post.ID,
+          title: post.post_title,
+          content: post.post_content,
+          excerpt: post.post_excerpt,
+          slug: post.post_name,
+          status: post.post_status,
+          type: post.post_type,
+          date: post.post_date,
+          modified: post.post_modified,
+          author: {
+            ID: post.author.ID,
+            display_name: post.author.display_name,
+            user_email: post.author.user_email,
+            user_login: post.author.user_login,
+            user_nicename: post.author.user_nicename
+          },
+          featured_image: featuredImage
+        };
+      });
 
       res.json({
         success: true,

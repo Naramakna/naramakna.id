@@ -379,15 +379,69 @@ class ContentApprovalController {
           post_author: user.ID,
           post_status: POST_STATUS.PENDING
         },
+        include: [
+          {
+            model: PostMeta,
+            as: 'meta',
+            attributes: ['meta_id', 'meta_key', 'meta_value'],
+            required: false
+          }
+        ],
         order: [['post_date', 'DESC']],
         limit: parseInt(limit),
-        offset
+        offset,
+        distinct: true
+      });
+
+      const thumbnailIds = [];
+      posts.rows.forEach(post => {
+        const meta = post.meta || [];
+        const latestThumb = meta
+          .filter(m => m.meta_key === '_thumbnail_id')
+          .sort((a, b) => (b.meta_id || 0) - (a.meta_id || 0))[0];
+        if (latestThumb && latestThumb.meta_value) {
+          const id = parseInt(latestThumb.meta_value);
+          if (!isNaN(id)) thumbnailIds.push(id);
+        }
+      });
+
+      let thumbnailMap = {};
+      if (thumbnailIds.length > 0) {
+        const thumbnails = await Post.findAll({
+          where: { ID: { [Op.in]: thumbnailIds } },
+          attributes: ['ID', 'guid']
+        });
+        thumbnails.forEach(t => {
+          thumbnailMap[t.ID] = t.guid;
+        });
+      }
+
+      const pendingWithImages = posts.rows.map(post => {
+        const obj = post.toJSON();
+        let featuredImage = null;
+        if (obj.meta && Array.isArray(obj.meta)) {
+          const latestThumb = obj.meta
+            .filter(m => m.meta_key === '_thumbnail_id')
+            .sort((a, b) => (b.meta_id || 0) - (a.meta_id || 0))[0];
+          if (latestThumb && latestThumb.meta_value) {
+            const id = parseInt(latestThumb.meta_value);
+            if (!isNaN(id) && thumbnailMap[id]) {
+              featuredImage = thumbnailMap[id];
+            }
+          }
+        }
+        // Do not expose meta array in response to keep payload small
+        delete obj.meta;
+        return {
+          ...obj,
+          featured_image: featuredImage
+        };
       });
 
       res.json({
         success: true,
         data: {
-          my_pending_posts: posts.rows,
+          my_pending_posts: pendingWithImages,
           pagination: {
             total: posts.count,
             page: parseInt(page),

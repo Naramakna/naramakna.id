@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from '../../components/organisms/Navbar';
 import { Footer } from '../../components/organisms/Footer';
-import { buildApiUrl } from '../../config/api';
+import { buildApiUrl, buildBackendUrl } from '../../config/api';
 
 interface Post {
   ID: number;
@@ -11,6 +11,7 @@ interface Post {
   post_date: string;
   post_type: string;
   post_modified?: string;
+  featured_image?: string;
   review?: {
     action: string;
     reviewer_name: string;
@@ -23,6 +24,7 @@ const WriterDashboard: React.FC = () => {
   const [_posts, _setPosts] = useState<Post[]>([]);
   const [pendingPosts, setPendingPosts] = useState<Post[]>([]);
   const [rejectedPosts, setRejectedPosts] = useState<Post[]>([]);
+  const [draftPosts, setDraftPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [newPost, setNewPost] = useState({
@@ -34,6 +36,13 @@ const WriterDashboard: React.FC = () => {
   const [galleryImages, setGalleryImages] = useState<File[]>([]);
   const [creating, setCreating] = useState(false);
 
+  const getImageUrl = (imagePath: string | null) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http')) return imagePath;
+    if (imagePath.startsWith('/uploads/')) return buildBackendUrl(imagePath);
+    return buildBackendUrl(`uploads/${imagePath}`);
+  };
+
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
   const token = localStorage.getItem('token');
 
@@ -43,7 +52,7 @@ const WriterDashboard: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const [pendingRes, rejectedRes] = await Promise.all([
+      const [pendingRes, rejectedRes, draftsRes] = await Promise.all([
         fetch(buildApiUrl('approval/my-pending'), {
           headers: { 'Authorization': `Bearer ${token}` },
           credentials: 'include'
@@ -51,14 +60,50 @@ const WriterDashboard: React.FC = () => {
         fetch(buildApiUrl('approval/my-rejected'), {
           headers: { 'Authorization': `Bearer ${token}` },
           credentials: 'include'
+        }),
+        fetch(buildApiUrl(`content/author/${currentUser.ID}?status=draft&limit=20`), {
+          headers: { 'Authorization': `Bearer ${token}` },
+          credentials: 'include'
         })
       ]);
 
       const pendingData = await pendingRes.json();
       const rejectedData = await rejectedRes.json();
+      const draftsData = await draftsRes.json();
 
-      if (pendingData.success) setPendingPosts(pendingData.data.my_pending_posts);
+      if (pendingData.success) {
+        const source = Array.isArray(pendingData.data?.my_pending_posts) ? pendingData.data.my_pending_posts : [];
+        const normalizedPending = source.map((p: any) => {
+          const imgMatch = (p.post_content || '').match(/<img[^>]+src=['"]([^'\"]+)['"]/);
+          const contentImage = imgMatch ? imgMatch[1] : null;
+          return {
+            ID: p.ID ?? p.id ?? 0,
+            post_title: p.post_title ?? p.title ?? 'Untitled',
+            post_content: p.post_content ?? p.content ?? '',
+            post_status: p.post_status ?? p.status ?? 'pending',
+            post_date: p.post_date ?? p.date ?? new Date().toISOString(),
+            post_type: p.post_type ?? p.type ?? 'post',
+            post_modified: p.post_modified ?? p.modified ?? null,
+            featured_image: (p.featured_image && p.featured_image.url) ? p.featured_image.url : (p.featured_image || contentImage || null)
+          } as Post;
+        });
+        setPendingPosts(normalizedPending);
+      }
       if (rejectedData.success) setRejectedPosts(rejectedData.data.my_rejected_posts);
+      if (draftsData.success) {
+        const source = (draftsData.data && draftsData.data.posts) ? draftsData.data.posts : (Array.isArray(draftsData.data) ? draftsData.data : []);
+        const normalized = source.map((p: any) => ({
+          ID: p.ID ?? p.id ?? 0,
+          post_title: p.post_title ?? p.title ?? 'Untitled',
+          post_content: p.post_content ?? p.content ?? '',
+          post_status: p.post_status ?? p.status ?? 'draft',
+          post_date: p.post_date ?? p.date ?? new Date().toISOString(),
+          post_type: p.post_type ?? p.type ?? 'post',
+          post_modified: p.post_modified ?? p.modified ?? p.date ?? p.post_date ?? null,
+          featured_image: (p.featured_image && p.featured_image.url) ? p.featured_image.url : (p.featured_image || null)
+        }));
+        setDraftPosts(normalized);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -191,6 +236,16 @@ const WriterDashboard: React.FC = () => {
                 Overview
               </button>
               <button
+                onClick={() => setActiveTab('drafts')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'drafts'
+                    ? 'border-yellow-500 text-yellow-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Draft Posts ({draftPosts.length})
+              </button>
+              <button
                 onClick={() => setActiveTab('pending')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'pending'
@@ -279,7 +334,80 @@ const WriterDashboard: React.FC = () => {
           </div>
         )}
 
-
+        {activeTab === 'drafts' && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Draft Posts</h2>
+            {draftPosts.length === 0 ? (
+              <div className="text-center py-12">
+                <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No drafts</h3>
+                <p className="text-gray-600 mb-6">You haven't created any drafts yet.</p>
+                <a
+                  href="/tulis"
+                  className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Create a draft
+                </a>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Modified</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {draftPosts.map(post => (
+                      <tr key={post.ID} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {(() => {
+                            const primary = post.featured_image ? getImageUrl(post.featured_image) : null;
+                            const imgMatch = (!primary && post.post_content) ? post.post_content.match(/<img[^>]+src=['"]([^'\"]+)['"]/): null;
+                            const rawUrl = imgMatch ? imgMatch[1] : null;
+                            const fallback = rawUrl ? getImageUrl(rawUrl) : null;
+                            const imageUrl = primary || fallback;
+                            return imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt={post.post_title}
+                                className="w-16 h-16 object-cover rounded-md"
+                                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            ) : null;
+                          })()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{post.post_title}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-gray-600 capitalize">{post.post_type}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {new Date(post.post_modified || post.post_date).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <a
+                            href={`/tulis?edit=${post.ID}`}
+                            className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                          >
+                            Edit Draft
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
 
         {activeTab === 'pending' && (
           <div className="bg-white rounded-lg shadow-lg p-6">
@@ -303,6 +431,7 @@ const WriterDashboard: React.FC = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
@@ -312,6 +441,23 @@ const WriterDashboard: React.FC = () => {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {pendingPosts.map(post => (
                       <tr key={post.ID} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {(() => {
+                            const primary = post.featured_image ? getImageUrl(post.featured_image) : null;
+                            const imgMatch = (!primary && post.post_content) ? post.post_content.match(/<img[^>]+src=['"]([^'\"]+)['"]/): null;
+                            const rawUrl = imgMatch ? imgMatch[1] : null;
+                            const fallback = rawUrl ? getImageUrl(rawUrl) : null;
+                            const imageUrl = primary || fallback;
+                            return imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt={post.post_title}
+                                className="w-16 h-16 object-cover rounded-md"
+                                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            ) : null;
+                          })()}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{post.post_title}</div>
                         </td>
