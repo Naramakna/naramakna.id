@@ -185,7 +185,7 @@ export const NavHeader: React.FC<NavHeaderProps> = ({ className = '' }) => {
                     <a href={actionButton.href} className="block px-3 py-2 text-sm font-medium text-white bg-yellow-500 hover:bg-yellow-600 rounded-md transition-colors duration-200 mb-2">
                       {actionButton.text}
                     </a>
-                    <a href={user?.user_login ? `/${user.user_login}` : '/profile'} className="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-yellow-500 hover:bg-gray-100 rounded-md transition-colors duration-200">
+                    <a href={user ? `/penulis/${user.user_nicename || user.user_login.replace(/\s+/g, '-').replace(/\./g, '-').toLowerCase()}` : '/profile'} className="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-yellow-500 hover:bg-gray-100 rounded-md transition-colors duration-200">
                       Profil Saya
                     </a>
                     <a href={getDashboardUrl()} className="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-yellow-500 hover:bg-gray-100 rounded-md transition-colors duration-200">
