@@ -130,11 +130,13 @@ const ProfilePage: React.FC = () => {
       };
 
       // Use profile API instead of auth API
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl('profile'), {
         method: 'PUT',
         credentials: 'include',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify(updateData)
       });
@@ -372,8 +374,8 @@ const ProfilePage: React.FC = () => {
               {/* Profile Incomplete Warning */}
               {isIncompleteProfile && !checkProfileCompletion() && (
                 <AlertMessage 
-                  type="warning" 
-                  message="Anda perlu melengkapi profil terlebih dahulu sebelum dapat mengakses fitur lainnya. Silakan isi data yang diperlukan di bawah ini."
+                  type="info" 
+                  message="Profil Anda belum lengkap. Lengkapi profil (Nama tampil, Email, dan Bio) untuk dapat mengakses fitur lainnya."
                 />
               )}
 
