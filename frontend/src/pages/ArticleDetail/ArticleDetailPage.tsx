@@ -9,7 +9,7 @@ import { RelatedArticles } from '../../components/organisms/RelatedArticles';
 import { AdSection } from '../../components/organisms/AdSection';
 import { useSEO, generateDescription, extractKeywords, formatStructuredDataDate } from '../../hooks/useSEO';
 import { useAnalytics } from '../../hooks/useAnalytics';
-import { buildApiUrl } from '../../config/api';
+import { buildApiUrl, buildBackendUrl } from '../../config/api';
 import 'quill/dist/quill.snow.css'; // Import Quill CSS for alignment classes
 
 interface ArticleDetailPageProps {
@@ -319,12 +319,26 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
     return `${minutes} menit`;
   };
 
+  // Resolve OG image (featured image or first inline image) and ensure absolute URL
+  const ogImage = (() => {
+    const featured = article?.featuredImage?.url || '';
+    let url = featured;
+    if (!url) {
+      const match = (article?.content || '').match(/<img[^>]+src=['"]([^'\"]+)['"]/);
+      url = match ? match[1] : '';
+    }
+    if (!url) return undefined;
+    if (url.startsWith('http')) return url;
+    if (url.startsWith('/uploads/') || url.startsWith('uploads/')) return buildBackendUrl(url);
+    return buildBackendUrl(url);
+  })();
+
   // SEO optimization
   useSEO({
     title: article ? `${article.title} | Naramakna` : 'Loading... | Naramakna',
     description: article ? generateDescription(article.content) : 'Berita terkini dan artikel menarik dari Naramakna',
     keywords: article ? extractKeywords(article.title, article.content, article.tags.map(tag => typeof tag === 'string' ? tag : tag.name)) : ['berita', 'artikel', 'naramakna'],
-    image: article?.featuredImage?.url,
+    image: ogImage,
     url: typeof window !== 'undefined' ? window.location.href : undefined,
     type: 'article',
     author: article?.author.name,
