@@ -17,6 +17,7 @@ class MetaTagsController {
   static async generateArticleHTML(req, res) {
     try {
       const { slug } = req.params;
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
       
       // Fetch article data
       const post = await Post.findOne({
@@ -59,7 +60,7 @@ class MetaTagsController {
         });
       }
       
-      // Get featured image URL from thumbnail_id
+      // Get featured image URL from thumbnail_id, fallback to first inline image
       let featuredImageUrl = 'https://naramakna.id/LogoNaramakna.png'; // default fallback
       let imageType = 'image/png'; // default for logo
       
@@ -93,6 +94,38 @@ class MetaTagsController {
         }
       }
 
+      // Fallback: extract first image from post content if no thumbnail
+      if (!featuredImageUrl || featuredImageUrl.includes('LogoNaramakna.png')) {
+        const content = post.post_content || '';
+        const match = content.match(/<img[^>]+src=['"]([^'\"]+)['"]/i);
+        if (match && match[1]) {
+          let src = match[1];
+          // Ensure absolute URL
+          if (!src.startsWith('http')) {
+            if (src.startsWith('/')) {
+              src = `${baseUrl}${src}`;
+            } else if (src.startsWith('uploads') || src.startsWith('/uploads')) {
+              src = `${baseUrl}/${src.replace(/^\//, '')}`;
+            } else {
+              src = `${baseUrl}/${src}`;
+            }
+          }
+          featuredImageUrl = src.replace(/^http:\/\//, 'https://');
+          const urlLower = featuredImageUrl.toLowerCase();
+          if (urlLower.includes('.jpg') || urlLower.includes('.jpeg')) {
+            imageType = 'image/jpeg';
+          } else if (urlLower.includes('.png')) {
+            imageType = 'image/png';
+          } else if (urlLower.includes('.gif')) {
+            imageType = 'image/gif';
+          } else if (urlLower.includes('.webp')) {
+            imageType = 'image/webp';
+          } else {
+            imageType = 'image/jpeg';
+          }
+        }
+      }
+
       // Extract meta data
       const excerpt = metadata.excerpt;
       const seoDescription = metadata._aioseo_description;
@@ -100,7 +133,7 @@ class MetaTagsController {
       // Prepare meta data
       const title = `${post.post_title} - Naramakna`;
       const description = seoDescription || excerpt || post.post_excerpt || post.post_content?.substring(0, 160) + '...' || 'Artikel terbaru dari Naramakna.id';
-      const articleUrl = `https://naramakna.id/artikel/${slug}`;
+      const articleUrl = `${baseUrl}/artikel/${slug}`;
       const authorName = post.author?.display_name || 'Naramakna';
       const publishedTime = post.post_date;
       const modifiedTime = post.post_modified;

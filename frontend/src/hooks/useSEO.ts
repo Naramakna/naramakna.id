@@ -83,6 +83,10 @@ export const useSEO = (data: SEOData) => {
     if (data.image) {
       metaTags.push({ property: 'og:image', content: data.image });
       metaTags.push({ property: 'og:image:alt', content: data.title || 'Article image' });
+      metaTags.push({ property: 'og:image:secure_url', content: data.image });
+      metaTags.push({ property: 'og:image:type', content: 'image/jpeg' });
+      metaTags.push({ property: 'og:image:width', content: '1200' });
+      metaTags.push({ property: 'og:image:height', content: '630' });
     }
 
     if (data.url) {
@@ -292,4 +296,3 @@ export const formatStructuredDataDate = (dateString: string): string => {
   
   return date.toISOString();
 };
-

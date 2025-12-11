@@ -319,21 +319,17 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
     return `${minutes} menit`;
   };
 
-  // Resolve OG image (featured image or first inline image) and ensure absolute URL
   const ogImage = (() => {
-    const featured = article?.featuredImage?.url || '';
-    let url = featured;
+    const url = article?.featuredImage?.url || '';
     if (!url) {
-      const match = (article?.content || '').match(/<img[^>]+src=['"]([^'\"]+)['"]/);
-      url = match ? match[1] : '';
+      // Fallback to default image if no featured image
+      return 'https://naramakna.id/LogoNaramakna.png';
     }
-    if (!url) return undefined;
     if (url.startsWith('http')) return url;
-    if (url.startsWith('/uploads/') || url.startsWith('uploads/')) return buildBackendUrl(url);
-    return buildBackendUrl(url);
+    const fullUrl = buildBackendUrl(url);
+    return fullUrl;
   })();
 
-  // SEO optimization
   useSEO({
     title: article ? `${article.title} | Naramakna` : 'Loading... | Naramakna',
     description: article ? generateDescription(article.content) : 'Berita terkini dan artikel menarik dari Naramakna',
