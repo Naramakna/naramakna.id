@@ -111,7 +111,7 @@ const WriterDashboard: React.FC = () => {
       }
       if (draftsData.success) {
         const source = (draftsData.data && draftsData.data.posts) ? draftsData.data.posts : (Array.isArray(draftsData.data) ? draftsData.data : []);
-        const normalized = source.map((p: any) => ({
+        let normalized = source.map((p: any) => ({
           ID: p.ID ?? p.id ?? 0,
           post_title: p.post_title ?? p.title ?? 'Untitled',
           post_content: p.post_content ?? p.content ?? '',
@@ -121,8 +121,38 @@ const WriterDashboard: React.FC = () => {
           post_modified: p.post_modified ?? p.modified ?? p.date ?? p.post_date ?? null,
           featured_image: (p.featured_image && p.featured_image.url) ? p.featured_image.url : (p.featured_image || null)
         }));
+        // Fallback ke endpoint writer jika kosong
+        if (!normalized || normalized.length === 0) {
+          try {
+            const writerRes = await fetch(buildApiUrl(`writer/articles?status=draft&page=${draftPage}&limit=20`), {
+              headers: { 'Authorization': `Bearer ${token}` },
+              credentials: 'include'
+            });
+            const writerData = await writerRes.json();
+            if (writerData.success && writerData.data?.articles) {
+              normalized = writerData.data.articles.map((p: any) => {
+                const imgMatch = (p.post_content || '').match(/<img[^>]+src=['"]([^'\"]+)['"]/);
+                const contentImage = imgMatch ? imgMatch[1] : null;
+                return {
+                  ID: p.ID ?? p.id ?? 0,
+                  post_title: p.post_title ?? p.title ?? 'Untitled',
+                  post_content: p.post_content ?? p.content ?? '',
+                  post_status: p.post_status ?? p.status ?? 'draft',
+                  post_date: p.post_date ?? p.date ?? new Date().toISOString(),
+                  post_type: p.post_type ?? p.type ?? 'post',
+                  post_modified: p.post_modified ?? p.modified ?? p.date ?? p.post_date ?? null,
+                  featured_image: (p.featured_image && p.featured_image.url) ? p.featured_image.url : (p.featured_image || contentImage || null)
+                } as Post;
+              });
+              setDraftTotalPages(writerData.data?.pagination?.pages ?? 1);
+            }
+          } catch (e) {
+            // ignore fallback error
+          }
+        } else {
+          setDraftTotalPages(draftsData.data?.pagination?.totalPages ?? 1);
+        }
         setDraftPosts(normalized);
-        setDraftTotalPages(draftsData.data?.pagination?.totalPages ?? 1);
       }
       if (publishedData.success) {
         const source = (publishedData.data && publishedData.data.posts) ? publishedData.data.posts : (Array.isArray(publishedData.data) ? publishedData.data : []);
