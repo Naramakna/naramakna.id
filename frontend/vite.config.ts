@@ -52,6 +52,11 @@ export default defineConfig(() => ({
         target: 'http://localhost:3001', // For dev mode only
         changeOrigin: true,
       },
+      '/artikel': {
+        target: 'http://localhost:3001', // Route article requests to backend for OG tags
+        changeOrigin: true,
+        rewrite: (path) => path, // Keep the path as-is
+      },
     },
   },
 }))
