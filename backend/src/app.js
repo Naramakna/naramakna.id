@@ -213,6 +213,9 @@ app.use((req, res, next) => {
 // Serve static files from project root public directory
 app.use(express.static(path.join(__dirname, '../public')));
 
+// Serve frontend build files (for production and SSR meta tags)
+app.use(express.static(path.join(__dirname, '../../frontend/dist')));
+
 // Serve uploads directory for profile images (from project root public)
 app.use('/uploads', express.static(path.join(__dirname, '../../public/uploads')));
 
