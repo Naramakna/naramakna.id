@@ -240,7 +240,6 @@ const tiktokRoutes = require('./routes/tiktok');
 // const youtubeRoutes = require('./routes/youtube');
 const seoRoutes = require('./routes/seo');
 const seoController = require('./controllers/seoController');
-const metaTagsController = require('./controllers/metaTagsController');
 const writerRoutes = require('./routes/writer');
 const likesRoutes = require('./routes/likes');
 const commentRoutes = require('./routes/comments');
@@ -265,8 +264,6 @@ if (process.env.NODE_ENV !== 'test') {
   // DISABLED - Using BullMQ instead:   require('../cron/syncTikTok');
 }
 
-// Meta tags route for articles (must be before API routes)
-app.get('/artikel/:slug', metaTagsController.generateArticleHTML);
 
 // API Routes
 app.use('/api/auth', authRoutes);

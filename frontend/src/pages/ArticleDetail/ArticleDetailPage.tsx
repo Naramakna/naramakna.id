@@ -7,7 +7,7 @@ import { ArticleTags } from '../../components/molecules/ArticleTags';
 import { CommentsSection } from '../../components/organisms/CommentsSection';
 import { RelatedArticles } from '../../components/organisms/RelatedArticles';
 import { AdSection } from '../../components/organisms/AdSection';
-import { useSEO, generateDescription, extractKeywords, formatStructuredDataDate } from '../../hooks/useSEO';
+import { SEOHelmet, generateDescription, extractKeywords, formatStructuredDataDate } from '../../components/SEO/SEOHelmet';
 import { useAnalytics } from '../../hooks/useAnalytics';
 import { buildApiUrl, buildBackendUrl } from '../../config/api';
 import 'quill/dist/quill.snow.css'; // Import Quill CSS for alignment classes
@@ -330,19 +330,19 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
     return fullUrl;
   })();
 
-  useSEO({
+  const seoData = {
     title: article ? `${article.title} | Naramakna` : 'Loading... | Naramakna',
     description: article ? generateDescription(article.content) : 'Berita terkini dan artikel menarik dari Naramakna',
     keywords: article ? extractKeywords(article.title, article.content, article.tags.map(tag => typeof tag === 'string' ? tag : tag.name)) : ['berita', 'artikel', 'naramakna'],
     image: ogImage,
     url: typeof window !== 'undefined' ? window.location.href : undefined,
-    type: 'article',
+    type: 'article' as const,
     author: article?.author.name,
     publishedTime: article?.publishedDate ? formatStructuredDataDate(article.publishedDate) : undefined,
     section: article?.category,
     tags: article?.tags.map(tag => typeof tag === 'string' ? tag : tag.name),
     locale: 'id_ID'
-  });
+  };
 
   if (loading) {
     return (
@@ -385,23 +385,25 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Google Subscribe with Google (SWG) Script */}
-      <script async type="application/javascript"
-              src="https://news.google.com/swg/js/v1/swg-basic.js"></script>
-      <script dangerouslySetInnerHTML={{
-        __html: `
-          (self.SWG_BASIC = self.SWG_BASIC || []).push( basicSubscriptions => {
-            basicSubscriptions.init({
-              type: "NewsArticle",
-              isPartOfType: ["Product"],
-              isPartOfProductId: "CAowofy8DA",
-              clientOptions: { theme: "light", lang: "id" },
+    <>
+      <SEOHelmet data={seoData} />
+      <div className="min-h-screen bg-gray-50">
+        {/* Google Subscribe with Google (SWG) Script */}
+        <script async type="application/javascript"
+                src="https://news.google.com/swg/js/v1/swg-basic.js"></script>
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            (self.SWG_BASIC = self.SWG_BASIC || []).push( basicSubscriptions => {
+              basicSubscriptions.init({
+                type: "NewsArticle",
+                isPartOfType: ["Product"],
+                isPartOfProductId: "CAowofy8DA",
+                clientOptions: { theme: "light", lang: "id" },
+              });
             });
-          });
-        `
-      }} />
-      <Navbar />
+          `
+        }} />
+        <Navbar />
       
       {/* Top Article Ad */}
       <AdSection 
@@ -479,6 +481,7 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
       {/* Footer */}
       <Footer />
     </div>
+    </>
   );
 };
 

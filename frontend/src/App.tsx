@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { HelmetProvider } from 'react-helmet-async';
 import SimpleRouter from "./components/Router/SimpleRouter";
 import { AuthProvider } from './contexts/AuthContext';
 import { AdsProvider } from './contexts/AdsContext';
@@ -32,17 +33,19 @@ function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <AdsProvider>
-        <div className="App">
-          <SimpleRouter />
-          {/* AdBlocker Notice - only shows if ad blocker detected */}
-          <AdBlockerNotice showDebugInfo={import.meta.env.DEV} />
-          {/* Popup Ad - shows once per day */}
-          <PopupAd />
-        </div>
-      </AdsProvider>
-    </AuthProvider>
+    <HelmetProvider>
+      <AuthProvider>
+        <AdsProvider>
+          <div className="App">
+            <SimpleRouter />
+            {/* AdBlocker Notice - only shows if ad blocker detected */}
+            <AdBlockerNotice showDebugInfo={import.meta.env.DEV} />
+            {/* Popup Ad - shows once per day */}
+            <PopupAd />
+          </div>
+        </AdsProvider>
+      </AuthProvider>
+    </HelmetProvider>
   );
 }
 
