@@ -99,11 +99,11 @@ export const AdminAds: React.FC = () => {
   useEffect(() => {
     console.log('🔍 Current user:', user);
     console.log('🔍 User role:', user?.user_role);
-    
-    if (!authLoading && user?.user_role === 'superadmin') {
+
+    if (!authLoading && (user?.user_role === 'superadmin' || user?.user_role === 'admin')) {
       fetchAds();
-    } else if (!authLoading && user?.user_role !== 'superadmin') {
-      setError('Only superadmin can manage advertisements');
+    } else if (!authLoading && user?.user_role !== 'superadmin' && user?.user_role !== 'admin') {
+      setError('Only admin or superadmin can manage advertisements');
       setLoading(false);
     }
   }, [authLoading, user]);

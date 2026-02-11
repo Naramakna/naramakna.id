@@ -132,13 +132,13 @@ export const AdminGoogleAds: React.FC = () => {
     );
   }
 
-  // Role check - show message instead of redirect  
-  if (user?.user_role !== 'superadmin') {
+  // Role check - show message instead of redirect
+  if (user?.user_role !== 'superadmin' && user?.user_role !== 'admin') {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6">
           <h2 className="text-lg font-semibold text-red-800 mb-2">Access Denied</h2>
-          <p className="text-red-700">You don't have permission to access Google Ads integration. SuperAdmin role required.</p>
+          <p className="text-red-700">You don't have permission to access Google Ads integration. Admin or SuperAdmin role required.</p>
         </div>
       </div>
     );
