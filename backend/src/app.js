@@ -257,6 +257,7 @@ const trendingRoutes = require('./routes/trending');
 const aboutRoutes = require('./routes/about');
 const mataElangRoutes = require('./routes/mataElang');
 const batchRoutes = require('./routes/batch');
+const termsRoutes = require('./routes/terms');
 // const taxonomyRoutes = require('./routes/taxonomy'); // TODO: Implement
 
 // Initialize background jobs (scheduler, TikTok sync)
@@ -286,6 +287,7 @@ app.use('/api/trending', trendingRoutes);
 app.use('/api/about', aboutRoutes);
 app.use('/api/mata-elang', mataElangRoutes);
 app.use('/api/batch', batchRoutes);
+app.use('/api/terms', termsRoutes);
 
 // SEO routes at root level
 app.use('/', sitemapRoutes);
