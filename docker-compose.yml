@@ -15,7 +15,7 @@ services:
     volumes:
       - ./shared:/usr/src/shared:ro
       - ./public/uploads:/usr/src/public/uploads
-      - ./public/ads:/usr/src/app/public/ads
+      - ./public/ads:/usr/src/public/ads
     depends_on:
       redis:
         condition: service_healthy
