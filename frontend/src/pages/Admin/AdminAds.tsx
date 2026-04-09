@@ -905,7 +905,6 @@ export const AdminAds: React.FC = () => {
               />
             </div>
 
-            {/* Placement Type */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Placement Type
@@ -915,18 +914,14 @@ export const AdminAds: React.FC = () => {
                 onChange={(e) => handleInputChange('placement_type', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="hero-banner">🏠 Homepage Banner (970x250)</option>
-                <option value="header">📄 Header Banner (970x250)</option>
-                <option value="mid-content">🏠 Homepage Mid Section</option>
-                <option value="bottom-content">🏠 Homepage Bottom</option>
-                <option value="popup">🎯 Homepage Popup (Fullscreen)</option>
-                <option value="regular">📝 Content Pages (728x90)</option>
-                <option value="sidebar">📱 Sidebar Ads (300x250)</option>
-                <option value="article-top">📰 Article Page Top (970x250)</option>
-                <option value="article-ads">📰 Article Page Ad (728x90)</option>
-                <option value="article-mid">📰 Article Page Middle (728x90)</option>
-                <option value="article-bottom">📰 Article Page Bottom (970x250)</option>
-                <option value="article-final">📰 Article Page End (728x90)</option>
+                <option value="hero-banner">🏠 Banner Utama 1 (970x250)</option>
+                <option value="header">🏠 Banner Utama 2 (728x90)</option>
+                <option value="mid-content">🏠 Banner Utama 3 (728x90)</option>
+                <option value="article-top">📰 Banner Dalam 1 (970x250)</option>
+                <option value="article-mid">📰 Banner Dalam 2 (728x90)</option>
+                <option value="article-bottom">📰 Banner Dalam 3 (728x90)</option>
+                <option value="article-side-one">📰 Banner Dalam 4 (250x600)</option>
+                <option value="article-side-two">📰 Banner Dalam 5 (250x600)</option>
               </select>
               
               {/* URL Examples for each placement */}
@@ -1477,7 +1472,6 @@ export const AdminAds: React.FC = () => {
               />
             </div>
 
-            {/* Placement Type */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Placement Type
@@ -1487,18 +1481,14 @@ export const AdminAds: React.FC = () => {
                 onChange={(e) => handleInputChange('placement_type', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="hero-banner">🏠 Homepage Banner (970x250)</option>
-                <option value="header">📄 Header Banner (970x250)</option>
-                <option value="mid-content">🏠 Homepage Mid Section</option>
-                <option value="bottom-content">🏠 Homepage Bottom</option>
-                <option value="popup">🎯 Homepage Popup (Fullscreen)</option>
-                <option value="regular">📝 Content Pages (728x90)</option>
-                <option value="sidebar">📱 Sidebar Ads (300x250)</option>
-                <option value="article-top">📰 Article Page Top (970x250)</option>
-                <option value="article-ads">📰 Article Page Ad (728x90)</option>
-                <option value="article-mid">📰 Article Page Middle (728x90)</option>
-                <option value="article-bottom">📰 Article Page Bottom (970x250)</option>
-                <option value="article-final">📰 Article Page End (728x90)</option>
+                <option value="hero-banner">🏠 Banner Utama 1 (970x250)</option>
+                <option value="header">🏠 Banner Utama 2 (728x90)</option>
+                <option value="mid-content">🏠 Banner Utama 3 (728x90)</option>
+                <option value="article-top">📰 Banner Dalam 1 (970x250)</option>
+                <option value="article-mid">📰 Banner Dalam 2 (728x90)</option>
+                <option value="article-bottom">📰 Banner Dalam 3 (728x90)</option>
+                <option value="article-side-one">📰 Banner Dalam 4 (250x600)</option>
+                <option value="article-side-two">📰 Banner Dalam 5 (250x600)</option>
               </select>
               
               {/* URL Examples for each placement */}
