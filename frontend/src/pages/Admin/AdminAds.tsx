@@ -915,8 +915,8 @@ export const AdminAds: React.FC = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="hero-banner">🏠 Banner Utama 1 (970x250)</option>
-                <option value="header">🏠 Banner Utama 2 (728x90)</option>
-                <option value="mid-content">🏠 Banner Utama 3 (728x90)</option>
+                <option value="header">🏠 Banner Utama 2 (970x250)</option>
+                <option value="mid-content">🏠 Banner Utama 3 (970x250)</option>
                 <option value="article-top">📰 Banner Dalam 1 (970x250)</option>
                 <option value="article-mid">📰 Banner Dalam 2 (728x90)</option>
                 <option value="article-bottom">📰 Banner Dalam 3 (728x90)</option>
@@ -1482,8 +1482,8 @@ export const AdminAds: React.FC = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="hero-banner">🏠 Banner Utama 1 (970x250)</option>
-                <option value="header">🏠 Banner Utama 2 (728x90)</option>
-                <option value="mid-content">🏠 Banner Utama 3 (728x90)</option>
+                <option value="header">🏠 Banner Utama 2 (970x250)</option>
+                <option value="mid-content">🏠 Banner Utama 3 (970x250)</option>
                 <option value="article-top">📰 Banner Dalam 1 (970x250)</option>
                 <option value="article-mid">📰 Banner Dalam 2 (728x90)</option>
                 <option value="article-bottom">📰 Banner Dalam 3 (728x90)</option>
