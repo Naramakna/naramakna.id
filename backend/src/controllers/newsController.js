@@ -8,32 +8,38 @@ const newsController = {
       const LIMIT = 10;
 
       const searchCondition = search.trim()
-        ? `AND (LOWER(p.post_title) LIKE :keyword OR LOWER(t.name) LIKE :keyword)`
+        ? `AND (LOWER(p.post_title) LIKE :keyword OR EXISTS (
+            SELECT 1
+            FROM term_relationships tr3
+            JOIN term_taxonomy tt3 ON tr3.term_taxonomy_id = tt3.term_taxonomy_id AND tt3.taxonomy = 'category'
+            JOIN terms t3 ON tt3.term_id = t3.term_id
+            WHERE tr3.object_id = p.ID AND LOWER(t3.name) LIKE :keyword
+          ))`
         : '';
 
       const query = `
         SELECT
           p.ID as id,
           p.post_title as title,
-          t.name as category,
-          attachment.guid as image
+          (
+            SELECT t2.name
+            FROM term_relationships tr2
+            JOIN term_taxonomy tt2 ON tr2.term_taxonomy_id = tt2.term_taxonomy_id AND tt2.taxonomy = 'category'
+            JOIN terms t2 ON tt2.term_id = t2.term_id
+            WHERE tr2.object_id = p.ID
+            LIMIT 1
+          ) as category,
+          (
+            SELECT att.guid
+            FROM postmeta pm2
+            JOIN posts att ON pm2.meta_value = att.ID
+            WHERE pm2.post_id = p.ID AND pm2.meta_key = '_thumbnail_id'
+            LIMIT 1
+          ) as image
         FROM posts p
-        LEFT JOIN term_relationships tr ON p.ID = tr.object_id
-        LEFT JOIN term_taxonomy tt ON tr.term_taxonomy_id = tt.term_taxonomy_id AND tt.taxonomy = 'category'
-        LEFT JOIN terms t ON tt.term_id = t.term_id
-        LEFT JOIN postmeta thumb
-          ON p.ID = thumb.post_id
-         AND thumb.meta_key = '_thumbnail_id'
-         AND thumb.meta_id = (
-           SELECT MAX(pm.meta_id)
-           FROM postmeta pm
-           WHERE pm.post_id = p.ID AND pm.meta_key = '_thumbnail_id'
-         )
-        LEFT JOIN posts attachment ON thumb.meta_value = attachment.ID
         WHERE p.post_status = 'publish'
         AND p.post_type = 'post'
         ${searchCondition}
-        GROUP BY p.ID
         ORDER BY p.post_date DESC
         LIMIT :limit
       `;
