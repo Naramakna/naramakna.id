@@ -21,6 +21,7 @@ const newsController = {
         SELECT
           p.ID as id,
           p.post_title as title,
+          p.post_name as slug,
           (
             SELECT t2.name
             FROM term_relationships tr2
