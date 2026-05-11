@@ -12,7 +12,7 @@ const termsController = {
       const allowedSlugs = [
         'narapandang', 'horison', 'laga-gaya', 'cerita-rasa', 'pendidikan',
         'teknologi', 'budaya', 'wahana', 'olah-bola', 'jagat-kita',
-        'liputan-khusus', 'mata-elang', 'pelakon'
+        'liputan-khusus', 'khazanah', 'pelakon'
       ];
 
       let categories = await sequelize.query(
