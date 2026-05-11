@@ -10,8 +10,8 @@ const categoryController = {
       // Get specific allowed rubrikasi channels only
       const allowedChannels = [
         'narapandang', 'pelakon', 'laga-gaya', 'wahana', 'olah-bola',
-        'cerita-rasa', 'horison', 'jagat-kita', 'mata-elang', 'budaya',
-        'pendidikan', 'teknologi', 'data-bicara', 'liputan-khusus'
+        'cerita-rasa', 'horison', 'jagat-kita', 'budaya',
+        'pendidikan', 'teknologi', 'data-bicara', 'liputan-khusus', 'khazanah'
       ];
       
       const channelsQuery = `
@@ -131,7 +131,7 @@ const categoryController = {
         'cerita-rasa': 'cerita-rasa',
         'narapandang': 'narapandang',
         'wahana': 'wahana',
-        'mata-elang': 'mata-elang',
+        'khazanah': 'khazanah',
         'data-bicara': 'data-bicara'
       };
       
