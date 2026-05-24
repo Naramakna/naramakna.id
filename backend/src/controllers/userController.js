@@ -45,13 +45,23 @@ class UserController {
                 limit: safeLimit,
                 offset,
                 order: [[sort_by, sort_order.toUpperCase()]],
-                attributes: { exclude: ['user_pass', 'user_activation_key'] }
+                attributes: { exclude: ['user_pass', 'user_activation_key'] },
+                include: [{
+                    model: require('../models/UserProfile'),
+                    as: 'profile',
+                    attributes: ['phone_number'],
+                    required: false
+                }]
             });
 
             res.json({
                 success: true,
                 data: {
-                    users: users.rows,
+                    users: users.rows.map(u => ({
+                        ...u.toJSON(),
+                        phone_number: u.profile?.phone_number || null,
+                        profile: undefined
+                    })),
                     pagination: {
                         total: users.count,
                         page: safePage,

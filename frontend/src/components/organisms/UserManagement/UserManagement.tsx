@@ -9,6 +9,7 @@ interface User {
   user_status: string; // Changed from number to string
   user_registered: string;
   display_name: string;
+  phone_number?: string;
 }
 
 interface UserManagementProps {
@@ -104,6 +105,11 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     { key: 'ID', label: 'ID' },
     { key: 'user_login', label: 'Username' },
     { key: 'user_email', label: 'Email' },
+    ...(currentUserRole === 'superadmin' || currentUserRole === 'admin' ? [{
+      key: 'phone_number',
+      label: 'Phone Number',
+      render: (phone: string | null | undefined) => phone || '-'
+    }] : []),
     {
       key: 'user_role',
       label: 'Role',

@@ -26,6 +26,7 @@ interface User {
   user_status: string; // Changed from number to string
   user_registered: string;
   display_name: string;
+  phone_number?: string;
 }
 
 

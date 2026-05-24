@@ -221,7 +221,7 @@ class AdminController {
           {
             model: UserProfile,
             as: 'profile',
-            attributes: ['profile_image', 'birth_date', 'gender', 'city', 'profession'],
+            attributes: ['profile_image', 'phone_number', 'birth_date', 'gender', 'city', 'profession'],
             required: false
           }
         ],
@@ -238,6 +238,7 @@ class AdminController {
         role: user.user_role,
         status: user.user_status || 'active',
         registered: user.user_registered,
+        phone_number: user.profile?.phone_number || null,
         profile_image: user.profile?.profile_image ? `${process.env.BACKEND_URL}${user.profile.profile_image}` : null,
         profile_complete: !!(user.profile?.birth_date && user.profile?.gender && user.profile?.city)
       }));
@@ -1192,7 +1193,7 @@ class AdminController {
           include: [{
             model: UserProfile,
             as: 'profile',
-            attributes: ['profile_image'],
+            attributes: ['profile_image', 'phone_number'],
             required: false
           }],
           limit: parseInt(limit),
@@ -1408,7 +1409,7 @@ class AdminController {
           include: [{
             model: UserProfile,
             as: 'profile',
-            attributes: ['profile_image'],
+            attributes: ['profile_image', 'phone_number'],
             required: false
           }],
           order: [['user_registered', 'DESC']],
@@ -1450,6 +1451,7 @@ class AdminController {
         user_role: user.user_role,
         user_status: user.user_status,
         user_registered: user.user_registered,
+        phone_number: user.profile?.phone_number || null,
         profile: user.profile ? {
           profile_image: user.profile.profile_image,
           birth_date: user.profile.birth_date,
@@ -1502,6 +1504,7 @@ class AdminController {
                 user_role: admin.user_role,
                 user_status: admin.user_status,
                 user_registered: admin.user_registered,
+                phone_number: admin.profile?.phone_number || null,
                 profile: admin.profile ? {
                   profile_image: admin.profile.profile_image
                 } : null
