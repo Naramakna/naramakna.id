@@ -4,7 +4,14 @@ const AuthController = require('../controllers/authController');
 const { authenticate, authRateLimit } = require('../middleware/auth');
 
 // Rate limiting for auth endpoints
-const loginRateLimit = authRateLimit(5, 15 * 60 * 1000); // 5 attempts per 15 minutes
+const configuredLoginRateLimitWindow = Number.parseFloat(
+  process.env.AUTH_LOGIN_RATE_LIMIT_WINDOW_MINUTES
+);
+const loginRateLimitWindowMinutes =
+  Number.isFinite(configuredLoginRateLimitWindow) && configuredLoginRateLimitWindow > 0
+    ? configuredLoginRateLimitWindow
+    : 1;
+const loginRateLimit = authRateLimit(5, loginRateLimitWindowMinutes * 60 * 1000);
 const registerRateLimit = authRateLimit(3, 60 * 60 * 1000); // 3 attempts per hour
 
 /**
