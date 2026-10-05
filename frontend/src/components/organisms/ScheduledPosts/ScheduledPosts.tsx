@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { schedulerAPI } from '../../../services/api/scheduler';
-import SchedulerMonitor from './SchedulerMonitor';
 
 interface ScheduledPost {
   ID: number;
@@ -130,7 +129,6 @@ const ScheduledPosts: React.FC<ScheduledPostsProps> = ({ posts, loading, onRefre
 
   return (
     <div className="p-6">
-      <SchedulerMonitor onRefresh={onRefresh} />
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-3 sm:space-y-0">
         <h2 className="text-lg font-medium text-gray-900">Scheduled Posts</h2>
         <button
