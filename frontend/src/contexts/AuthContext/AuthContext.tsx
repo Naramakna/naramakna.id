@@ -274,6 +274,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const isAllowedPath = allowedPaths.some(path => currentPath.startsWith(path));
       
       if (!isAllowedPath) {
+        alert('Silakan lengkapi profil terlebih dahulu untuk bisa mengakses fitur lainnya.');
         localStorage.setItem('redirect_after_profile', currentPath);
         window.location.href = '/profile?incomplete=true';
         return true;

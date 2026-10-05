@@ -29,6 +29,10 @@ export const ImageWithCaption: React.FC<ImageWithCaptionProps> = ({
             alt={alt}
             className="w-full h-auto object-cover cursor-zoom-in transition-transform duration-300 group-hover:scale-105"
             onClick={showZoom ? openModal : undefined}
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = '/images/placeholder-gallery.jpg';
+            }}
           />
           
           {/* Zoom indicator on hover */}
@@ -65,6 +69,10 @@ export const ImageWithCaption: React.FC<ImageWithCaptionProps> = ({
               src={src}
               alt={alt}
               className="max-w-full max-h-full object-contain"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = '/images/placeholder-gallery.jpg';
+              }}
             />
             
             {/* Close button */}

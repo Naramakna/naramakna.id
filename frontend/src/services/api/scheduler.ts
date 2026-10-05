@@ -3,12 +3,16 @@ import { buildApiUrl } from '../../config/api';
 // Simple API utility for HTTP requests
 const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
   const url = buildApiUrl(endpoint);
+  const token = (typeof localStorage !== 'undefined') 
+    ? (localStorage.getItem('token') || localStorage.getItem('naramakna_token')) 
+    : undefined;
   
   const response = await fetch(url, {
     ...options,
     credentials: 'include', // Use cookies for authentication like auth API
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...options.headers,
     },
   });
@@ -80,7 +84,32 @@ export interface ScheduleResponse {
   error?: string;
 }
 
+export interface SchedulerStatus {
+  online: boolean;
+  state: 'starting' | 'running' | 'idle' | 'error' | 'stopped' | 'offline';
+  intervalSeconds?: number;
+  lastHeartbeatAt?: string;
+  lastCheckAt?: string;
+  lastSuccessAt?: string;
+  lastError?: string | null;
+  lastPublishedCount?: number;
+  totalPublished?: number;
+  recentPublished?: { id: number; title: string; publishedAt: string }[];
+}
+
 class SchedulerAPI {
+  async getStatus(): Promise<SchedulerStatus> {
+    const response = await apiRequest('scheduler/status');
+    return (await response.json()).data;
+  }
+
+  private ensureWIBOffset(dateStr: string): string {
+    if (!dateStr) return dateStr;
+    if (/([+-]\d{2}:\d{2}|Z)$/.test(dateStr)) return dateStr;
+    const hasSeconds = /T\d{2}:\d{2}:\d{2}$/.test(dateStr);
+    const base = hasSeconds ? dateStr : `${dateStr}:00`;
+    return `${base}+07:00`;
+  }
   // Get all scheduled posts
   async getScheduledPosts(page: number = 1, limit: number = 10, status?: string): Promise<SchedulablePosts> {
     const params = new URLSearchParams({
@@ -115,18 +144,26 @@ class SchedulerAPI {
 
   // Schedule a post
   async schedulePost(postId: number, scheduleData: ScheduleRequest): Promise<ScheduleResponse> {
+    const payload: ScheduleRequest = {
+      ...scheduleData,
+      scheduledDate: this.ensureWIBOffset(scheduleData.scheduledDate)
+    };
     const response = await apiRequest(`scheduler/schedule/${postId}`, {
       method: 'POST',
-      body: JSON.stringify(scheduleData),
+      body: JSON.stringify(payload),
     });
     return await response.json();
   }
 
   // Reschedule a post
   async reschedulePost(postId: number, scheduleData: ScheduleRequest): Promise<ScheduleResponse> {
+    const payload: ScheduleRequest = {
+      ...scheduleData,
+      scheduledDate: this.ensureWIBOffset(scheduleData.scheduledDate)
+    };
     const response = await apiRequest(`scheduler/reschedule/${postId}`, {
       method: 'PUT',
-      body: JSON.stringify(scheduleData),
+      body: JSON.stringify(payload),
     });
     return await response.json();
   }

@@ -1,60 +1,101 @@
-# Docker Compose untuk development environment (macOS Compatible)
-# Menjalankan MySQL dan Redis untuk development
-# 
-# macOS Usage:
-# brew install docker docker-compose (or Docker Desktop)
-# docker-compose up -d
-
-version: '3.8'
-
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: naramakna_mysql
-    platform: linux/amd64  # For Apple Silicon compatibility
-    environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: naramakna_portal
-      MYSQL_USER: naramakna_user
-      MYSQL_PASSWORD: naramakna_pass
+  backend:
+    build: ./backend
+    container_name: naramakna-backend
     ports:
-      - "3306:3306"
+      - "3001:3001"
+    restart: always
+    env_file:
+      - backend/.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ./shared:/usr/src/shared:ro
+      - ./public/uploads:/usr/src/public/uploads
+      - ./public/ads:/usr/src/public/ads
+    depends_on:
+      redis:
+        condition: service_healthy
     networks:
-      - naramakna_network
-    command: --default-authentication-plugin=mysql_native_password
+      - naramakna-net
+
+  scheduler:
+    build: ./backend
+    container_name: naramakna-scheduler
+    command: ["node", "src/jobs/auto-publish.js"]
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 90s
+    env_file:
+      - backend/.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Jakarta
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "src/jobs/scheduler-healthcheck.js"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - naramakna-net
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: https://api.naramakna.id/api
+        VITE_BACKEND_URL: https://api.naramakna.id/
+        VITE_UPLOADS_BASE_URL: https://api.naramakna.id/uploads
+        # VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3001/api}
+        # VITE_BACKEND_URL: ${VITE_BACKEND_URL:-http://localhost:3001}
+        # VITE_UPLOADS_BASE_URL: ${VITE_UPLOADS_BASE_URL:-http://localhost:3001/uploads}
+    container_name: naramakna-frontend
+    ports:
+      - "3000:3000"
+    restart: always
+    env_file:
+      - frontend/.env
+    depends_on:
+      - backend
+    networks:
+      - naramakna-net
 
   redis:
     image: redis:7-alpine
-    container_name: naramakna_redis
-    platform: linux/amd64  # For Apple Silicon compatibility
+    container_name: naramakna-redis
     ports:
       - "6379:6379"
+    restart: always
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - redis-data:/data
     networks:
-      - naramakna_network
-
-  # Optional: phpMyAdmin for database management
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    container_name: naramakna_phpmyadmin
-    platform: linux/amd64
-    environment:
-      PMA_HOST: mysql
-      PMA_PORT: 3306
-      PMA_USER: naramakna_user
-      PMA_PASSWORD: naramakna_pass
-    ports:
-      - "8080:80"
-    depends_on:
-      - mysql
-    networks:
-      - naramakna_network
-
-volumes:
-  mysql_data:
+      - naramakna-net
 
 networks:
-  naramakna_network:
+  naramakna-net:
     driver: bridge
+
+volumes:
+  redis-data:

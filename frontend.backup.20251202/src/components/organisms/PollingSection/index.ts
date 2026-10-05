@@ -1,1 +1,0 @@
-export { PollingSection } from './PollingSection'; 

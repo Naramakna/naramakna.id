@@ -145,9 +145,10 @@ export const ArticleHeader: React.FC<ArticleHeaderProps> = ({
           {/* Clickable Author Section */}
           <button
             onClick={() => {
-              const profileUrl = author.user_nicename 
-                ? `/${author.user_nicename.replace(/\./g, '-')}` 
-                : `/${author.name.toLowerCase().replace(/\s+/g, '-').replace(/\./g, '-')}`;
+              const profileSlug = author.user_nicename 
+                ? author.user_nicename.replace(/\./g, '-') 
+                : author.name.toLowerCase().replace(/\s+/g, '-').replace(/\./g, '-');
+              const profileUrl = `/penulis/${profileSlug}`;
               window.location.href = profileUrl;
             }}
             className="flex items-center space-x-3 hover:opacity-80 transition-opacity cursor-pointer group"

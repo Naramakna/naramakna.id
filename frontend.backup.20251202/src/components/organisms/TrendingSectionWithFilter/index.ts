@@ -1,1 +1,0 @@
-export { TrendingSectionWithFilter } from './TrendingSectionWithFilter';

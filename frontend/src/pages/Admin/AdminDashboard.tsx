@@ -22,6 +22,7 @@ interface User {
   user_status: string;
   display_name: string;
   user_registered: string;
+  phone_number?: string;
 }
 
 interface Post {

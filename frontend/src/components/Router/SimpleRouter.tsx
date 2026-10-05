@@ -89,7 +89,8 @@ const AsyncUsernameRoute: React.FC<{ username: string }> = ({ username }) => {
         }
       } catch (error) {
         console.error('Error validating username:', error);
-        setUserExists(false);
+        // On network error, optimistically render profile page and let it decide
+        setUserExists(true);
       } finally {
         setIsValidating(false);
       }
@@ -239,10 +240,28 @@ const SimpleRouter: React.FC = () => {
         return <GalleryDetailPage />;
       }
 
+      const writerProfileMatch = path.match(/^\/penulis\/(\@)?([a-zA-Z0-9][a-zA-Z0-9_.@-]{2,29})$/);
+      if (writerProfileMatch) {
+        const username = writerProfileMatch[2];
+        return <AsyncUsernameRoute username={username} />;
+      }
+
+      const authorProfileMatch = path.match(/^\/author\/(\@)?([a-zA-Z0-9][a-zA-Z0-9_.@-]{2,29})$/);
+      if (authorProfileMatch) {
+        const username = authorProfileMatch[2];
+        if (typeof window !== 'undefined') {
+          window.location.replace(`/penulis/${username}`);
+        }
+        return <LoadingFallback />;
+      }
+
       const usernameMatch = path.match(/^\/(@)?([a-zA-Z0-9][a-zA-Z0-9_.@-]{2,29})$/);
       if (usernameMatch) {
         const username = usernameMatch[2];
-        return <AsyncUsernameRoute username={username} />;
+        if (typeof window !== 'undefined') {
+          window.location.replace(`/penulis/${username}`);
+        }
+        return <LoadingFallback />;
       }
 
       return <NotFound />;

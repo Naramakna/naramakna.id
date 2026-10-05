@@ -224,6 +224,10 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
             src={item.imageSrc} 
             alt={item.title}
             className="w-full h-full object-cover"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = '/images/placeholder-gallery.jpg';
+            }}
           />
         ) : (
           <div className="w-full h-full bg-gray-300 flex items-center justify-center">
@@ -300,19 +304,8 @@ export const CategoryNewsSection: React.FC<CategoryNewsSectionProps> = ({
                   alt={displayNewsItems[0].title}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    const parent = target.parentElement;
-                    if (parent) {
-                      parent.innerHTML = `
-                        <div class="w-full h-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center">
-                          <div class="text-center">
-                            <span class="text-white text-6xl font-bold">${displayCategoryName.charAt(0)}</span>
-                            <div class="text-white text-sm mt-2">${displayCategoryName}</div>
-                          </div>
-                        </div>
-                      `;
-                    }
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = '/images/placeholder-gallery.jpg';
                   }}
                 />
               ) : (

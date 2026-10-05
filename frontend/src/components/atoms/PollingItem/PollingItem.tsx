@@ -134,8 +134,8 @@ export const PollingItem: React.FC<PollingItemProps> = ({
             alt={question}
             className="w-full h-20 md:h-32 object-cover rounded-lg"
             onError={(e) => {
-              // Hide image if failed to load
-              e.currentTarget.style.display = 'none';
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = '/images/placeholder-gallery.jpg';
             }}
           />
         </div>

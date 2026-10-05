@@ -504,170 +504,41 @@ class SchedulerController {
     }
   }
 
-  // Publish scheduled posts (called by cron job)
+  // Shared transactional publisher used by Docker, BullMQ, and manual checks.
   static async publishScheduledPosts(req, res) {
     try {
-      const now = new Date();
-
-      // Find posts that should be published now
-      const postsToPublish = await Post.findAll({
-        where: {
-          [Op.or]: [
-            // Legacy scheduled posts system
-            {
-              post_status: 'scheduled',
-              scheduled_publish_date: {
-                [Op.lte]: now
-              }
-            },
-            // New future posts system (scheduled via publish_date)
-            {
-              post_status: 'future',
-              post_date: {
-                [Op.lte]: now
-              }
-            }
-          ]
-        }
-      });
-
-      const publishedPosts = [];
-
-      for (const post of postsToPublish) {
-        try {
-          // Check if post has featured image metadata before publishing
-          const featuredImageMeta = await PostMeta.findOne({
-            where: {
-              post_id: post.ID,
-              meta_key: '_thumbnail_id'
-            }
-          });
-
-          // Update post status to published
-          const updateData = {
-            post_status: 'publish',
-            post_modified: now,
-            post_modified_gmt: now
-          };
-          
-          // For legacy scheduled posts, clear scheduled fields and update post_date
-          if (post.post_status === 'scheduled') {
-            updateData.post_date = now;
-            updateData.post_date_gmt = now;
-            updateData.scheduled_publish_date = null;
-            updateData.original_status = null;
-          }
-          // For future posts, post_date is already set correctly, just clear status
-          
-          await post.update(updateData);
-
-          // Ensure featured image metadata is preserved
-          if (featuredImageMeta) {
-            console.log(`  🖼️ Featured image preserved for post ${post.ID}: ${featuredImageMeta.meta_value}`);
-
-            // Also preserve featured image caption if exists
-            const captionMeta = await PostMeta.findOne({
-              where: {
-                post_id: post.ID,
-                meta_key: '_thumbnail_caption'
-              }
-            });
-
-            if (captionMeta && captionMeta.meta_value) {
-              // Find the attachment and update its title/excerpt with the caption
-              const attachment = await Post.findByPk(featuredImageMeta.meta_value);
-              if (attachment) {
-                await attachment.update({
-                  post_title: captionMeta.meta_value,
-                  post_excerpt: captionMeta.meta_value,
-                  post_modified: now,
-                  post_modified_gmt: now
-                });
-                console.log(`  📝 Featured image caption updated: "${captionMeta.meta_value}"`);
-              }
-            }
-          }
-
-          // Preserve image captions from Quill editor
-          const imageCaptionsMeta = await PostMeta.findOne({
-            where: {
-              post_id: post.ID,
-              meta_key: '_image_captions'
-            }
-          });
-
-          if (imageCaptionsMeta && imageCaptionsMeta.meta_value) {
-            try {
-              const imageCaptions = JSON.parse(imageCaptionsMeta.meta_value);
-              console.log(`  📸 Image captions preserved for post ${post.ID}:`, Object.keys(imageCaptions).length, 'images');
-
-              // The image captions are already stored in PostMeta, so they should persist
-              // But let's make sure they are properly maintained during the publish process
-            } catch (error) {
-              console.warn(`  ⚠️ Failed to parse image captions for post ${post.ID}:`, error);
-            }
-          }
-
-          // Log the publishing
-          await sequelize.query(
-            `INSERT INTO post_schedule_log 
-             (post_id, action_type, scheduled_by, notes) 
-             VALUES (:postId, 'published', :scheduledBy, 'Auto-published by scheduler')`,
-            {
-              replacements: {
-                postId: post.ID,
-                scheduledBy: post.scheduled_by
-              }
-            }
-          );
-
-          publishedPosts.push({
-            id: post.ID,
-            title: post.post_title,
-            scheduled_date: post.scheduled_publish_date
-          });
-        } catch (error) {
-          console.error(`Error publishing post ${post.ID}:`, error);
+      const { createScheduledPublisher } = require('../services/scheduledPublisher');
+      const publish = createScheduledPublisher({ sequelize, Post, PostMeta });
+      const result = await publish();
+      if (result.published.length) {
+        const cacheService = require('../services/cacheService');
+        if (cacheService.isConnected) {
+          const { invalidatePublishedContent } = require('../services/publishCache');
+          await invalidatePublishedContent(cacheService.client);
         }
       }
-
+      if (result.errors.length) {
+        const error = new Error(`${result.errors.length} posts failed to publish`);
+        error.result = result;
+        throw error;
+      }
       if (req && res) {
-        // Called via API
-        res.json({
+        return res.json({
           success: true,
-          message: `Published ${publishedPosts.length} scheduled posts`,
-          data: publishedPosts
+          message: `Published ${result.published.length} scheduled posts`,
+          data: result.published
         });
-      } else {
-        // Called by cron job
-        const wibTime = now.toLocaleString('id-ID', { 
-          timeZone: 'Asia/Jakarta',
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          timeZoneName: 'short'
-        });
-        console.log(`📅 Scheduler: Published ${publishedPosts.length} posts at ${wibTime}`);
-        if (publishedPosts.length > 0) {
-          publishedPosts.forEach(post => {
-            console.log(`  ✅ Published: ${post.title} (ID: ${post.id})`);
-          });
-        }
-        return publishedPosts;
       }
+      return result.published;
     } catch (error) {
       console.error('Error publishing scheduled posts:', error);
       if (req && res) {
-        res.status(500).json({
-          success: false,
-          message: 'Failed to publish scheduled posts',
-          error: error.message
+        return res.status(500).json({
+          success: false, message: 'Failed to publish scheduled posts',
+          error: error.message, data: error.result?.published || []
         });
       }
+      throw error;
     }
   }
 

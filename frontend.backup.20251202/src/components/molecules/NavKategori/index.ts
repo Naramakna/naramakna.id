@@ -1,1 +1,0 @@
-export { NavKategori } from './NavKategori'; 

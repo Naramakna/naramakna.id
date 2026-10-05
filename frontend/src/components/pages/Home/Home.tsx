@@ -61,9 +61,10 @@ export const Home: React.FC = () => {
           />
         </Suspense>
 
-        <Suspense fallback={<div className="video-section-skeleton bg-gray-100 animate-pulse rounded-lg"></div>}>
+        {/* tiktok video */}
+        {/* <Suspense fallback={<div className="video-section-skeleton bg-gray-100 animate-pulse rounded-lg"></div>}>
           <VideoSection />
-        </Suspense>
+        </Suspense> */}
         
         <PollingMain />
 

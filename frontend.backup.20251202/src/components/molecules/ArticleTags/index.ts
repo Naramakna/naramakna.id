@@ -1,1 +1,0 @@
-export { ArticleTags } from './ArticleTags';

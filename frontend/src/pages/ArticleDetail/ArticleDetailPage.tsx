@@ -9,7 +9,7 @@ import { RelatedArticles } from '../../components/organisms/RelatedArticles';
 import { AdSection } from '../../components/organisms/AdSection';
 import { useSEO, generateDescription, extractKeywords, formatStructuredDataDate } from '../../hooks/useSEO';
 import { useAnalytics } from '../../hooks/useAnalytics';
-import { buildApiUrl } from '../../config/api';
+import { buildApiUrl, buildBackendUrl } from '../../config/api';
 import 'quill/dist/quill.snow.css'; // Import Quill CSS for alignment classes
 
 interface ArticleDetailPageProps {
@@ -319,12 +319,22 @@ export const ArticleDetailPage: React.FC<ArticleDetailPageProps> = ({ articleId,
     return `${minutes} menit`;
   };
 
-  // SEO optimization
+  const ogImage = (() => {
+    const url = article?.featuredImage?.url || '';
+    if (!url) {
+      // Fallback to default image if no featured image
+      return 'https://naramakna.id/LogoNaramakna.png';
+    }
+    if (url.startsWith('http')) return url;
+    const fullUrl = buildBackendUrl(url);
+    return fullUrl;
+  })();
+
   useSEO({
     title: article ? `${article.title} | Naramakna` : 'Loading... | Naramakna',
     description: article ? generateDescription(article.content) : 'Berita terkini dan artikel menarik dari Naramakna',
     keywords: article ? extractKeywords(article.title, article.content, article.tags.map(tag => typeof tag === 'string' ? tag : tag.name)) : ['berita', 'artikel', 'naramakna'],
-    image: article?.featuredImage?.url,
+    image: ogImage,
     url: typeof window !== 'undefined' ? window.location.href : undefined,
     type: 'article',
     author: article?.author.name,

@@ -17,13 +17,15 @@ class MetaTagsController {
   static async generateArticleHTML(req, res) {
     try {
       const { slug } = req.params;
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
       
       // Fetch article data
       const post = await Post.findOne({
         where: { 
           post_name: slug,
           post_type: 'post',
-          post_status: 'publish'
+          post_status: 'publish',
+          deleted_at: null,
         },
         include: [
           {
@@ -47,12 +49,18 @@ class MetaTagsController {
       // Extract metadata from post meta
       const metadata = {};
       if (post.meta) {
-        post.meta.forEach(meta => {
-          metadata[meta.meta_key] = meta.meta_value;
+        const latestMap = {};
+        post.meta.forEach(m => {
+          const k = m.meta_key;
+          const id = m.meta_id || 0;
+          if (!(k in latestMap) || id > latestMap[k]) {
+            latestMap[k] = id;
+            metadata[k] = m.meta_value;
+          }
         });
       }
       
-      // Get featured image URL from thumbnail_id
+      // Get featured image URL from thumbnail_id, fallback to first inline image
       let featuredImageUrl = 'https://naramakna.id/LogoNaramakna.png'; // default fallback
       let imageType = 'image/png'; // default for logo
       
@@ -86,6 +94,38 @@ class MetaTagsController {
         }
       }
 
+      // Fallback: extract first image from post content if no thumbnail
+      if (!featuredImageUrl || featuredImageUrl.includes('LogoNaramakna.png')) {
+        const content = post.post_content || '';
+        const match = content.match(/<img[^>]+src=['"]([^'\"]+)['"]/i);
+        if (match && match[1]) {
+          let src = match[1];
+          // Ensure absolute URL
+          if (!src.startsWith('http')) {
+            if (src.startsWith('/')) {
+              src = `${baseUrl}${src}`;
+            } else if (src.startsWith('uploads') || src.startsWith('/uploads')) {
+              src = `${baseUrl}/${src.replace(/^\//, '')}`;
+            } else {
+              src = `${baseUrl}/${src}`;
+            }
+          }
+          featuredImageUrl = src.replace(/^http:\/\//, 'https://');
+          const urlLower = featuredImageUrl.toLowerCase();
+          if (urlLower.includes('.jpg') || urlLower.includes('.jpeg')) {
+            imageType = 'image/jpeg';
+          } else if (urlLower.includes('.png')) {
+            imageType = 'image/png';
+          } else if (urlLower.includes('.gif')) {
+            imageType = 'image/gif';
+          } else if (urlLower.includes('.webp')) {
+            imageType = 'image/webp';
+          } else {
+            imageType = 'image/jpeg';
+          }
+        }
+      }
+
       // Extract meta data
       const excerpt = metadata.excerpt;
       const seoDescription = metadata._aioseo_description;
@@ -93,7 +133,7 @@ class MetaTagsController {
       // Prepare meta data
       const title = `${post.post_title} - Naramakna`;
       const description = seoDescription || excerpt || post.post_excerpt || post.post_content?.substring(0, 160) + '...' || 'Artikel terbaru dari Naramakna.id';
-      const articleUrl = `https://naramakna.id/artikel/${slug}`;
+      const articleUrl = `${baseUrl}/artikel/${slug}`;
       const authorName = post.author?.display_name || 'Naramakna';
       const publishedTime = post.post_date;
       const modifiedTime = post.post_modified;
@@ -176,11 +216,11 @@ class MetaTagsController {
     try {
       const assetsPath = path.join(__dirname, '../../../frontend/dist/assets');
       const files = fs.readdirSync(assetsPath);
-      
+
       // Find all index JS files and pick the largest one (main entry point)
       const jsFiles = files.filter(file => file.startsWith('index-') && file.endsWith('.js'));
       let jsFile = null;
-      
+
       if (jsFiles.length > 0) {
         // If multiple index files, pick the one with largest size (main bundle)
         let largestSize = 0;
@@ -193,12 +233,15 @@ class MetaTagsController {
           }
         });
       }
-      
+
       const cssFile = files.find(file => file.startsWith('index-') && file.endsWith('.css'));
-      
+
+      // Use current timestamp for cache busting
+      const timestamp = Date.now();
+
       return {
-        js: jsFile ? `/assets/${jsFile}?v=2025082511` : '/assets/index.js',
-        css: cssFile ? `/assets/${cssFile}?v=2025082511` : '/assets/index.css'
+        js: jsFile ? `/assets/${jsFile}?v=${timestamp}` : '/assets/index.js',
+        css: cssFile ? `/assets/${cssFile}?v=${timestamp}` : '/assets/index.css'
       };
     } catch (error) {
       console.error('Error reading asset files:', error);

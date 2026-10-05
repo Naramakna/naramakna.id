@@ -1,1 +1,0 @@
-export { InstagramEmbed } from './InstagramEmbed';

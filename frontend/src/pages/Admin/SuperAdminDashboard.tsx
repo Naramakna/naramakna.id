@@ -26,7 +26,16 @@ interface User {
   user_status: string; // Changed from number to string
   user_registered: string;
   display_name: string;
+  phone_number?: string;
 }
+
+
+const normalizeUserStatus = (s: any): string => {
+  if (s === 1 || s === '1' || s === 'active') return 'active';
+  if (s === 2 || s === '2' || s === 'suspended') return 'suspended';
+  if (s === 0 || s === '0' || s === 'pending') return 'pending';
+  return typeof s === 'string' ? s : '';
+};
 
 
 
@@ -142,7 +151,23 @@ const SuperAdminDashboard: React.FC = () => {
     minViews: '',
     maxViews: '',
     sortBy: 'date',
-    sortOrder: 'DESC'
+    sortOrder: 'DESC',
+    title: '',
+    startDate: '',
+    endDate: ''
+  });
+  const [filtersDraft, setFiltersDraft] = useState({
+    author: '',
+    status: '',
+    year: '',
+    month: '',
+    minViews: '',
+    maxViews: '',
+    sortBy: 'date',
+    sortOrder: 'DESC',
+    title: '',
+    startDate: '',
+    endDate: ''
   });
   const [showFilters, setShowFilters] = useState(false);
   
@@ -168,12 +193,18 @@ const SuperAdminDashboard: React.FC = () => {
       });
 
       // Single batched API call instead of 7 separate calls (reduces MySQL connections from 23 -> 5-7)
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const batchedRes = await fetch(buildApiUrl(`admin/dashboard-all?${queryParams}`), {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers,
         cache: 'no-store'
       });
 
@@ -197,17 +228,27 @@ const SuperAdminDashboard: React.FC = () => {
 
       // Set users data
       if (usersData.success) {
-        setUsers(usersData.data.users);
+        setUsers((usersData.data.users || []).map((u: any) => ({
+          ...u,
+          user_status: normalizeUserStatus(u.user_status)
+        })));
       }
 
       // Set admin users from dedicated API query
       if (adminUsersData.success) {
-        setAdmins(adminUsersData.data.users || []);
+        const adminList = (adminUsersData.data.users || []).map((u: any) => ({
+          ...u,
+          user_status: normalizeUserStatus(u.user_status)
+        }));
+        setAdmins(adminList);
       } else {
         // Fallback: filter admins from users list
-        const adminUsers = usersData.data?.users?.filter((user: User) =>
-          user.user_role === 'admin' || user.user_role === 'superadmin'
-        ) || [];
+        const adminUsers = (usersData.data?.users || [])
+          .filter((user: any) => user.user_role === 'admin' || user.user_role === 'superadmin')
+          .map((u: any) => ({
+            ...u,
+            user_status: normalizeUserStatus(u.user_status)
+          }));
         setAdmins(adminUsers);
       }
 
@@ -274,19 +315,14 @@ const SuperAdminDashboard: React.FC = () => {
 
   // Filter handling functions
   const handleFilterChange = (key: string, value: string) => {
-    setFilters(prev => ({
+    setFiltersDraft(prev => ({
       ...prev,
       [key]: value
-    }));
-    // Reset to first page when filters change
-    setPagination(prev => ({
-      ...prev,
-      currentPage: 1
     }));
   };
 
   const resetFilters = () => {
-    setFilters({
+    setFiltersDraft({
       author: '',
       status: '',
       year: '',
@@ -294,12 +330,20 @@ const SuperAdminDashboard: React.FC = () => {
       minViews: '',
       maxViews: '',
       sortBy: 'date',
-      sortOrder: 'DESC'
+      sortOrder: 'DESC',
+      title: '',
+      startDate: '',
+      endDate: ''
     });
+  };
+
+  const applyFilters = () => {
+    setFilters(filtersDraft);
     setPagination(prev => ({
       ...prev,
       currentPage: 1
     }));
+    setShowFilters(false);
   };
 
   // Pagination functions
@@ -321,11 +365,13 @@ const SuperAdminDashboard: React.FC = () => {
   // Fetch trashed posts
   const fetchTrashedPosts = useCallback(async () => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl('content/admin/articles/trash'), {
         method: 'GET',
         credentials: 'include',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : undefined
         }
       });
 
@@ -356,7 +402,7 @@ const SuperAdminDashboard: React.FC = () => {
 
   // useEffect harus dipanggil sebelum early returns
   useEffect(() => {
-    if (isAuthenticated && user?.user_role === 'superadmin') {
+    if (isAuthenticated && (user?.user_role === 'superadmin' || user?.user_role === 'admin')) {
       fetchData();
       loadPlaceholderSettings();
     }
@@ -364,7 +410,7 @@ const SuperAdminDashboard: React.FC = () => {
 
   // Load trashed posts when trash tab is accessed
   useEffect(() => {
-    if (activeTab === 'trash' && isAuthenticated && user?.user_role === 'superadmin') {
+    if (activeTab === 'trash' && isAuthenticated && (user?.user_role === 'superadmin' || user?.user_role === 'admin')) {
       fetchTrashedPosts();
     }
   }, [activeTab, isAuthenticated, user?.user_role, fetchTrashedPosts]);
@@ -378,14 +424,14 @@ const SuperAdminDashboard: React.FC = () => {
     );
   }
 
-  if (!isAuthenticated || user?.user_role !== 'superadmin') {
+  if (!isAuthenticated || (user?.user_role !== 'superadmin' && user?.user_role !== 'admin')) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
         <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
-            <p className="text-gray-600">You don't have permission to access the SuperAdmin Dashboard. SuperAdmin role required.</p>
+            <p className="text-gray-600">You don't have permission to access the SuperAdmin Dashboard. Admin or SuperAdmin role required.</p>
           </div>
         </div>
       </div>
@@ -396,11 +442,13 @@ const SuperAdminDashboard: React.FC = () => {
 
   const promoteToAdmin = async (userId: number) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl(`users/${userId}`), {
         method: 'PUT',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           user_role: 'admin'
@@ -443,10 +491,12 @@ const SuperAdminDashboard: React.FC = () => {
 
   const suspendUser = async (userId: number) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl(`admin/users/${userId}/suspend`), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         credentials: 'include',
         body: JSON.stringify({ suspend: true })
@@ -468,10 +518,12 @@ const SuperAdminDashboard: React.FC = () => {
 
   const unsuspendUser = async (userId: number) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl(`admin/users/${userId}/suspend`), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         credentials: 'include',
         body: JSON.stringify({ suspend: false })
@@ -493,9 +545,11 @@ const SuperAdminDashboard: React.FC = () => {
 
   const deleteUser = async (userId: number) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl(`admin/users/${userId}`), {
         method: 'DELETE',
-        credentials: 'include'
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined
       });
 
       if (response.ok) {
@@ -519,13 +573,15 @@ const SuperAdminDashboard: React.FC = () => {
     if (!confirmed) return;
 
     try {
+      const token = localStorage.getItem('token');
       const url = permanent 
         ? buildApiUrl(`content/admin/articles/${articleId}?force=true`)
         : buildApiUrl(`content/admin/articles/${articleId}`);
         
       const response = await fetch(url, {
         method: 'DELETE',
-        credentials: 'include'
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined
       });
 
       if (response.ok) {
@@ -550,11 +606,13 @@ const SuperAdminDashboard: React.FC = () => {
     if (!confirmed) return;
 
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl('content/admin/articles/bulk-delete'), {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           articleIds: articleIds,
@@ -579,9 +637,11 @@ const SuperAdminDashboard: React.FC = () => {
 
   const restoreArticle = async (articleId: number) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(buildApiUrl(`content/admin/articles/${articleId}/restore`), {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined
       });
 
       if (response.ok) {
@@ -596,6 +656,58 @@ const SuperAdminDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error restoring article:', error);
       alert('Error restoring article');
+    }
+  };
+
+  const editUser = async (userId: number, data: { user_login?: string; user_email?: string; user_role?: string; user_status?: number | string }) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(buildApiUrl(`users/${userId}`), {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(data)
+      });
+
+      const result = await response.json();
+      if (response.ok && result.success) {
+        alert(result.message || 'User updated successfully!');
+        fetchData();
+      } else {
+        alert(result.message || 'Failed to update user');
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
+      alert('Error updating user');
+    }
+  };
+
+  const updateUserPassword = async (userId: number, newPassword: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(buildApiUrl(`users/${userId}`), {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ new_password: newPassword })
+      });
+
+      const result = await response.json();
+      if (response.ok && result.success) {
+        alert(result.message || 'Password user berhasil diupdate!');
+        fetchData();
+      } else {
+        alert(result.message || 'Gagal update password user');
+      }
+    } catch (error) {
+      console.error('Error updating user password:', error);
+      alert('Error updating user password');
     }
   };
 
@@ -674,6 +786,8 @@ const SuperAdminDashboard: React.FC = () => {
                   onUnsuspendUser={unsuspendUser}
                   onDeleteUser={deleteUser}
                   title="All Users Management"
+                  onEditUser={editUser}
+                  onUpdatePassword={updateUserPassword}
                   showActions={true}
                 />
               )}
@@ -688,6 +802,8 @@ const SuperAdminDashboard: React.FC = () => {
                   onUnsuspendUser={unsuspendUser}
                   onDeleteUser={deleteUser}
                   title="Admin Management"
+                  onEditUser={editUser}
+                  onUpdatePassword={updateUserPassword}
                   showActions={true}
                 />
               )}
@@ -698,12 +814,13 @@ const SuperAdminDashboard: React.FC = () => {
                 <PostsManagement
                   posts={posts}
                   loading={loading}
-                  filters={filters}
+                  filters={filtersDraft}
                   showFilters={showFilters}
                   pagination={pagination}
                   users={users}
                   onFilterChange={handleFilterChange}
                   onResetFilters={resetFilters}
+                  onApplyFilters={applyFilters}
                   onToggleFilters={() => setShowFilters(!showFilters)}
                   onPageChange={handlePageChange}
                   onItemsPerPageChange={handleItemsPerPageChange}
@@ -816,10 +933,14 @@ const SuperAdminDashboard: React.FC = () => {
                                   onClick={async () => {
                                     if (!window.confirm(`Approve artikel "${post.post_title}"?`)) return;
                                     try {
+                                      const token = localStorage.getItem('token');
                                       const response = await fetch(buildApiUrl(`approval/${post.ID}/review`), {
                                         method: 'POST',
                                         credentials: 'include',
-                                        headers: { 'Content-Type': 'application/json' },
+                                        headers: {
+                                          'Content-Type': 'application/json',
+                                          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                                        },
                                         body: JSON.stringify({ action: 'approve' })
                                       });
                                       if (response.ok) {
@@ -844,10 +965,14 @@ const SuperAdminDashboard: React.FC = () => {
                                     if (feedback === null) return; // User clicked cancel
                                     if (!window.confirm(`Reject artikel "${post.post_title}"?`)) return;
                                     try {
+                                      const token = localStorage.getItem('token');
                                       const response = await fetch(buildApiUrl(`approval/${post.ID}/review`), {
                                         method: 'POST',
                                         credentials: 'include',
-                                        headers: { 'Content-Type': 'application/json' },
+                                        headers: {
+                                          'Content-Type': 'application/json',
+                                          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                                        },
                                         body: JSON.stringify({ action: 'reject', feedback })
                                       });
                                       if (response.ok) {

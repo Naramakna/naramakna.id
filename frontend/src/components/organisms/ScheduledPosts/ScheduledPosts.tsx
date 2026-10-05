@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { schedulerAPI } from '../../../services/api/scheduler';
+import SchedulerMonitor from './SchedulerMonitor';
 
 interface ScheduledPost {
   ID: number;
@@ -129,6 +130,7 @@ const ScheduledPosts: React.FC<ScheduledPostsProps> = ({ posts, loading, onRefre
 
   return (
     <div className="p-6">
+      <SchedulerMonitor onRefresh={onRefresh} />
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-3 sm:space-y-0">
         <h2 className="text-lg font-medium text-gray-900">Scheduled Posts</h2>
         <button
@@ -240,14 +242,21 @@ const ScheduledPosts: React.FC<ScheduledPostsProps> = ({ posts, loading, onRefre
         </div>
       )}
 
-      {/* Debug info */}
+      {/* Manual recovery check */}
       <div className="mt-8 p-4 bg-gray-100 rounded-lg">
-        <h3 className="text-sm font-medium text-gray-700 mb-2">Debug Info</h3>
+        <h3 className="text-sm font-medium text-gray-700 mb-2">Pemeriksaan manual</h3>
         <div className="text-xs text-gray-600 space-y-1">
           <div>Total scheduled posts: {posts.length}</div>
-          <div>Last updated: {new Date().toLocaleString()}</div>
           <button
-            onClick={() => schedulerAPI.publishNow().then(() => alert('Manual publish trigger sent!'))}
+            onClick={async () => {
+              try {
+                const result = await schedulerAPI.publishNow();
+                alert(result.message);
+                onRefresh();
+              } catch {
+                alert('Pemeriksaan publish gagal. Periksa log backend.');
+              }
+            }}
             className="mt-2 px-2 py-1 bg-yellow-500 hover:bg-yellow-600 text-white text-xs rounded"
           >
             Trigger Manual Publish Check

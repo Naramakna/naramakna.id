@@ -45,13 +45,23 @@ class UserController {
                 limit: safeLimit,
                 offset,
                 order: [[sort_by, sort_order.toUpperCase()]],
-                attributes: { exclude: ['user_pass', 'user_activation_key'] }
+                attributes: { exclude: ['user_pass', 'user_activation_key'] },
+                include: [{
+                    model: require('../models/UserProfile'),
+                    as: 'profile',
+                    attributes: ['phone_number'],
+                    required: false
+                }]
             });
 
             res.json({
                 success: true,
                 data: {
-                    users: users.rows,
+                    users: users.rows.map(u => ({
+                        ...u.toJSON(),
+                        phone_number: u.profile?.phone_number || null,
+                        profile: undefined
+                    })),
                     pagination: {
                         total: users.count,
                         page: safePage,
@@ -190,7 +200,9 @@ class UserController {
                 user_role,
                 user_status,
                 user_url,
-                bio
+                bio,
+                user_login,
+                new_password
             } = req.body;
 
             const targetUser = await User.findByPk(id);
@@ -244,6 +256,29 @@ class UserController {
 
             // Admin-only fields
             if (isAdmin) {
+                if (user_login !== undefined && user_login !== targetUser.user_login) {
+                    const newLogin = String(user_login).trim();
+                    if (!newLogin || newLogin.length < 3 || newLogin.length > 30) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'Invalid username length'
+                        });
+                    }
+                    const existingLogin = await User.findOne({
+                        where: {
+                            user_login: newLogin,
+                            ID: { [Op.ne]: targetUser.ID }
+                        }
+                    });
+                    if (existingLogin) {
+                        return res.status(409).json({
+                            success: false,
+                            message: 'Username already in use'
+                        });
+                    }
+                    updates.user_login = newLogin;
+                    updates.user_nicename = newLogin.toLowerCase();
+                }
                 if (user_role !== undefined) {
                     // Prevent users from promoting themselves to superadmin
                     if (user_role === USER_ROLES.SUPERADMIN && currentUser.user_role !== USER_ROLES.SUPERADMIN) {
@@ -267,6 +302,25 @@ class UserController {
 
                 if (user_status !== undefined) {
                     updates.user_status = parseInt(user_status);
+                }
+
+                // Allow admin to update password for any user
+                if (new_password !== undefined) {
+                    const pwd = String(new_password);
+                    if (!pwd || pwd.length < 8) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'Password must be at least 8 characters'
+                        });
+                    }
+                    // Prevent non-superadmin from modifying superadmin accounts
+                    if (targetUser.user_role === USER_ROLES.SUPERADMIN && currentUser.user_role !== USER_ROLES.SUPERADMIN) {
+                        return res.status(403).json({
+                            success: false,
+                            message: 'Only superadmin can modify superadmin accounts'
+                        });
+                    }
+                    updates.user_pass = pwd; // Will be hashed by model hook
                 }
             }
 

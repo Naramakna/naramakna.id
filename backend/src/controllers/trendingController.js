@@ -187,7 +187,14 @@ class TrendingController {
           attachment.guid as thumbnail_url
         FROM posts p
         LEFT JOIN users u ON p.post_author = u.ID
-        LEFT JOIN postmeta thumb ON p.ID = thumb.post_id AND thumb.meta_key = '_thumbnail_id'
+        LEFT JOIN postmeta thumb 
+          ON p.ID = thumb.post_id 
+         AND thumb.meta_key = '_thumbnail_id'
+         AND thumb.meta_id = (
+           SELECT MAX(pm.meta_id) 
+           FROM postmeta pm 
+           WHERE pm.post_id = p.ID AND pm.meta_key = '_thumbnail_id'
+         )
         LEFT JOIN posts attachment ON thumb.meta_value = attachment.ID
         WHERE p.post_status = 'publish'
         AND p.post_type = 'post'

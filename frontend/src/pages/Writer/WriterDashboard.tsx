@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from '../../components/organisms/Navbar';
 import { Footer } from '../../components/organisms/Footer';
-import { buildApiUrl } from '../../config/api';
+import { buildApiUrl, buildBackendUrl } from '../../config/api';
 
 interface Post {
   ID: number;
@@ -11,6 +11,8 @@ interface Post {
   post_date: string;
   post_type: string;
   post_modified?: string;
+  featured_image?: string;
+  view_count?: number;
   review?: {
     action: string;
     reviewer_name: string;
@@ -23,6 +25,8 @@ const WriterDashboard: React.FC = () => {
   const [_posts, _setPosts] = useState<Post[]>([]);
   const [pendingPosts, setPendingPosts] = useState<Post[]>([]);
   const [rejectedPosts, setRejectedPosts] = useState<Post[]>([]);
+  const [draftPosts, setDraftPosts] = useState<Post[]>([]);
+  const [publishedPosts, setPublishedPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [newPost, setNewPost] = useState({
@@ -33,22 +37,45 @@ const WriterDashboard: React.FC = () => {
   const [featuredImage, setFeaturedImage] = useState<File | null>(null);
   const [galleryImages, setGalleryImages] = useState<File[]>([]);
   const [creating, setCreating] = useState(false);
+  const [draftPage, setDraftPage] = useState(1);
+  const [draftTotalPages, setDraftTotalPages] = useState(1);
+  const [pendingPage, setPendingPage] = useState(1);
+  const [pendingTotalPages, setPendingTotalPages] = useState(1);
+  const [publishedPage, setPublishedPage] = useState(1);
+  const [publishedTotalPages, setPublishedTotalPages] = useState(1);
+  const [rejectedPage, setRejectedPage] = useState(1);
+  const [rejectedTotalPages, setRejectedTotalPages] = useState(1);
+
+  const getImageUrl = (imagePath: string | null) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http')) return imagePath;
+    if (imagePath.startsWith('/uploads/')) return buildBackendUrl(imagePath);
+    return buildBackendUrl(`uploads/${imagePath}`);
+  };
 
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
   const token = localStorage.getItem('token');
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [draftPage, pendingPage, publishedPage, rejectedPage]);
 
   const fetchData = async () => {
     try {
-      const [pendingRes, rejectedRes] = await Promise.all([
-        fetch(buildApiUrl('approval/my-pending'), {
+      const [pendingRes, rejectedRes, draftsRes, publishedRes] = await Promise.all([
+        fetch(buildApiUrl(`approval/my-pending?page=${pendingPage}&limit=20`), {
           headers: { 'Authorization': `Bearer ${token}` },
           credentials: 'include'
         }),
-        fetch(buildApiUrl('approval/my-rejected'), {
+        fetch(buildApiUrl(`approval/my-rejected?page=${rejectedPage}&limit=20`), {
+          headers: { 'Authorization': `Bearer ${token}` },
+          credentials: 'include'
+        }),
+        fetch(buildApiUrl(`content/author/${currentUser.ID}?status=draft&limit=20&page=${draftPage}`), {
+          headers: { 'Authorization': `Bearer ${token}` },
+          credentials: 'include'
+        }),
+        fetch(buildApiUrl(`content/author/${currentUser.ID}?status=publish&limit=20&page=${publishedPage}`), {
           headers: { 'Authorization': `Bearer ${token}` },
           credentials: 'include'
         })
@@ -56,9 +83,93 @@ const WriterDashboard: React.FC = () => {
 
       const pendingData = await pendingRes.json();
       const rejectedData = await rejectedRes.json();
+      const draftsData = await draftsRes.json();
+      const publishedData = await publishedRes.json();
 
-      if (pendingData.success) setPendingPosts(pendingData.data.my_pending_posts);
-      if (rejectedData.success) setRejectedPosts(rejectedData.data.my_rejected_posts);
+      if (pendingData.success) {
+        const source = Array.isArray(pendingData.data?.my_pending_posts) ? pendingData.data.my_pending_posts : [];
+        const normalizedPending = source.map((p: any) => {
+          const imgMatch = (p.post_content || '').match(/<img[^>]+src=['"]([^'\"]+)['"]/);
+          const contentImage = imgMatch ? imgMatch[1] : null;
+          return {
+            ID: p.ID ?? p.id ?? 0,
+            post_title: p.post_title ?? p.title ?? 'Untitled',
+            post_content: p.post_content ?? p.content ?? '',
+            post_status: p.post_status ?? p.status ?? 'pending',
+            post_date: p.post_date ?? p.date ?? new Date().toISOString(),
+            post_type: p.post_type ?? p.type ?? 'post',
+            post_modified: p.post_modified ?? p.modified ?? null,
+            featured_image: (p.featured_image && p.featured_image.url) ? p.featured_image.url : (p.featured_image || contentImage || null)
+          } as Post;
+        });
+        setPendingPosts(normalizedPending);
+        setPendingTotalPages(pendingData.data?.pagination?.total_pages ?? 1);
+      }
+      if (rejectedData.success) {
+        setRejectedPosts(rejectedData.data.my_rejected_posts);
+        setRejectedTotalPages(rejectedData.data?.pagination?.total_pages ?? 1);
+      }
+      if (draftsData.success) {
+        const source = (draftsData.data && draftsData.data.posts) ? draftsData.data.posts : (Array.isArray(draftsData.data) ? draftsData.data : []);
+        let normalized = source.map((p: any) => ({
+          ID: p.ID ?? p.id ?? 0,
+          post_title: p.post_title ?? p.title ?? 'Untitled',
+          post_content: p.post_content ?? p.content ?? '',
+          post_status: p.post_status ?? p.status ?? 'draft',
+          post_date: p.post_date ?? p.date ?? new Date().toISOString(),
+          post_type: p.post_type ?? p.type ?? 'post',
+          post_modified: p.post_modified ?? p.modified ?? p.date ?? p.post_date ?? null,
+          featured_image: (p.featured_image && p.featured_image.url) ? p.featured_image.url : (p.featured_image || null)
+        }));
+        // Fallback ke endpoint writer jika kosong
+        if (!normalized || normalized.length === 0) {
+          try {
+            const writerRes = await fetch(buildApiUrl(`writer/articles?status=draft&page=${draftPage}&limit=20`), {
+              headers: { 'Authorization': `Bearer ${token}` },
+              credentials: 'include'
+            });
+            const writerData = await writerRes.json();
+            if (writerData.success && writerData.data?.articles) {
+              normalized = writerData.data.articles.map((p: any) => {
+                const imgMatch = (p.post_content || '').match(/<img[^>]+src=['"]([^'\"]+)['"]/);
+                const contentImage = imgMatch ? imgMatch[1] : null;
+                return {
+                  ID: p.ID ?? p.id ?? 0,
+                  post_title: p.post_title ?? p.title ?? 'Untitled',
+                  post_content: p.post_content ?? p.content ?? '',
+                  post_status: p.post_status ?? p.status ?? 'draft',
+                  post_date: p.post_date ?? p.date ?? new Date().toISOString(),
+                  post_type: p.post_type ?? p.type ?? 'post',
+                  post_modified: p.post_modified ?? p.modified ?? p.date ?? p.post_date ?? null,
+                  featured_image: (p.featured_image && p.featured_image.url) ? p.featured_image.url : (p.featured_image || contentImage || null)
+                } as Post;
+              });
+              setDraftTotalPages(writerData.data?.pagination?.pages ?? 1);
+            }
+          } catch (e) {
+            // ignore fallback error
+          }
+        } else {
+          setDraftTotalPages(draftsData.data?.pagination?.totalPages ?? 1);
+        }
+        setDraftPosts(normalized);
+      }
+      if (publishedData.success) {
+        const source = (publishedData.data && publishedData.data.posts) ? publishedData.data.posts : (Array.isArray(publishedData.data) ? publishedData.data : []);
+        const normalized = source.map((p: any) => ({
+          ID: p.ID ?? p.id ?? 0,
+          post_title: p.post_title ?? p.title ?? 'Untitled',
+          post_content: p.post_content ?? p.content ?? '',
+          post_status: p.post_status ?? p.status ?? 'publish',
+          post_date: p.post_date ?? p.date ?? new Date().toISOString(),
+          post_type: p.post_type ?? p.type ?? 'post',
+          post_modified: p.post_modified ?? p.modified ?? p.date ?? p.post_date ?? null,
+          featured_image: (p.featured_image && p.featured_image.url) ? p.featured_image.url : (p.featured_image || null),
+          view_count: p.view_count ?? 0
+        }));
+        setPublishedPosts(normalized);
+        setPublishedTotalPages(publishedData.data?.pagination?.totalPages ?? 1);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -191,6 +302,16 @@ const WriterDashboard: React.FC = () => {
                 Overview
               </button>
               <button
+                onClick={() => setActiveTab('drafts')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'drafts'
+                    ? 'border-yellow-500 text-yellow-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Draft Posts ({draftPosts.length})
+              </button>
+              <button
                 onClick={() => setActiveTab('pending')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'pending'
@@ -199,6 +320,16 @@ const WriterDashboard: React.FC = () => {
                 }`}
               >
                 Pending Posts ({pendingPosts.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('published')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'published'
+                    ? 'border-yellow-500 text-yellow-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Published Posts ({publishedPosts.length})
               </button>
               <button
                 onClick={() => setActiveTab('rejected')}
@@ -279,7 +410,178 @@ const WriterDashboard: React.FC = () => {
           </div>
         )}
 
+        {activeTab === 'published' && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Published Posts</h2>
+            {publishedPosts.length === 0 ? (
+              <div className="text-center py-12">
+                <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No published posts</h3>
+                <p className="text-gray-600 mb-6">You haven’t published any posts yet.</p>
+              </div>
+            ) : (
+              <div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Published</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Views</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {publishedPosts.map(post => (
+                      <tr key={post.ID} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {(() => {
+                            const primary = post.featured_image ? getImageUrl(post.featured_image) : null;
+                            const imgMatch = (!primary && post.post_content) ? post.post_content.match(/<img[^>]+src=['"]([^'\"]+)['"]/): null;
+                            const rawUrl = imgMatch ? imgMatch[1] : null;
+                            const fallback = rawUrl ? getImageUrl(rawUrl) : null;
+                            const imageUrl = primary || fallback;
+                            return imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt={post.post_title}
+                                className="w-16 h-16 object-cover rounded-md"
+                                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            ) : null;
+                          })()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{post.post_title}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {new Date(post.post_date).toLocaleString('id-ID', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {post.view_count ?? 0}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  </table>
+                </div>
+                <div className="mt-4 flex items-center justify-between">
+                  <button
+                    onClick={() => setPublishedPage(p => Math.max(1, p - 1))}
+                    disabled={publishedPage <= 1}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${publishedPage <= 1 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-gray-600">Page {publishedPage} of {publishedTotalPages}</span>
+                  <button
+                    onClick={() => setPublishedPage(p => Math.min(publishedTotalPages, p + 1))}
+                    disabled={publishedPage >= publishedTotalPages}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${publishedPage >= publishedTotalPages ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
+        {activeTab === 'drafts' && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Draft Posts</h2>
+            {draftPosts.length === 0 ? (
+              <div className="text-center py-12">
+                <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No drafts</h3>
+                <p className="text-gray-600 mb-6">You haven't created any drafts yet.</p>
+                <a
+                  href="/tulis"
+                  className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Create a draft
+                </a>
+              </div>
+            ) : (
+              <div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Modified</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {draftPosts.map(post => (
+                      <tr key={post.ID} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {(() => {
+                            const primary = post.featured_image ? getImageUrl(post.featured_image) : null;
+                            const imgMatch = (!primary && post.post_content) ? post.post_content.match(/<img[^>]+src=['"]([^'\"]+)['"]/): null;
+                            const rawUrl = imgMatch ? imgMatch[1] : null;
+                            const fallback = rawUrl ? getImageUrl(rawUrl) : null;
+                            const imageUrl = primary || fallback;
+                            return imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt={post.post_title}
+                                className="w-16 h-16 object-cover rounded-md"
+                                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            ) : null;
+                          })()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{post.post_title}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-gray-600 capitalize">{post.post_type}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {new Date(post.post_modified || post.post_date).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <a
+                            href={`/tulis?edit=${post.ID}`}
+                            className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                          >
+                            Edit Draft
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  </table>
+                </div>
+                <div className="mt-4 flex items-center justify-between">
+                  <button
+                    onClick={() => setDraftPage(p => Math.max(1, p - 1))}
+                    disabled={draftPage <= 1}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${draftPage <= 1 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-gray-600">Page {draftPage} of {draftTotalPages}</span>
+                  <button
+                    onClick={() => setDraftPage(p => Math.min(draftTotalPages, p + 1))}
+                    disabled={draftPage >= draftTotalPages}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${draftPage >= draftTotalPages ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {activeTab === 'pending' && (
           <div className="bg-white rounded-lg shadow-lg p-6">
@@ -299,10 +601,12 @@ const WriterDashboard: React.FC = () => {
                 </a>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
+              <div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
@@ -312,6 +616,23 @@ const WriterDashboard: React.FC = () => {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {pendingPosts.map(post => (
                       <tr key={post.ID} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {(() => {
+                            const primary = post.featured_image ? getImageUrl(post.featured_image) : null;
+                            const imgMatch = (!primary && post.post_content) ? post.post_content.match(/<img[^>]+src=['"]([^'\"]+)['"]/): null;
+                            const rawUrl = imgMatch ? imgMatch[1] : null;
+                            const fallback = rawUrl ? getImageUrl(rawUrl) : null;
+                            const imageUrl = primary || fallback;
+                            return imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt={post.post_title}
+                                className="w-16 h-16 object-cover rounded-md"
+                                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            ) : null;
+                          })()}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{post.post_title}</div>
                         </td>
@@ -333,7 +654,25 @@ const WriterDashboard: React.FC = () => {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                  </table>
+                </div>
+                <div className="mt-4 flex items-center justify-between">
+                  <button
+                    onClick={() => setPendingPage(p => Math.max(1, p - 1))}
+                    disabled={pendingPage <= 1}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${pendingPage <= 1 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-gray-600">Page {pendingPage} of {pendingTotalPages}</span>
+                  <button
+                    onClick={() => setPendingPage(p => Math.min(pendingTotalPages, p + 1))}
+                    disabled={pendingPage >= pendingTotalPages}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${pendingPage >= pendingTotalPages ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -351,8 +690,9 @@ const WriterDashboard: React.FC = () => {
                 <p className="text-gray-600">All your submissions have been approved or are pending review.</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {rejectedPosts.map(post => (
+              <div>
+                <div className="space-y-4">
+                  {rejectedPosts.map(post => (
                   <div key={post.ID} className="border border-red-200 rounded-lg p-6 bg-red-50">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex-1">
@@ -406,7 +746,25 @@ const WriterDashboard: React.FC = () => {
                       </a>
                     </div>
                   </div>
-                ))}
+                  ))}
+                </div>
+                <div className="mt-4 flex items-center justify-between">
+                  <button
+                    onClick={() => setRejectedPage(p => Math.max(1, p - 1))}
+                    disabled={rejectedPage <= 1}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${rejectedPage <= 1 ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-gray-600">Page {rejectedPage} of {rejectedTotalPages}</span>
+                  <button
+                    onClick={() => setRejectedPage(p => Math.min(rejectedTotalPages, p + 1))}
+                    disabled={rejectedPage >= rejectedTotalPages}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${rejectedPage >= rejectedTotalPages ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-gray-800 text-white hover:bg-gray-700'}`}
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             )}
           </div>

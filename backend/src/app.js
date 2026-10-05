@@ -1,7 +1,7 @@
 // backend/src/app.js
 
 // Load environment variables
-require('dotenv').config({ path: '/var/www/naramakna.id/backend/.env' });
+require('dotenv').config({ path: require('fs').existsSync('/var/www/naramakna.id/backend/.env') ? '/var/www/naramakna.id/backend/.env' : require('path').join(__dirname, '../.env') });
 
 const express = require('express');
 const cors = require('cors');
@@ -107,12 +107,114 @@ app.use((req, res, next) => {
 // IP and Location tracking middleware
 app.use(ipTracker);
 
+app.use((req, res, next) => {
+  const start = process.hrtime.bigint();
+  const { randomUUID } = require('crypto');
+  const request_id = typeof randomUUID === 'function' ? randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  req.request_id = request_id;
+  let responseBody;
+  const originalJson = res.json.bind(res);
+  const originalSend = res.send.bind(res);
+  res.json = function (body) {
+    responseBody = body;
+    return originalJson(body);
+  };
+  res.send = function (body) {
+    responseBody = body;
+    return originalSend(body);
+  };
+  res.on('finish', () => {
+    const end = process.hrtime.bigint();
+    const durationMs = Number((end - start) / 1000000n);
+    const ip = (req.location && req.location.ip) || req.ip || (req.headers['x-forwarded-for'] || '');
+  const logEntry = {
+      timestamp: new Date().toISOString(),
+      status: res.statusCode < 400 ? 'SUCCESS' : 'ERROR',
+      request_id,
+      ip,
+      method: req.method,
+      path: req.originalUrl || req.url,
+      query: req.query || {},
+      headers: {
+        user_agent: req.headers['user-agent'] || '',
+        content_type: req.headers['content-type'] || ''
+      },
+      body: (function maskSensitive(obj) {
+        try {
+          if (Array.isArray(obj)) return undefined;
+          if (!obj || typeof obj !== 'object') return obj;
+          const redactKeys = ['password', 'pass', 'authorization', 'token', 'access_token', 'refresh_token'];
+          const walk = (input) => {
+            if (Array.isArray(input)) return undefined;
+            if (input && typeof input === 'object') {
+              const out = {};
+              for (const k of Object.keys(input)) {
+                if (redactKeys.includes(k.toLowerCase())) out[k] = '[REDACTED]';
+                else out[k] = walk(input[k]);
+              }
+              return out;
+            }
+            return input;
+          };
+          return walk(obj);
+        } catch (e) {
+          return {};
+        }
+      })(req.body),
+      response_status: res.statusCode,
+      response_time_ms: durationMs,
+      response_body: (function sanitizeResponse(body) {
+        try {
+          if (!body) return {};
+          if (typeof body === 'string') {
+            try { const parsed = JSON.parse(body); return Array.isArray(parsed) ? undefined : parsed; } catch { return { data: body }; }
+          }
+          if (Array.isArray(body)) return undefined;
+          return (function maskSensitive(obj) {
+            try {
+              if (Array.isArray(obj)) return undefined;
+              if (!obj || typeof obj !== 'object') return obj;
+              const redactKeys = ['password', 'pass', 'authorization', 'token', 'access_token', 'refresh_token'];
+              const walk = (input) => {
+                if (Array.isArray(input)) return undefined;
+                if (input && typeof input === 'object') {
+                  const out = {};
+                  for (const k of Object.keys(input)) {
+                    if (redactKeys.includes(k.toLowerCase())) out[k] = '[REDACTED]';
+                    else out[k] = walk(input[k]);
+                  }
+                  return out;
+                }
+                return input;
+              };
+              return walk(obj);
+            } catch (e) {
+              return {};
+            }
+          })(body);
+        } catch (e) {
+          return {};
+        }
+      })(responseBody)
+    };
+    try {
+      console.log(JSON.stringify(logEntry));
+    } catch (e) {
+      console.log('{}');
+    }
+  });
+  next();
+});
+
 // Request Deduplication Middleware (CPU Spike Prevention)
 // DISABLED - causing pending request issues when errors occur
 // app.use(requestDeduplication(1000)); // 1 second deduplication window
 
 // Serve static files from project root public directory
 app.use(express.static(path.join(__dirname, '../public')));
+
+// Serve frontend build files (for production and SSR meta tags)
+app.use(express.static(path.join(__dirname, '../../frontend/dist')));
 
 // Serve uploads directory for profile images (from project root public)
 app.use('/uploads', express.static(path.join(__dirname, '../../public/uploads')));
@@ -155,11 +257,14 @@ const trendingRoutes = require('./routes/trending');
 const aboutRoutes = require('./routes/about');
 const mataElangRoutes = require('./routes/mataElang');
 const batchRoutes = require('./routes/batch');
+const termsRoutes = require('./routes/terms');
+const newsRoutes = require('./routes/news');
 // const taxonomyRoutes = require('./routes/taxonomy'); // TODO: Implement
 
 // Initialize background jobs (scheduler, TikTok sync)
 if (process.env.NODE_ENV !== 'test') {
-  // DISABLED - Using BullMQ instead:   require('../cron/scheduler');
+  // Publishing runs in the dedicated Docker scheduler service.
+  // Legacy in-process publisher remains disabled: require('../cron/scheduler');
   // DISABLED - Using BullMQ instead:   require('../cron/syncTikTok');
 }
 
@@ -184,6 +289,8 @@ app.use('/api/trending', trendingRoutes);
 app.use('/api/about', aboutRoutes);
 app.use('/api/mata-elang', mataElangRoutes);
 app.use('/api/batch', batchRoutes);
+app.use('/api/terms', termsRoutes);
+app.use('/api/news', newsRoutes);
 
 // SEO routes at root level
 app.use('/', sitemapRoutes);

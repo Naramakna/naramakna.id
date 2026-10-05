@@ -8,8 +8,85 @@ const { Post, PostMeta, User, Analytics, PostViews, Comment, sequelize } = requi
 const ContentHelpers = require('../models/ContentHelpers');
 const { Op } = require('sequelize');
 const { optimizePostImages } = require('../utils/imageUtils');
+const { clearCache } = require('../middleware/cache');
 
 class ContentController {
+  /**
+   * Get latest published articles (no cache)
+   * GET /api/content/latest
+   */
+  static async getLatestArticles(req, res) {
+    try {
+      const { limit = 6 } = req.query;
+
+      const whereClause = {
+        post_status: 'publish',
+        post_type: 'post',
+        deleted_at: null
+      };
+
+      const include = [
+        { model: PostMeta, as: 'meta' },
+        { model: User, as: 'author', attributes: ['ID', 'display_name', 'user_email', 'user_nicename'] }
+      ];
+
+      const result = await Post.findAndCountAll({
+        where: whereClause,
+        include,
+        limit: parseInt(limit),
+        offset: 0,
+        order: [['post_date', 'DESC']],
+        distinct: true
+      });
+
+      // Pre-fetch thumbnails in one query
+      const thumbnailIds = [];
+      result.rows.forEach(post => {
+        const meta = post.meta || [];
+        const latestThumb = meta
+          .filter(m => m.meta_key === '_thumbnail_id')
+          .sort((a, b) => (b.meta_id || 0) - (a.meta_id || 0))[0];
+        if (latestThumb && latestThumb.meta_value) {
+          thumbnailIds.push(parseInt(latestThumb.meta_value));
+        }
+      });
+
+      let thumbnailMap = {};
+      if (thumbnailIds.length > 0) {
+        const thumbnails = await Post.findAll({
+          where: { ID: { [Op.in]: thumbnailIds } },
+          attributes: ['ID', 'guid', 'post_title']
+        });
+        thumbnails.forEach(t => {
+          thumbnailMap[t.ID] = { guid: t.guid, title: t.post_title };
+        });
+      }
+
+      const userAgent = req.headers['user-agent'] || '';
+      const formattedPosts = await Promise.all(
+        result.rows.map(post => ContentController.formatPostWithMeta(post, post.view_count || 0, userAgent, thumbnailMap))
+      );
+
+      res.json({
+        success: true,
+        data: {
+          posts: formattedPosts,
+          totalItems: formattedPosts.length,
+          criteria: 'most_recent'
+        }
+      });
+
+    } catch (error) {
+      console.error('Error fetching latest articles:', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          message: 'Failed to fetch latest articles',
+          error: error.message
+        });
+      }
+    }
+  }
   
   /**
    * Get mixed content feed (all content types)
@@ -231,9 +308,11 @@ class ContentController {
       const thumbnailIds = [];
       result.rows.forEach(post => {
         const meta = post.meta || [];
-        const thumbMeta = meta.find(m => m.meta_key === '_thumbnail_id');
-        if (thumbMeta && thumbMeta.meta_value) {
-          thumbnailIds.push(parseInt(thumbMeta.meta_value));
+        const latestThumb = meta
+          .filter(m => m.meta_key === '_thumbnail_id')
+          .sort((a, b) => (b.meta_id || 0) - (a.meta_id || 0))[0];
+        if (latestThumb && latestThumb.meta_value) {
+          thumbnailIds.push(parseInt(latestThumb.meta_value));
         }
       });
 
@@ -472,9 +551,6 @@ class ContentController {
    */
   static async create(req, res) {
     try {
-      console.log('Content controller - req.body:', req.body);
-      console.log('Content controller - req.files:', req.files);
-      
       // Handle both JSON and FormData requests with validation
       const type = req.body.type || 'post';
       const title = req.body.title || 'Untitled Post';
@@ -484,9 +560,6 @@ class ContentController {
       // Always use authenticated user's ID for security - handle both 'id' and 'ID'
       const author_id = req.user?.id || req.user?.ID;
       
-      console.log('req.user:', req.user);
-      console.log('author_id from req.user:', author_id);
-      
       // Validate author exists in database
       if (!author_id) {
         return res.status(400).json({
@@ -495,14 +568,10 @@ class ContentController {
         });
       }
       const meta = req.body.meta ? JSON.parse(req.body.meta) : {};
+      const featured_image = req.body.featured_image;
+      const featured_image_caption = req.body.featured_image_caption;
+      const image_captions = req.body.image_captions;
       const categories = req.body.categories ? JSON.parse(req.body.categories) : [];
-      
-      console.log('Parsed data:', { type, title, content, status, author_id });
-
-      // TEMPORARILY DISABLED - Debug content type validation
-      console.log('Content type received:', type);
-      console.log('Type of type:', typeof type);
-      console.log('Is type valid?', ['post', 'youtube_video', 'tiktok_video', 'page'].includes(type));
       
       // Skip validation to debug FormData issue
       // const validTypes = ['post', 'youtube_video', 'tiktok_video', 'page'];
@@ -536,6 +605,8 @@ class ContentController {
         guid: `${req.protocol}://${req.get('host')}/content/${type}/${Date.now()}`
       });
 
+      console.log('Created post:', post);
+
       // Add metadata
       if (Object.keys(meta).length > 0) {
         for (const [key, value] of Object.entries(meta)) {
@@ -547,6 +618,48 @@ class ContentController {
         }
       }
 
+      let thumbnailId = null;
+      if (featured_image) {
+        const existingAttachment = await Post.findOne({ where: { guid: featured_image, post_type: 'attachment' } });
+        if (existingAttachment) {
+          thumbnailId = existingAttachment.ID;
+          if (featured_image_caption) {
+            await existingAttachment.update({ post_title: featured_image_caption, post_excerpt: featured_image_caption });
+          }
+        } else {
+          const attachmentPost = await Post.create({
+            post_author: author_id,
+            post_date: new Date(),
+            post_date_gmt: new Date(),
+            post_content: '',
+            post_title: featured_image_caption || `Featured image for ${title}`,
+            post_excerpt: featured_image_caption || '',
+            post_status: 'inherit',
+            comment_status: 'closed',
+            ping_status: 'closed',
+            post_name: '',
+            post_type: 'attachment',
+            to_ping: '',
+            pinged: '',
+            post_content_filtered: '',
+            guid: featured_image,
+            post_password: '',
+            post_mime_type: 'image/jpeg'
+          });
+          thumbnailId = attachmentPost.ID;
+        }
+      }
+
+      if (thumbnailId) {
+        await PostMeta.create({ post_id: post.ID, meta_key: '_thumbnail_id', meta_value: thumbnailId.toString() });
+      }
+      if (featured_image_caption !== undefined) {
+        await PostMeta.create({ post_id: post.ID, meta_key: '_thumbnail_caption', meta_value: featured_image_caption || '' });
+      }
+      if (image_captions && typeof image_captions === 'object') {
+        await PostMeta.create({ post_id: post.ID, meta_key: '_image_captions', meta_value: JSON.stringify(image_captions) });
+      }
+
       // Add categories
       if (categories.length > 0) {
         for (const categoryId of categories) {
@@ -556,6 +669,12 @@ class ContentController {
             term_order: 0
           });
         }
+      }
+
+      try {
+        await clearCache('cache:/api/content/*');
+      } catch (cacheError) {
+        console.error('Cache clear error after create:', cacheError.message);
       }
 
       res.status(201).json({
@@ -592,7 +711,10 @@ class ContentController {
         excerpt,
         status,
         meta = {},
-        categories = []
+        categories = [],
+        featured_image,
+        featured_image_caption,
+        image_captions
       } = req.body;
 
       const post = await Post.findByPk(id);
@@ -621,6 +743,54 @@ class ContentController {
             meta_value: typeof value === 'object' ? JSON.stringify(value) : value.toString()
           });
         }
+      }
+
+      let thumbnailId = null;
+      if (featured_image) {
+        const existingAttachment = await Post.findOne({ where: { guid: featured_image, post_type: 'attachment' } });
+        if (existingAttachment) {
+          thumbnailId = existingAttachment.ID;
+          if (featured_image_caption) {
+            await existingAttachment.update({ post_title: featured_image_caption, post_excerpt: featured_image_caption });
+          }
+        } else {
+          const attachmentPost = await Post.create({
+            post_author: post.post_author,
+            post_date: new Date(),
+            post_date_gmt: new Date(),
+            post_content: '',
+            post_title: featured_image_caption || `Featured image for ${title || post.post_title}`,
+            post_excerpt: featured_image_caption || '',
+            post_status: 'inherit',
+            comment_status: 'closed',
+            ping_status: 'closed',
+            post_name: '',
+            post_type: 'attachment',
+            to_ping: '',
+            pinged: '',
+            post_content_filtered: '',
+            guid: featured_image,
+            post_password: '',
+            post_mime_type: 'image/jpeg'
+          });
+          thumbnailId = attachmentPost.ID;
+        }
+      }
+
+      if (thumbnailId) {
+        await PostMeta.upsert({ post_id: post.ID, meta_key: '_thumbnail_id', meta_value: thumbnailId.toString() });
+      }
+      if (featured_image_caption !== undefined) {
+        await PostMeta.upsert({ post_id: post.ID, meta_key: '_thumbnail_caption', meta_value: featured_image_caption || '' });
+      }
+      if (image_captions && typeof image_captions === 'object') {
+        await PostMeta.upsert({ post_id: post.ID, meta_key: '_image_captions', meta_value: JSON.stringify(image_captions) });
+      }
+
+      try {
+        await clearCache('cache:/api/content/*');
+      } catch (cacheError) {
+        console.error('Cache clear error after update:', cacheError.message);
       }
 
       res.json({
@@ -671,6 +841,12 @@ class ContentController {
           post_status: 'trash',
           post_modified: new Date()
         });
+      }
+
+      try {
+        await clearCache('cache:/api/content/*');
+      } catch (cacheError) {
+        console.error('Cache clear error after delete:', cacheError.message);
       }
 
       res.json({
@@ -933,8 +1109,14 @@ class ContentController {
     // Convert meta array to object
     const metadata = {};
     if (postData.meta) {
-      postData.meta.forEach(meta => {
-        metadata[meta.meta_key] = meta.meta_value;
+      const latestMap = {};
+      postData.meta.forEach(m => {
+        const k = m.meta_key;
+        const id = m.meta_id || 0;
+        if (!(k in latestMap) || id > latestMap[k]) {
+          latestMap[k] = id;
+          metadata[k] = m.meta_value;
+        }
       });
     }
 
@@ -1405,8 +1587,14 @@ class ContentController {
       // Process metadata for easier access
       const metadata = {};
       if (post.meta) {
-        post.meta.forEach(meta => {
-          metadata[meta.meta_key] = meta.meta_value;
+        const latestMap = {};
+        post.meta.forEach(m => {
+          const k = m.meta_key;
+          const id = m.meta_id || 0;
+          if (!(k in latestMap) || id > latestMap[k]) {
+            latestMap[k] = id;
+            metadata[k] = m.meta_value;
+          }
         });
       }
 
@@ -1524,6 +1712,10 @@ class ContentController {
         },
         include: [
           {
+            model: PostMeta,
+            as: 'meta'
+          },
+          {
             model: User,
             as: 'author',
             attributes: ['ID', 'display_name', 'user_email', 'user_login', 'user_nicename']
@@ -1531,28 +1723,93 @@ class ContentController {
         ],
         limit: parseInt(limit),
         offset: parseInt(offset),
-        order: [['post_date', 'DESC']]
+        order: [['post_date', 'DESC']],
+        distinct: true
       });
 
-      // Format posts
-      const formattedPosts = result.rows.map(post => ({
-        id: post.ID,
-        title: post.post_title,
-        content: post.post_content,
-        excerpt: post.post_excerpt,
-        slug: post.post_name,
-        status: post.post_status,
-        type: post.post_type,
-        date: post.post_date,
-        modified: post.post_modified,
-        author: {
-          ID: post.author.ID,
-          display_name: post.author.display_name,
-          user_email: post.author.user_email,
-          user_login: post.author.user_login,
-          user_nicename: post.author.user_nicename
+      // Collect post IDs for batch analytics view counts
+      const postIds = result.rows.map(p => p.ID);
+      const analyticsViewCounts = {};
+      if (postIds.length > 0) {
+        try {
+          const analyticsData = await Analytics.findAll({
+            attributes: [
+              'content_id',
+              [sequelize.fn('COUNT', sequelize.col('id')), 'view_count']
+            ],
+            where: {
+              content_id: postIds,
+              event_type: 'view'
+            },
+            group: ['content_id']
+          });
+
+          analyticsData.forEach(item => {
+            analyticsViewCounts[item.content_id] = parseInt(item.dataValues.view_count) || 0;
+          });
+        } catch (error) {
+          console.error('Error fetching analytics view counts for author posts:', error);
         }
-      }));
+      }
+
+      const thumbnailIds = [];
+      result.rows.forEach(post => {
+        const meta = post.meta || [];
+        const latestThumb = meta
+          .filter(m => m.meta_key === '_thumbnail_id')
+          .sort((a, b) => (b.meta_id || 0) - (a.meta_id || 0))[0];
+        if (latestThumb && latestThumb.meta_value) {
+          const id = parseInt(latestThumb.meta_value);
+          if (!isNaN(id)) thumbnailIds.push(id);
+        }
+      });
+
+      let thumbnailMap = {};
+      if (thumbnailIds.length > 0) {
+        const thumbnails = await Post.findAll({
+          where: { ID: { [Op.in]: thumbnailIds } },
+          attributes: ['ID', 'guid']
+        });
+        thumbnails.forEach(t => {
+          thumbnailMap[t.ID] = t.guid;
+        });
+      }
+
+      const formattedPosts = result.rows.map(post => {
+        let featuredImage = null;
+        if (post.meta) {
+          const latestThumb = post.meta
+            .filter(m => m.meta_key === '_thumbnail_id')
+            .sort((a, b) => (b.meta_id || 0) - (a.meta_id || 0))[0];
+          if (latestThumb && latestThumb.meta_value) {
+            const id = parseInt(latestThumb.meta_value);
+            if (!isNaN(id) && thumbnailMap[id]) {
+              featuredImage = thumbnailMap[id];
+            }
+          }
+        }
+
+        return {
+          id: post.ID,
+          title: post.post_title,
+          content: post.post_content,
+          excerpt: post.post_excerpt,
+          slug: post.post_name,
+          status: post.post_status,
+          type: post.post_type,
+          date: post.post_date,
+          modified: post.post_modified,
+          author: {
+            ID: post.author.ID,
+            display_name: post.author.display_name,
+            user_email: post.author.user_email,
+            user_login: post.author.user_login,
+            user_nicename: post.author.user_nicename
+          },
+          featured_image: featuredImage,
+          view_count: analyticsViewCounts[post.ID] || 0
+        };
+      });
 
       res.json({
         success: true,
@@ -1657,6 +1914,12 @@ class ContentController {
 
         await transaction.commit();
 
+        try {
+          await clearCache('cache:/api/content/*');
+        } catch (cacheError) {
+          console.error('Cache clear error after admin permanent delete:', cacheError.message);
+        }
+
         res.json({
           success: true,
           message: `Article "${article.post_title}" by ${article.author.display_name} has been permanently deleted.`,
@@ -1678,6 +1941,12 @@ class ContentController {
         }, { transaction });
 
         await transaction.commit();
+
+        try {
+          await clearCache('cache:/api/content/*');
+        } catch (cacheError) {
+          console.error('Cache clear error after admin soft delete:', cacheError.message);
+        }
 
         res.json({
           success: true,
@@ -1754,6 +2023,12 @@ class ContentController {
       }, { transaction });
 
       await transaction.commit();
+
+      try {
+        await clearCache('cache:/api/content/*');
+      } catch (cacheError) {
+        console.error('Cache clear error after restore:', cacheError.message);
+      }
 
       res.json({
         success: true,

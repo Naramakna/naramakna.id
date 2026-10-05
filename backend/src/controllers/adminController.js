@@ -1,4 +1,4 @@
-const {User, Post, Comment, UserProfile, Analytics, Advertisement, Image, Option, sequelize} = require('../models');
+const {User, Post, PostMeta, Comment, UserProfile, Analytics, Advertisement, Image, Option, sequelize} = require('../models');
 const { Op } = require('sequelize');
 
 class AdminController {
@@ -221,7 +221,7 @@ class AdminController {
           {
             model: UserProfile,
             as: 'profile',
-            attributes: ['profile_image', 'birth_date', 'gender', 'city', 'profession'],
+            attributes: ['profile_image', 'phone_number', 'birth_date', 'gender', 'city', 'profession'],
             required: false
           }
         ],
@@ -238,6 +238,7 @@ class AdminController {
         role: user.user_role,
         status: user.user_status || 'active',
         registered: user.user_registered,
+        phone_number: user.profile?.phone_number || null,
         profile_image: user.profile?.profile_image ? `${process.env.BACKEND_URL}${user.profile.profile_image}` : null,
         profile_complete: !!(user.profile?.birth_date && user.profile?.gender && user.profile?.city)
       }));
@@ -1192,7 +1193,7 @@ class AdminController {
           include: [{
             model: UserProfile,
             as: 'profile',
-            attributes: ['profile_image'],
+            attributes: ['profile_image', 'phone_number'],
             required: false
           }],
           limit: parseInt(limit),
@@ -1268,11 +1269,23 @@ class AdminController {
 
         // 5. Get posts (optimized - removed expensive view_count subquery)
         (async () => {
-          const whereClause = { post_type: 'post' };
+          const whereClause = { post_type: 'post', deleted_at: null };
 
           // Apply filters if provided
           if (filters.status) whereClause.post_status = filters.status;
           if (filters.author) whereClause.post_author = filters.author;
+          if (filters.title) {
+            whereClause[Op.or] = [
+              { post_title: { [Op.like]: `%${filters.title}%` } },
+              { post_excerpt: { [Op.like]: `%${filters.title}%` } }
+            ];
+          }
+          if (filters.startDate || filters.endDate) {
+            whereClause.post_date = {
+              ...(filters.startDate ? { [Op.gte]: filters.startDate } : {}),
+              ...(filters.endDate ? { [Op.lte]: filters.endDate } : {})
+            };
+          }
 
           const sortOrder = filters.sortOrder || 'DESC';
 
@@ -1282,15 +1295,47 @@ class AdminController {
               'ID', 'post_title', 'post_excerpt', 'post_status', 'post_date',
               'post_author', 'comment_count', 'view_count'
             ],
-            include: [{
-              model: User,
-              as: 'author',
-              attributes: ['ID', 'display_name']
-            }],
+            include: [
+              {
+                model: User,
+                as: 'author',
+                attributes: ['ID', 'display_name']
+              },
+              {
+                model: PostMeta,
+                as: 'meta',
+                attributes: ['meta_id', 'meta_key', 'meta_value'],
+                required: false
+              }
+            ],
             limit: parseInt(limit),
             offset: parseInt(offset),
             order: [['post_date', sortOrder]]
           });
+
+          // Build thumbnail map in one batch to avoid N+1
+          const thumbnailIds = [];
+          rows.forEach(post => {
+            const meta = post.meta || [];
+            const latestThumb = meta
+              .filter(m => m.meta_key === '_thumbnail_id')
+              .sort((a, b) => (b.meta_id || 0) - (a.meta_id || 0))[0];
+            if (latestThumb && latestThumb.meta_value) {
+              const id = parseInt(latestThumb.meta_value);
+              if (!Number.isNaN(id)) thumbnailIds.push(id);
+            }
+          });
+
+          let thumbnailMap = {};
+          if (thumbnailIds.length > 0) {
+            const thumbnails = await Post.findAll({
+              where: { ID: { [Op.in]: thumbnailIds } },
+              attributes: ['ID', 'guid', 'post_title']
+            });
+            thumbnails.forEach(t => {
+              thumbnailMap[t.ID] = { guid: t.guid, title: t.post_title };
+            });
+          }
 
           return {
             posts: rows.map(post => ({
@@ -1308,7 +1353,19 @@ class AdminController {
               author: post.author,
               comment_count: post.comment_count,
               view_count: post.view_count || 0,
-              views: post.view_count || 0
+              views: post.view_count || 0,
+              featured_image: (() => {
+                const meta = post.meta || [];
+                const latestThumb = meta
+                  .filter(m => m.meta_key === '_thumbnail_id')
+                  .sort((a, b) => (b.meta_id || 0) - (a.meta_id || 0))[0];
+                if (latestThumb && latestThumb.meta_value) {
+                  const id = parseInt(latestThumb.meta_value);
+                  const thumb = thumbnailMap[id];
+                  return thumb ? thumb.guid : undefined;
+                }
+                return undefined;
+              })()
             })),
             pagination: {
               currentPage: parseInt(page),
@@ -1322,7 +1379,7 @@ class AdminController {
         // 6. Get pending posts for approval
         (async () => {
           const pendingPosts = await Post.findAll({
-            where: { post_status: 'pending' },
+            where: { post_status: 'pending', deleted_at: null },
             attributes: ['ID', 'post_title', 'post_date'],
             include: [{
               model: User,
@@ -1352,7 +1409,7 @@ class AdminController {
           include: [{
             model: UserProfile,
             as: 'profile',
-            attributes: ['profile_image'],
+            attributes: ['profile_image', 'phone_number'],
             required: false
           }],
           order: [['user_registered', 'DESC']],
@@ -1394,6 +1451,7 @@ class AdminController {
         user_role: user.user_role,
         user_status: user.user_status,
         user_registered: user.user_registered,
+        phone_number: user.profile?.phone_number || null,
         profile: user.profile ? {
           profile_image: user.profile.profile_image,
           birth_date: user.profile.birth_date,
@@ -1446,6 +1504,7 @@ class AdminController {
                 user_role: admin.user_role,
                 user_status: admin.user_status,
                 user_registered: admin.user_registered,
+                phone_number: admin.profile?.phone_number || null,
                 profile: admin.profile ? {
                   profile_image: admin.profile.profile_image
                 } : null

@@ -36,7 +36,8 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
             loading="lazy"
             style={{ aspectRatio: '16/9' }}
             onError={(e) => {
-              e.currentTarget.style.display = 'none';
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = '/images/placeholder-gallery.jpg';
             }}
           />
         ) : (
