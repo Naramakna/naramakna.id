@@ -10,8 +10,6 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
     volumes:
       - ./shared:/usr/src/shared:ro
       - ./public/uploads:/usr/src/public/uploads
@@ -19,6 +17,37 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    networks:
+      - naramakna-net
+
+  scheduler:
+    build: ./backend
+    container_name: naramakna-scheduler
+    command: ["node", "src/jobs/auto-publish.js"]
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 90s
+    env_file:
+      - backend/.env
+    environment:
+      NODE_ENV: production
+      TZ: Asia/Jakarta
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "src/jobs/scheduler-healthcheck.js"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - naramakna-net
 

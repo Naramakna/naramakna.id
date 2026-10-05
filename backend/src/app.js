@@ -263,7 +263,8 @@ const newsRoutes = require('./routes/news');
 
 // Initialize background jobs (scheduler, TikTok sync)
 if (process.env.NODE_ENV !== 'test') {
-  // DISABLED - Using BullMQ instead:   require('../cron/scheduler');
+  // Publishing runs in the dedicated Docker scheduler service.
+  // Legacy in-process publisher remains disabled: require('../cron/scheduler');
   // DISABLED - Using BullMQ instead:   require('../cron/syncTikTok');
 }
 

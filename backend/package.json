@@ -5,7 +5,9 @@
     "main": "server.js",
     "scripts": {
         "start": "node server.js",
-        "dev": "nodemon server.js"
+        "dev": "nodemon server.js",
+        "scheduler": "node src/jobs/auto-publish.js",
+        "test:scheduler": "node --test test/scheduledPublisher.test.js test/schedulerStatus.test.js"
     },
     "author": "Naramakna Team",
     "license": "MIT",

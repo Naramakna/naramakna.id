@@ -84,7 +84,25 @@ export interface ScheduleResponse {
   error?: string;
 }
 
+export interface SchedulerStatus {
+  online: boolean;
+  state: 'starting' | 'running' | 'idle' | 'error' | 'stopped' | 'offline';
+  intervalSeconds?: number;
+  lastHeartbeatAt?: string;
+  lastCheckAt?: string;
+  lastSuccessAt?: string;
+  lastError?: string | null;
+  lastPublishedCount?: number;
+  totalPublished?: number;
+  recentPublished?: { id: number; title: string; publishedAt: string }[];
+}
+
 class SchedulerAPI {
+  async getStatus(): Promise<SchedulerStatus> {
+    const response = await apiRequest('scheduler/status');
+    return (await response.json()).data;
+  }
+
   private ensureWIBOffset(dateStr: string): string {
     if (!dateStr) return dateStr;
     if (/([+-]\d{2}:\d{2}|Z)$/.test(dateStr)) return dateStr;

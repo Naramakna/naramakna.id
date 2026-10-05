@@ -2,6 +2,20 @@ const express = require('express');
 const router = express.Router();
 const SchedulerController = require('../controllers/schedulerController');
 const { authenticate: auth, requireAdmin } = require('../middleware/auth');
+const cacheService = require('../services/cacheService');
+const { STATUS_KEY, describeStatus } = require('../services/schedulerStatus');
+
+router.get('/status', auth, requireAdmin, async (req, res) => {
+  if (!cacheService.isConnected) {
+    return res.status(503).json({ success: false, message: 'Monitoring scheduler tidak dapat terhubung ke Redis.' });
+  }
+  try {
+    const raw = await cacheService.client.get(STATUS_KEY);
+    res.json({ success: true, data: describeStatus(raw ? JSON.parse(raw) : null) });
+  } catch (error) {
+    res.status(503).json({ success: false, message: 'Status scheduler tidak dapat dibaca.' });
+  }
+});
 
 // requireAdmin is imported from auth middleware
 
